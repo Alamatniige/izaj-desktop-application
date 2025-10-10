@@ -1,5 +1,15 @@
 import express from 'express';
 import cors from 'cors';
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+// Get the directory of the current file
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load environment variables from root .env file (one level up from backend/nodejs)
+dotenv.config({ path: join(__dirname, '..', '..', '.env') });
 
 // Import route modules
 import audit from './audit/server.js'
@@ -12,6 +22,7 @@ import sale from './sales/server.js'
 import reviews from './reviews/server.js'
 import dashboard from './dashboard/server.js'
 import customers from './customers/server.js'
+import orders from './orders/server.js'
 
 const app = express();
 
@@ -51,6 +62,7 @@ app.use('/api/sales', sale);
 app.use('/api', reviews);
 app.use('/api', dashboard);
 app.use('/api', customers);
+app.use('/api', orders);
 
 // =============================================================================
 // ERROR HANDLING MIDDLEWARE
@@ -70,7 +82,6 @@ app.use((error, req, res, next) => {
 
 // 404 handler (for unmatched routes)
 app.use((req, res) => {
-  console.log("🚨 404 ROUTE HIT:", req.method, req.originalUrl);
   res.status(404).json({ error: "Route not found", url: req.originalUrl });
 });
 

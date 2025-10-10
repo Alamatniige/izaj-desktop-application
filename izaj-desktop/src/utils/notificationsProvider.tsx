@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabaseProduct as supabase, supabase as supabaseClient } from '../lib/supabase';
 import toast from 'react-hot-toast';
@@ -27,7 +28,12 @@ export const useNotifications = () => {
   return context;
 };
 
-export const NotificationsProvider = ({ children }: { children: React.ReactNode }) => {
+interface NotificationsProviderProps {
+  children: React.ReactNode;
+  isAuthenticated?: boolean;
+}
+
+export const NotificationsProvider = ({ children, isAuthenticated = true }: NotificationsProviderProps) => {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
@@ -47,6 +53,11 @@ export const NotificationsProvider = ({ children }: { children: React.ReactNode 
   };
 
   useEffect(() => {
+    // Only setup realtime if authenticated
+    if (!isAuthenticated) {
+      return;
+    }
+
     const setupRealtime = async () => {
       const insertChannel = supabase
         .channel('insert-centralized-product')
@@ -137,7 +148,7 @@ export const NotificationsProvider = ({ children }: { children: React.ReactNode 
     };
 
     setupRealtime();
-  }, []);
+  }, [isAuthenticated]);
 
 
 

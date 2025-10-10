@@ -1,9 +1,10 @@
 /**
  * Order Service for izaj-desktop
- * Handles order management operations
+ * Handles order management operations via Backend API
  */
 
-import { supabaseAdmin as supabase } from '../lib/supabase';
+import { Session } from '@supabase/supabase-js';
+import API_URL from '../../config/api';
 
 export interface OrderItem {
   id: string;
@@ -37,45 +38,47 @@ export interface Order {
   items?: OrderItem[];
 }
 
+export interface OrderFilters {
+  status?: string;
+}
+
+export interface UpdateOrderOptions {
+  tracking_number?: string;
+  courier?: string;
+  admin_notes?: string;
+}
+
 export class OrderService {
+  private static getHeaders(session: Session | null): HeadersInit {
+    return {
+      'Content-Type': 'application/json',
+      ...(session?.access_token && { 'Authorization': `Bearer ${session.access_token}` })
+    };
+  }
+
   /**
    * Get all orders with optional filters
    */
-  static async getAllOrders(filters: any = {}) {
-    console.log('🔵 [OrderService.getAllOrders] Starting...');
+  static async getAllOrders(session: Session | null, filters: OrderFilters = {}) {
     try {
-      let query = supabase
-        .from('orders')
-        .select(`
-          *,
-          items:order_items(*)
-        `)
-        .order('created_at', { ascending: false });
+      const params = new URLSearchParams();
+      if (filters.status) params.append('status', filters.status);
 
-      if (filters.status) {
-        query = query.eq('status', filters.status);
+      const response = await fetch(`${API_URL}/api/orders?${params.toString()}`, {
+        method: 'GET',
+        headers: this.getHeaders(session)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch orders');
       }
 
-      console.log('🔵 [OrderService.getAllOrders] Executing query...');
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('❌ [OrderService.getAllOrders] Query error:', error);
-        throw error;
-      }
-
-      console.log('✅ [OrderService.getAllOrders] Success! Orders:', data?.length || 0);
-
-      return {
-        success: true,
-        data: data as Order[],
-        count: data.length
-      };
-    } catch (error: any) {
+      return await response.json();
+    } catch (error) {
       console.error('❌ [OrderService.getAllOrders] Error:', error);
       return {
         success: false,
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error',
         data: []
       };
     }
@@ -84,28 +87,23 @@ export class OrderService {
   /**
    * Get a single order by ID
    */
-  static async getOrderById(orderId: string) {
+  static async getOrderById(session: Session | null, orderId: string) {
     try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          items:order_items(*)
-        `)
-        .eq('id', orderId)
-        .single();
+      const response = await fetch(`${API_URL}/api/orders/${orderId}`, {
+        method: 'GET',
+        headers: this.getHeaders(session)
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error('Failed to fetch order');
+      }
 
-      return {
-        success: true,
-        data: data as Order
-      };
-    } catch (error: any) {
+      return await response.json();
+    } catch (error) {
       console.error('Error getting order:', error);
       return {
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
   }
@@ -113,35 +111,29 @@ export class OrderService {
   /**
    * Update order status
    */
-  static async updateOrderStatus(orderId: string, newStatus: string, options: any = {}) {
+  static async updateOrderStatus(session: Session | null, orderId: string, newStatus: string, options: UpdateOrderOptions = {}) {
     try {
-      const updateData: any = {
-        status: newStatus
+      const updateData = {
+        status: newStatus,
+        ...options
       };
 
-      if (options.tracking_number) updateData.tracking_number = options.tracking_number;
-      if (options.courier) updateData.courier = options.courier;
-      if (options.admin_notes) updateData.admin_notes = options.admin_notes;
+      const response = await fetch(`${API_URL}/api/orders/${orderId}/status`, {
+        method: 'PUT',
+        headers: this.getHeaders(session),
+        body: JSON.stringify(updateData)
+      });
 
-      const { data, error } = await supabase
-        .from('orders')
-        .update(updateData)
-        .eq('id', orderId)
-        .select()
-        .single();
+      if (!response.ok) {
+        throw new Error('Failed to update order status');
+      }
 
-      if (error) throw error;
-
-      return {
-        success: true,
-        message: `Order status updated to ${newStatus}`,
-        data: data as Order
-      };
-    } catch (error: any) {
+      return await response.json();
+    } catch (error) {
       console.error('Error updating order status:', error);
       return {
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
   }
@@ -149,15 +141,15 @@ export class OrderService {
   /**
    * Approve order
    */
-  static async approveOrder(orderId: string, options: any = {}) {
-    return await this.updateOrderStatus(orderId, 'approved', options);
+  static async approveOrder(session: Session | null, orderId: string, options: UpdateOrderOptions = {}) {
+    return await this.updateOrderStatus(session, orderId, 'approved', options);
   }
 
   /**
    * Mark as in transit
    */
-  static async markAsInTransit(orderId: string, trackingNumber: string, courier: string) {
-    return await this.updateOrderStatus(orderId, 'in_transit', {
+  static async markAsInTransit(session: Session | null, orderId: string, trackingNumber: string, courier: string) {
+    return await this.updateOrderStatus(session, orderId, 'in_transit', {
       tracking_number: trackingNumber,
       courier: courier
     });
@@ -166,38 +158,31 @@ export class OrderService {
   /**
    * Mark as complete
    */
-  static async markAsComplete(orderId: string) {
-    return await this.updateOrderStatus(orderId, 'complete');
+  static async markAsComplete(session: Session | null, orderId: string) {
+    return await this.updateOrderStatus(session, orderId, 'complete');
   }
 
   /**
    * Cancel order
    */
-  static async cancelOrder(orderId: string, reason: string) {
+  static async cancelOrder(session: Session | null, orderId: string, reason: string) {
     try {
-      const { data, error } = await supabase
-        .from('orders')
-        .update({
-          status: 'cancelled',
-          cancellation_reason: reason,
-          cancelled_at: new Date().toISOString()
-        })
-        .eq('id', orderId)
-        .select()
-        .single();
+      const response = await fetch(`${API_URL}/api/orders/${orderId}/cancel`, {
+        method: 'PUT',
+        headers: this.getHeaders(session),
+        body: JSON.stringify({ reason })
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error('Failed to cancel order');
+      }
 
-      return {
-        success: true,
-        message: 'Order cancelled successfully',
-        data: data as Order
-      };
-    } catch (error: any) {
+      return await response.json();
+    } catch (error) {
       console.error('Error cancelling order:', error);
       return {
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
   }
@@ -205,35 +190,23 @@ export class OrderService {
   /**
    * Get order statistics
    */
-  static async getOrderStatistics() {
+  static async getOrderStatistics(session: Session | null) {
     try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('status, total_amount');
+      const response = await fetch(`${API_URL}/api/orders-statistics`, {
+        method: 'GET',
+        headers: this.getHeaders(session)
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error('Failed to fetch order statistics');
+      }
 
-      const stats = {
-        pending: data.filter(o => o.status === 'pending').length,
-        approved: data.filter(o => o.status === 'approved').length,
-        in_transit: data.filter(o => o.status === 'in_transit').length,
-        complete: data.filter(o => o.status === 'complete').length,
-        cancelled: data.filter(o => o.status === 'cancelled').length,
-        total: data.length,
-        total_revenue: data
-          .filter(o => o.status === 'complete')
-          .reduce((sum, o) => sum + parseFloat(o.total_amount.toString()), 0)
-      };
-
-      return {
-        success: true,
-        data: stats
-      };
-    } catch (error: any) {
+      return await response.json();
+    } catch (error) {
       console.error('Error getting statistics:', error);
       return {
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
   }

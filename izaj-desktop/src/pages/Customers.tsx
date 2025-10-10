@@ -1,5 +1,5 @@
 import { Icon } from '@iconify/react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { toast } from 'react-hot-toast';
 import API_URL from '../../config/api';
@@ -15,6 +15,7 @@ interface Customer {
   order_count: number;
   total_spent: string;
   review_count: number;
+  email_confirmed_at?: string;
 }
 
 interface CustomerStats {
@@ -38,7 +39,7 @@ function Customers({ session }: CustomersProps) {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const fetchCustomers = async () => {
+  const fetchCustomers = useCallback(async () => {
     if (!session) return;
 
     try {
@@ -68,9 +69,9 @@ function Customers({ session }: CustomersProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [session, searchTerm]);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     if (!session) return;
 
     try {
@@ -90,12 +91,12 @@ function Customers({ session }: CustomersProps) {
     } catch (error) {
       console.error('Error fetching customer stats:', error);
     }
-  };
+  }, [session]);
 
   useEffect(() => {
     fetchCustomers();
     fetchStats();
-  }, [session, searchTerm]);
+  }, [fetchCustomers, fetchStats]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {

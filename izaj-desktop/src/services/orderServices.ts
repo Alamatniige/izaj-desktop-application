@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Order Services for orders.tsx page
  * Frontend hooks and utilities for order management
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { Session } from '@supabase/supabase-js';
 import { OrderService, Order } from './orderService';
 
 interface OrderStats {
@@ -14,7 +16,7 @@ interface OrderStats {
   cancelled: number;
 }
 
-export const useOrders = () => {
+export const useOrders = (session: Session | null) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState<OrderStats>({
@@ -26,35 +28,31 @@ export const useOrders = () => {
   });
 
   const fetchOrders = useCallback(async () => {
-    console.log('🔵 [useOrders] Fetching orders...');
     setIsLoading(true);
     try {
-      const result = await OrderService.getAllOrders();
-      console.log('🔵 [useOrders] Result:', result);
+      const result = await OrderService.getAllOrders(session);
 
       if (result.success && result.data) {
-        console.log('✅ [useOrders] Orders loaded:', result.data.length);
         setOrders(result.data);
         
         // Calculate stats
         const newStats = {
-          pending: result.data.filter(o => o.status === 'pending').length,
-          approved: result.data.filter(o => o.status === 'approved').length,
-          in_transit: result.data.filter(o => o.status === 'in_transit').length,
-          complete: result.data.filter(o => o.status === 'complete').length,
-          cancelled: result.data.filter(o => o.status === 'cancelled').length,
+          pending: result.data.filter((o: { status: string; }) => o.status === 'pending').length,
+          approved: result.data.filter((o: { status: string; }) => o.status === 'approved').length,
+          in_transit: result.data.filter((o: { status: string; }) => o.status === 'in_transit').length,
+          complete: result.data.filter((o: { status: string; }) => o.status === 'complete').length,
+          cancelled: result.data.filter((o: { status: string; }) => o.status === 'cancelled').length,
         };
-        console.log('📊 [useOrders] Stats:', newStats);
         setStats(newStats);
       } else {
-        console.error('❌ [useOrders] Failed to load orders:', result.error);
+        console.error('Failed to load orders:', result.error);
       }
     } catch (error) {
-      console.error('❌ [useOrders] Error fetching orders:', error);
+      console.error('Error fetching orders:', error);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [session]);
 
   useEffect(() => {
     fetchOrders();
@@ -68,7 +66,7 @@ export const useOrders = () => {
   };
 };
 
-export const useOrderActions = (onSuccess?: () => void) => {
+export const useOrderActions = (session: Session | null, onSuccess?: () => void) => {
   const [isUpdating, setIsUpdating] = useState(false);
 
   const updateStatus = useCallback(async (
@@ -78,7 +76,7 @@ export const useOrderActions = (onSuccess?: () => void) => {
   ) => {
     setIsUpdating(true);
     try {
-      const result = await OrderService.updateOrderStatus(orderId, newStatus, options);
+      const result = await OrderService.updateOrderStatus(session, orderId, newStatus, options);
       
       if (result.success) {
         onSuccess?.();
@@ -91,7 +89,7 @@ export const useOrderActions = (onSuccess?: () => void) => {
     } finally {
       setIsUpdating(false);
     }
-  }, [onSuccess]);
+  }, [session, onSuccess]);
 
   const approveOrder = useCallback(async (orderId: string, adminNotes?: string) => {
     return await updateStatus(orderId, 'approved', { admin_notes: adminNotes });
@@ -102,12 +100,12 @@ export const useOrderActions = (onSuccess?: () => void) => {
     trackingNumber: string,
     courier: string
   ) => {
-    return await OrderService.markAsInTransit(orderId, trackingNumber, courier)
+    return await OrderService.markAsInTransit(session, orderId, trackingNumber, courier)
       .then(result => {
         if (result.success) onSuccess?.();
         return result;
       });
-  }, [onSuccess]);
+  }, [session, onSuccess]);
 
   const markAsComplete = useCallback(async (orderId: string) => {
     return await updateStatus(orderId, 'complete');
@@ -116,7 +114,7 @@ export const useOrderActions = (onSuccess?: () => void) => {
   const cancelOrder = useCallback(async (orderId: string, reason: string) => {
     setIsUpdating(true);
     try {
-      const result = await OrderService.cancelOrder(orderId, reason);
+      const result = await OrderService.cancelOrder(session, orderId, reason);
       
       if (result.success) {
         onSuccess?.();
@@ -129,7 +127,7 @@ export const useOrderActions = (onSuccess?: () => void) => {
     } finally {
       setIsUpdating(false);
     }
-  }, [onSuccess]);
+  }, [session, onSuccess]);
 
   return {
     isUpdating,

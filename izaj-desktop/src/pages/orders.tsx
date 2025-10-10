@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Icon } from '@iconify/react';
 import { Session } from '@supabase/supabase-js';
-import { useOrders, useOrderActions, formatOrderDate, formatPrice, getStatusColor } from '../services/orderServices';
+import { useOrders, useOrderActions, formatOrderDate, formatPrice } from '../services/orderServices';
 import { Order } from '../services/orderService';
 
 interface OrdersProps {
@@ -11,13 +11,12 @@ interface OrdersProps {
 
 function Orders({ setIsOverlayOpen, session }: OrdersProps) {
   // Use hooks
-  const { orders, isLoading, stats, refetchOrders } = useOrders();
-  const { isUpdating, updateStatus, approveOrder, markAsInTransit, markAsComplete, cancelOrder: cancelOrderAction } = useOrderActions(refetchOrders);
+  const { orders, isLoading, stats, refetchOrders } = useOrders(session);
+  const { updateStatus, markAsComplete, } = useOrderActions(session, refetchOrders);
   
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'in_transit' | 'complete' | 'cancelled'>('all');
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [adminNotes, setAdminNotes] = useState('');
@@ -91,18 +90,6 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
     currentPage * ordersPerPage
   );
 
-  const toggleRow = (idx: number) => {
-    setSelectedRows(selectedRows.includes(idx) ? selectedRows.filter((i) => i !== idx) : [...selectedRows, idx]);
-  };
-
-  const toggleAllRows = () => {
-    if (selectedRows.length === paginatedOrders.length && paginatedOrders.length > 0) {
-      setSelectedRows([]);
-    } else {
-      setSelectedRows(paginatedOrders.map((_, idx) => idx));
-    }
-  };
-
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       <main
@@ -159,10 +146,10 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
               <button
               key={stat.key}
               className={`${stat.bg} rounded-xl p-3 sm:p-4 border ${stat.border} w-full text-left transition-all duration-200 hover:scale-105 hover:shadow-md`}
-                onClick={() => {
-                setFilter(stat.key as any);
-                  setCurrentPage(1);
-                }}
+              onClick={() => {
+                setFilter(stat.key as typeof filter);
+                setCurrentPage(1);
+              }}
               type="button"
             >
               <div className="flex justify-between items-center">
@@ -189,7 +176,7 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
               onClick={() => {
-                setFilter(tab.key as any);
+                setFilter(tab.key as typeof filter);
                 setCurrentPage(1);
               }}
               type="button"
@@ -222,7 +209,7 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {paginatedOrders.map((order, idx) => (
+              {paginatedOrders.map((order) => (
                     <tr key={order.id} className="hover:bg-gray-50 transition-colors duration-200">
                       <td className="px-4 py-3">
                         <div className="font-semibold text-gray-800">{order.order_number}</div>

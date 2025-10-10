@@ -2,18 +2,8 @@ import express from 'express';
 import { supabase } from '../supabaseClient.js';
 import authenticate from '../util/middlerware.js';
 
-// Create a service role client for admin operations
-import { createClient } from '@supabase/supabase-js';
-const supabaseUrl = 'https://rhckwqhpnzjqfsjohvzk.supabase.co';
-const supabaseServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoY2t3cWhwbnpqcWZzam9odnprIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODE3NTY5MywiZXhwIjoyMDYzNzUxNjkzfQ.G5z39k1UXNrmCNh1hxHLCC4YJuDfpVMyE__9lShW0e4';
-
-// Service role client bypasses RLS for admin operations
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
-});
+// Use the imported supabase client (already has service role with env variables)
+const supabaseAdmin = supabase;
 
 const router = express.Router();
 

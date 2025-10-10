@@ -9,7 +9,7 @@ interface DashboardProps {
   onNavigate?: (page: string) => void;
 }
 
-const Dashboard = ({ session, onNavigate }: DashboardProps) => {
+const Dashboard = ({ session }: DashboardProps) => {
   const {
     stats,
     salesReport,
