@@ -26,16 +26,29 @@ import orders from './orders/server.js'
 
 const app = express();
 
-// CORS configuration to allow izaj-web to access the API
+// CORS configuration
 app.use(cors({
-  origin: [
-    'http://localhost:3000',  // Next.js default port
-    'http://localhost:3001',  // Alternative Next.js port
-    'http://localhost:3002',  // Current izaj-web port
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:3001',
-    'http://127.0.0.1:3002'
-  ],
+  origin: (origin, callback) => {
+    // Allow requests from localhost (dev), tauri (desktop app), or no origin (Postman/Insomnia)
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:3002',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:3001',
+      'http://127.0.0.1:3002',
+      'tauri://localhost',
+      'http://tauri.localhost',
+      'https://tauri.localhost'
+    ];
+    
+    // Allow if no origin (desktop apps, mobile apps, Postman) or if in allowed list
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, true); // For now, allow all origins (you can restrict later)
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
