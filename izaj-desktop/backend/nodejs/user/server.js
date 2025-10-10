@@ -47,6 +47,8 @@ router.post('/addUsers', authenticate, async (req, res) => {
     }
 
     const userId = data.user.id;
+    
+    // Insert into adminUser table
     const { error: dbError } = await supabase
       .from('adminUser')
       .insert([{ user_id: userId, name, role }]);
@@ -59,6 +61,21 @@ router.post('/addUsers', authenticate, async (req, res) => {
       }, req);
       
       return res.status(500).json({ error: dbError.message });
+    }
+
+    // Also set user_type in profiles table to 'admin'
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .upsert({ 
+        id: userId, 
+        name, 
+        user_type: 'admin',
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'id' });
+
+    if (profileError) {
+      console.error('Error setting admin user_type in profiles:', profileError);
+      // Don't fail the request, just log the error
     }
 
     await logAuditEvent(req.user.id, AuditActions.CREATE_USER, {

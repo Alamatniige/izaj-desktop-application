@@ -23,6 +23,7 @@ router.get('/customers', authenticate, async (req, res) => {
     const { page = 1, limit = 10, search = '' } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
+    // Query only customer type users (excluding admins)
     let query = supabaseAdmin
       .from('user_profiles')
       .select(`
@@ -32,8 +33,10 @@ router.get('/customers', authenticate, async (req, res) => {
         phone,
         profile_picture,
         created_at,
-        updated_at
+        updated_at,
+        user_type
       `)
+      .or('user_type.eq.customer,user_type.is.null') // Include customers and null (legacy data)
       .order('created_at', { ascending: false });
 
     // Add search filter if provided
@@ -41,10 +44,11 @@ router.get('/customers', authenticate, async (req, res) => {
       query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%`);
     }
 
-    // Get total count for pagination
+    // Get total count for pagination (only customers)
     const { count, error: countError } = await supabaseAdmin
       .from('user_profiles')
-      .select('*', { count: 'exact', head: true });
+      .select('*', { count: 'exact', head: true })
+      .or('user_type.eq.customer,user_type.is.null');
 
     if (countError) {
       console.error('Error fetching customer count:', countError);
@@ -118,7 +122,7 @@ router.get('/customers/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Get customer profile
+    // Get customer profile (only if user_type is customer or null)
     const { data: customer, error: customerError } = await supabaseAdmin
       .from('user_profiles')
       .select(`
@@ -128,9 +132,11 @@ router.get('/customers/:id', authenticate, async (req, res) => {
         phone,
         profile_picture,
         created_at,
-        updated_at
+        updated_at,
+        user_type
       `)
       .eq('id', id)
+      .or('user_type.eq.customer,user_type.is.null')
       .single();
 
     if (customerError || !customer) {
@@ -211,36 +217,52 @@ router.get('/customers/stats/summary', authenticate, async (req, res) => {
     const thisWeek = new Date(today.getTime() - (today.getDay() * 24 * 60 * 60 * 1000));
     const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    // Get total customers
+    // Get total customers (only customer type)
     const { count: total, error: totalError } = await supabaseAdmin
       .from('user_profiles')
-      .select('*', { count: 'exact', head: true });
+      .select('*', { count: 'exact', head: true })
+      .or('user_type.eq.customer,user_type.is.null');
 
     // Get customers registered today
     const { count: todayCount, error: todayError } = await supabaseAdmin
       .from('user_profiles')
       .select('*', { count: 'exact', head: true })
-      .gte('created_at', today.toISOString());
+      .gte('created_at', today.toISOString())
+      .or('user_type.eq.customer,user_type.is.null');
 
     // Get customers registered this week
     const { count: thisWeekCount, error: thisWeekError } = await supabaseAdmin
       .from('user_profiles')
       .select('*', { count: 'exact', head: true })
-      .gte('created_at', thisWeek.toISOString());
+      .gte('created_at', thisWeek.toISOString())
+      .or('user_type.eq.customer,user_type.is.null');
 
     // Get customers registered this month
     const { count: thisMonthCount, error: thisMonthError } = await supabaseAdmin
       .from('user_profiles')
       .select('*', { count: 'exact', head: true })
-      .gte('created_at', thisMonth.toISOString());
+      .gte('created_at', thisMonth.toISOString())
+      .or('user_type.eq.customer,user_type.is.null');
 
-    // Get active customers (customers with orders)
+    // Get all customer IDs (for active customer calculation)
+    const { data: allCustomers } = await supabaseAdmin
+      .from('user_profiles')
+      .select('id')
+      .or('user_type.eq.customer,user_type.is.null');
+
+    const customerIds = new Set(allCustomers?.map(c => c.id) || []);
+
+    // Get active customers (customers with orders in last 30 days)
     const { data: activeCustomers, error: activeError } = await supabaseAdmin
       .from('orders')
       .select('user_id')
       .gte('created_at', new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000)).toISOString());
 
-    const activeCustomerIds = new Set(activeCustomers?.map(order => order.user_id) || []);
+    const activeCustomerIds = new Set(
+      (activeCustomers || [])
+        .map(order => order.user_id)
+        .filter(userId => customerIds.has(userId))
+    );
     const active = activeCustomerIds.size;
 
     // Calculate inactive customers

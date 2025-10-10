@@ -140,12 +140,9 @@ const Dashboard = ({ session, onNavigate }: DashboardProps) => {
                                         </div>
                                       </div>
                                     </div>
-                                    <button 
-                                      className="text-orange-500 text-sm font-medium hover:text-orange-600"
-                                      onClick={() => onNavigate?.('CUSTOMERS')}
-                                    >
-                                      View All
-                                    </button>
+                                    <div className="text-gray-400 text-xs">
+                                      Data from website registrations
+                                    </div>
                                   </div>
                                 )}
                               </Draggable>

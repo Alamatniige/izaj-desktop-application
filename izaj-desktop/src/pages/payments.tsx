@@ -1,30 +1,26 @@
 import { Icon } from '@iconify/react';
 import { useState } from 'react';
 import { Session } from '@supabase/supabase-js';
-
-interface Payment {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  date: string;
-  time: string;
-  productId: string;
-  status: 'Pending' | 'Successful' | 'Canceled' | 'Refund';
-  method: 'Gcash' | 'Maya' | 'Paypal' | 'Bank Transfer';
-  amount: number;
-}
+import { 
+  usePayments, 
+  usePaymentActions,
+  formatPaymentDate,
+  formatPaymentTime,
+  formatPrice,
+  getPaymentStatusColor,
+  getPaymentMethodLabel 
+} from '../hooks/usePayments';
+import { Payment } from '../services/paymentService';
 
 interface PaymentProps {  
   setIsOverlayOpen: (isOpen: boolean) => void;
   session: Session | null;
 }
 
-
 function Payments({ setIsOverlayOpen, session }: PaymentProps) {
+  const { payments, stats, isLoading, refetchPayments } = usePayments(session);
+  const { isUpdating, updatePaymentStatus } = usePaymentActions(refetchPayments);
 
-  console.log('Payments Session:',  session?.user.id);
-  
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
@@ -45,18 +41,19 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
 
   const handleExport = () => {
     // Create CSV content
-    const headers = ['User ID', 'Name', 'Email', 'Phone Number', 'Date', 'Product ID', 'Payment'];
-    const selectedData = mockData.filter(user => selectedRows.has(user.id));
+    const headers = ['Order Number', 'Customer Name', 'Email', 'Phone', 'Date', 'Amount', 'Payment Method', 'Payment Status'];
+    const selectedData = payments.filter(payment => selectedRows.has(payment.id));
     const csvContent = [
       headers.join(','),
-      ...selectedData.map(user => [
-        user.id,
-        user.name,
-        user.email,
-        user.phone,
-        user.date,
-        user.productId,
-        user.status
+      ...selectedData.map(payment => [
+        payment.order_number,
+        payment.customer_name,
+        payment.customer_email,
+        payment.customer_phone,
+        formatPaymentDate(payment.created_at),
+        payment.total_amount,
+        payment.payment_method,
+        payment.payment_status
       ].join(','))
     ].join('\n');
 
@@ -82,7 +79,7 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      setSelectedRows(new Set(mockData.map(user => user.id)));
+      setSelectedRows(new Set(payments.map(payment => payment.id)));
     } else {
       setSelectedRows(new Set());
     }
@@ -98,100 +95,34 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
     setIsOverlayOpen(false);
   };
 
-  // Mock data
-  const mockData: Payment[] = [
-    { 
-      id: '#000001', 
-      name: 'Jerome Bulaktala', 
-      email: 'jeromebulaktala@gmail.com', 
-      phone: '09231283712', 
-      date: '03/10/25',
-      time: '14:30',
-      productId: 'PROD–000001',
-      status: 'Pending' as const,
-      method: 'Gcash' as const,
-      amount: 1500
-    },
-    { 
-      id: '#000002', 
-      name: 'Ruiz Miguel Sapio', 
-      email: 'sapioruizm@gmail.com', 
-      phone: '09231283712', 
-      date: '03/10/25',
-      time: '15:45',
-      productId: 'PROD–000002',
-      status: 'Successful' as const,
-      method: 'Maya' as const,
-      amount: 2300
-    },
-    { 
-      id: '#000003', 
-      name: 'Rim Vernon Dimanadal', 
-      email: 'dimanadalrim@gmail.com', 
-      phone: '09231283712', 
-      date: '03/10/25',
-      time: '09:15',
-      productId: 'PROD–000003',
-      status: 'Canceled' as const,
-      method: 'Paypal' as const,
-      amount: 1800
-    },
-    { 
-      id: '#000004', 
-      name: 'John Isaiah Garcia', 
-      email: 'garciajohn@gmail.com', 
-      phone: '09231283712', 
-      date: '03/10/25',
-      time: '11:20',
-      productId: 'PROD–000004',
-      status: 'Refund' as const,
-      method: 'Bank Transfer' as const,
-      amount: 3200
-    },
-    { 
-      id: '#000005', 
-      name: 'Anthony Gabrielle Doria', 
-      email: 'doriaanthony@gmail.com', 
-      phone: '09231283712', 
-      date: '03/10/25',
-      time: '16:05',
-      productId: 'PROD–000005',
-      status: 'Pending' as const,
-      method: 'Gcash' as const,
-      amount: 950
-    },
-    { 
-      id: '#000006', 
-      name: 'Pearl Jam Latayan', 
-      email: 'latayanpearljam@gmail.com', 
-      phone: '09231283712', 
-      date: '03/10/25',
-      time: '13:40',
-      productId: 'PROD–000006',
-      status: 'Successful' as const,
-      method: 'Maya' as const,
-      amount: 2750
-    },
-  ];
+  const handleUpdatePaymentStatus = async (paymentId: string, newStatus: string) => {
+    const result = await updatePaymentStatus(session, paymentId, newStatus);
+    if (result.success) {
+      closeModal();
+    }
+  };
 
   // Filter and search data
-  const filteredData = mockData.filter(user => {
+  const filteredData = payments.filter(payment => {
     const matchesSearch = searchQuery === '' || 
-      Object.values(user).some(value => 
-        String(value).toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      payment.order_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      payment.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      payment.customer_email.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter = selectedFilters.length === 0 || 
-      selectedFilters.includes(user.status);
+      selectedFilters.includes(payment.payment_status);
     return matchesSearch && matchesFilter;
   });
 
-  // Update stats based on actual data
-  const stats = {
-    pending: mockData.filter(user => user.status === 'Pending').length,
-    successful: mockData.filter(user => user.status === 'Successful').length,
-    canceled: mockData.filter(user => user.status === 'Canceled').length,
-    refund: mockData.filter(user => user.status === 'Refund').length,
-  };
+  if (isLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center h-full">
+        <div className="text-center">
+          <Icon icon="mdi:loading" className="w-12 h-12 text-yellow-400 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading payments...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col h-full">
@@ -209,22 +140,22 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
         <div className="max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 md:gap-8 mb-8 sm:mb-10">
           <div className="bg-white rounded-2xl shadow-lg border-l-4 border-yellow-300 p-4 sm:p-6 flex flex-col items-center hover:scale-[1.025] transition-transform">
             <Icon icon="mdi:clock-outline" className="w-8 h-8 sm:w-10 sm:h-10 text-yellow-400 mb-2 sm:mb-3" />
-            <span className="text-xl sm:text-2xl font-bold text-gray-800">{stats.pending}</span>
+            <span className="text-xl sm:text-2xl font-bold text-gray-800">{stats?.pending || 0}</span>
             <span className="text-xs sm:text-sm text-gray-500">Pending</span>
           </div>
           <div className="bg-white rounded-2xl shadow-lg border-l-4 border-green-300 p-4 sm:p-6 flex flex-col items-center hover:scale-[1.025] transition-transform">
             <Icon icon="mdi:check-circle-outline" className="w-8 h-8 sm:w-10 sm:h-10 text-green-400 mb-2 sm:mb-3" />
-            <span className="text-xl sm:text-2xl font-bold text-gray-800">{stats.successful}</span>
-            <span className="text-xs sm:text-sm text-gray-500">Successful</span>
+            <span className="text-xl sm:text-2xl font-bold text-gray-800">{stats?.paid || 0}</span>
+            <span className="text-xs sm:text-sm text-gray-500">Paid</span>
           </div>
           <div className="bg-white rounded-2xl shadow-lg border-l-4 border-red-300 p-4 sm:p-6 flex flex-col items-center hover:scale-[1.025] transition-transform">
             <Icon icon="mdi:close-circle-outline" className="w-8 h-8 sm:w-10 sm:h-10 text-red-400 mb-2 sm:mb-3" />
-            <span className="text-xl sm:text-2xl font-bold text-gray-800">{stats.canceled}</span>
-            <span className="text-xs sm:text-sm text-gray-500">Canceled</span>
+            <span className="text-xl sm:text-2xl font-bold text-gray-800">{stats?.failed || 0}</span>
+            <span className="text-xs sm:text-sm text-gray-500">Failed</span>
           </div>
           <div className="bg-white rounded-2xl shadow-lg border-l-4 border-blue-300 p-4 sm:p-6 flex flex-col items-center hover:scale-[1.025] transition-transform">
             <Icon icon="mdi:cash-refund" className="w-8 h-8 sm:w-10 sm:h-10 text-blue-400 mb-2 sm:mb-3" />
-            <span className="text-xl sm:text-2xl font-bold text-gray-800">{stats.refund}</span>
+            <span className="text-xl sm:text-2xl font-bold text-gray-800">{stats?.refunded || 0}</span>
             <span className="text-xs sm:text-sm text-gray-500">Refunds</span>
           </div>
         </div>
@@ -234,59 +165,59 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
           <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm">
             <div className="flex gap-2 sm:gap-4">
               <button
-                onClick={() => handleFilterToggle('Pending')}
+                onClick={() => handleFilterToggle('pending')}
                 className={`flex items-center space-x-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border border-gray-200 bg-white shadow-sm transition ${
-                  selectedFilters.includes('Pending') 
+                  selectedFilters.includes('pending') 
                     ? 'text-yellow-600 border-yellow-200 bg-yellow-50' 
                     : 'text-gray-700 hover:text-black'
                 }`}
               >
                 <Icon 
-                  icon={selectedFilters.includes('Pending') ? "mdi:checkbox-marked-circle" : "mdi:checkbox-blank-circle-outline"} 
+                  icon={selectedFilters.includes('pending') ? "mdi:checkbox-marked-circle" : "mdi:checkbox-blank-circle-outline"} 
                   className="w-4 h-4" 
                 />
                 <span>Pending</span>
               </button>
               <button
-                onClick={() => handleFilterToggle('Successful')}
+                onClick={() => handleFilterToggle('paid')}
                 className={`flex items-center space-x-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border border-gray-200 bg-white shadow-sm transition ${
-                  selectedFilters.includes('Successful') 
+                  selectedFilters.includes('paid') 
                     ? 'text-yellow-600 border-yellow-200 bg-yellow-50' 
                     : 'text-gray-700 hover:text-black'
                 }`}
               >
                 <Icon 
-                  icon={selectedFilters.includes('Successful') ? "mdi:checkbox-marked-circle" : "mdi:checkbox-blank-circle-outline"} 
+                  icon={selectedFilters.includes('paid') ? "mdi:checkbox-marked-circle" : "mdi:checkbox-blank-circle-outline"} 
                   className="w-4 h-4" 
                 />
-                <span>Successful</span>
+                <span>Paid</span>
               </button>
             </div>
             <div className="flex gap-2 sm:gap-4">
               <button
-                onClick={() => handleFilterToggle('Canceled')}
+                onClick={() => handleFilterToggle('failed')}
                 className={`flex items-center space-x-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border border-gray-200 bg-white shadow-sm transition ${
-                  selectedFilters.includes('Canceled') 
+                  selectedFilters.includes('failed') 
                     ? 'text-yellow-600 border-yellow-200 bg-yellow-50' 
                     : 'text-gray-700 hover:text-black'
                 }`}
               >
                 <Icon 
-                  icon={selectedFilters.includes('Canceled') ? "mdi:checkbox-marked-circle" : "mdi:checkbox-blank-circle-outline"} 
+                  icon={selectedFilters.includes('failed') ? "mdi:checkbox-marked-circle" : "mdi:checkbox-blank-circle-outline"} 
                   className="w-4 h-4" 
                 />
-                <span>Canceled</span>
+                <span>Failed</span>
               </button>
               <button
-                onClick={() => handleFilterToggle('Refund')}
+                onClick={() => handleFilterToggle('refunded')}
                 className={`flex items-center space-x-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border border-gray-200 bg-white shadow-sm transition ${
-                  selectedFilters.includes('Refund') 
+                  selectedFilters.includes('refunded') 
                     ? 'text-yellow-600 border-yellow-200 bg-yellow-50' 
                     : 'text-gray-700 hover:text-black'
                 }`}
               >
                 <Icon 
-                  icon={selectedFilters.includes('Refund') ? "mdi:checkbox-marked-circle" : "mdi:checkbox-blank-circle-outline"} 
+                  icon={selectedFilters.includes('refunded') ? "mdi:checkbox-marked-circle" : "mdi:checkbox-blank-circle-outline"} 
                   className="w-4 h-4" 
                 />
                 <span>Refund</span>
@@ -333,10 +264,10 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
                 <select className="w-full p-2 border rounded-lg">
                   <option value="">All Methods</option>
-                  <option value="credit">Gcash</option>
-                  <option value="debit">Maya</option>
-                  <option value="bank">Paypal</option>
-                  <option value="bank">Bank Transfer</option>
+                  <option value="gcash">GCash</option>
+                  <option value="maya">Maya</option>
+                  <option value="cod">Cash on Delivery</option>
+                  <option value="bank_transfer">Bank Transfer</option>
                 </select>
               </div>
             </div>
@@ -346,7 +277,7 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
         {/* Payments Table */}
         <div className="max-w-7xl mx-auto bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-100 mb-8">
           <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 bg-gray-50">
-            <span className="font-semibold text-gray-700 text-lg">Payments Table</span>
+            <span className="font-semibold text-gray-700 text-lg">Payments Table ({filteredData.length})</span>
             <button 
               onClick={handleExport}
               disabled={selectedRows.size === 0}
@@ -367,53 +298,57 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
                   <th className="px-2 sm:px-4 py-3">
                     <input 
                       type="checkbox" 
-                      checked={selectedRows.size === mockData.length}
+                      checked={selectedRows.size === filteredData.length && filteredData.length > 0}
                       onChange={handleSelectAll}
                       className="accent-yellow-400"
                     />
                   </th>
-                  <th className="px-2 sm:px-4 py-3">User ID</th>
-                  <th className="px-2 sm:px-4 py-3 hidden sm:table-cell">Name</th>
+                  <th className="px-2 sm:px-4 py-3">Order #</th>
+                  <th className="px-2 sm:px-4 py-3 hidden sm:table-cell">Customer</th>
                   <th className="px-2 sm:px-4 py-3 hidden md:table-cell">Email</th>
-                  <th className="px-2 sm:px-4 py-3 hidden lg:table-cell">Phone Number</th>
-                  <th className="px-2 sm:px-4 py-3">Date</th>
-                  <th className="px-2 sm:px-4 py-3 hidden md:table-cell">Product ID</th>
-                  <th className="px-2 sm:px-4 py-3">Payment</th>
+                  <th className="px-2 sm:px-4 py-3 hidden lg:table-cell">Phone</th>
+                  <th className="px-2 sm:px-4 py-3">Amount</th>
+                  <th className="px-2 sm:px-4 py-3 hidden md:table-cell">Method</th>
+                  <th className="px-2 sm:px-4 py-3">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {filteredData.map((user, idx) => (
-                  <tr 
-                    key={idx} 
-                    className="hover:bg-yellow-50 transition cursor-pointer" 
-                    onClick={() => handleRowClick(user)}
-                  >
-                    <td className="px-2 sm:px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      <input 
-                        type="checkbox" 
-                        checked={selectedRows.has(user.id)}
-                        onChange={() => handleRowSelect(user.id)}
-                        className="accent-yellow-400"
-                      />
-                    </td>
-                    <td className="px-2 sm:px-4 py-3 font-mono text-yellow-700">{user.id}</td>
-                    <td className="px-2 sm:px-4 py-3 hidden sm:table-cell">{user.name}</td>
-                    <td className="px-2 sm:px-4 py-3 hidden md:table-cell">{user.email}</td>
-                    <td className="px-2 sm:px-4 py-3 hidden lg:table-cell">{user.phone}</td>
-                    <td className="px-2 sm:px-4 py-3 text-gray-500">{user.date}</td>
-                    <td className="px-2 sm:px-4 py-3 hidden md:table-cell">ID: {user.productId}</td>
-                    <td className="px-2 sm:px-4 py-3">
-                      <span className={`inline-block px-2 py-1 text-xs font-semibold rounded ${
-                        user.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-                        user.status === 'Successful' ? 'bg-green-100 text-green-700' :
-                        user.status === 'Canceled' ? 'bg-red-100 text-red-700' :
-                        'bg-blue-100 text-blue-700'
-                      }`}>
-                        {user.status}
-                      </span>
+                {filteredData.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                      <Icon icon="mdi:cash-remove" className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                      <p>No payments found</p>
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredData.map((payment, idx) => (
+                    <tr 
+                      key={idx} 
+                      className="hover:bg-yellow-50 transition cursor-pointer" 
+                      onClick={() => handleRowClick(payment)}
+                    >
+                      <td className="px-2 sm:px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <input 
+                          type="checkbox" 
+                          checked={selectedRows.has(payment.id)}
+                          onChange={() => handleRowSelect(payment.id)}
+                          className="accent-yellow-400"
+                        />
+                      </td>
+                      <td className="px-2 sm:px-4 py-3 font-mono text-yellow-700">{payment.order_number}</td>
+                      <td className="px-2 sm:px-4 py-3 hidden sm:table-cell">{payment.customer_name}</td>
+                      <td className="px-2 sm:px-4 py-3 hidden md:table-cell text-xs">{payment.customer_email}</td>
+                      <td className="px-2 sm:px-4 py-3 hidden lg:table-cell">{payment.customer_phone}</td>
+                      <td className="px-2 sm:px-4 py-3 font-semibold">{formatPrice(payment.total_amount)}</td>
+                      <td className="px-2 sm:px-4 py-3 hidden md:table-cell">{getPaymentMethodLabel(payment.payment_method)}</td>
+                      <td className="px-2 sm:px-4 py-3">
+                        <span className={`inline-block px-2 py-1 text-xs font-semibold rounded ${getPaymentStatusColor(payment.payment_status)}`}>
+                          {payment.payment_status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -478,9 +413,9 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
                             <Icon icon="mdi:account-circle" className="w-8 h-8 sm:w-10 sm:h-10 text-blue-400" />
                           </div>
                           <div>
-                            <div className="font-semibold text-base sm:text-lg">{selectedPayment.name}</div>
-                            <div className="text-xs sm:text-sm text-gray-500">{selectedPayment.email}</div>
-                            <div className="text-xs sm:text-sm text-gray-500">{selectedPayment.phone}</div>
+                            <div className="font-semibold text-base sm:text-lg">{selectedPayment.customer_name}</div>
+                            <div className="text-xs sm:text-sm text-gray-500">{selectedPayment.customer_email}</div>
+                            <div className="text-xs sm:text-sm text-gray-500">{selectedPayment.customer_phone}</div>
                           </div>
                         </div>
                       </div>
@@ -492,21 +427,16 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <span className="text-gray-500 text-sm sm:text-base">Amount</span>
-                            <span className="font-semibold text-base sm:text-lg">₱{selectedPayment.amount.toLocaleString()}</span>
+                            <span className="font-semibold text-base sm:text-lg">{formatPrice(selectedPayment.total_amount)}</span>
                           </div>
                           <div className="flex items-center justify-between">
                             <span className="text-gray-500 text-sm sm:text-base">Payment Method</span>
-                            <span className="font-medium text-sm sm:text-base">{selectedPayment.method}</span>
+                            <span className="font-medium text-sm sm:text-base">{getPaymentMethodLabel(selectedPayment.payment_method)}</span>
                           </div>
                           <div className="flex items-center justify-between">
                             <span className="text-gray-500 text-sm sm:text-base">Status</span>
-                            <span className={`inline-block px-2 py-1 text-xs font-semibold rounded ${
-                              selectedPayment.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-                              selectedPayment.status === 'Successful' ? 'bg-green-100 text-green-700' :
-                              selectedPayment.status === 'Canceled' ? 'bg-red-100 text-red-700' :
-                              'bg-blue-100 text-blue-700'
-                            }`}>
-                              {selectedPayment.status}
+                            <span className={`inline-block px-2 py-1 text-xs font-semibold rounded ${getPaymentStatusColor(selectedPayment.payment_status)}`}>
+                              {selectedPayment.payment_status}
                             </span>
                           </div>
                         </div>
@@ -518,16 +448,16 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
                       <div className="bg-white/90 border border-gray-100 rounded-xl p-4 shadow-sm">
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
-                            <span className="text-gray-500 text-sm sm:text-base">Transaction ID</span>
-                            <span className="font-mono text-blue-700 text-sm sm:text-base">{selectedPayment.id}</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-gray-500 text-sm sm:text-base">Product ID</span>
-                            <span className="font-mono text-blue-700 text-sm sm:text-base">{selectedPayment.productId}</span>
+                            <span className="text-gray-500 text-sm sm:text-base">Order Number</span>
+                            <span className="font-mono text-blue-700 text-sm sm:text-base">{selectedPayment.order_number}</span>
                           </div>
                           <div className="flex items-center justify-between">
                             <span className="text-gray-500 text-sm sm:text-base">Date</span>
-                            <span className="font-medium text-sm sm:text-base">{selectedPayment.date}</span>
+                            <span className="font-medium text-sm sm:text-base">{formatPaymentDate(selectedPayment.created_at)}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-500 text-sm sm:text-base">Time</span>
+                            <span className="font-medium text-sm sm:text-base">{formatPaymentTime(selectedPayment.created_at)}</span>
                           </div>
                         </div>
                       </div>
@@ -537,46 +467,16 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
                   {/* RIGHT: Additional Details */}
                   <div className="space-y-4 sm:space-y-6">
                     <div>
-                      <span className="block text-xs font-semibold text-yellow-500 uppercase tracking-wider mb-1">Payment Timeline</span>
+                      <span className="block text-xs font-semibold text-yellow-500 uppercase tracking-wider mb-1">Order Status</span>
                       <div className="bg-white/90 border border-gray-100 rounded-xl p-4 shadow-sm">
                         <div className="space-y-3">
-                          <div className="flex items-center gap-3">
-                            <Icon icon="mdi:calendar-check" className="text-green-400 w-5 h-5" />
-                            <div>
-                              <div className="text-sm font-medium">Transaction Date</div>
-                              <div className="text-xs text-gray-500">{selectedPayment.date}</div>
-                            </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-500 text-sm sm:text-base">Order Status</span>
+                            <span className="font-medium text-sm sm:text-base capitalize">{selectedPayment.status.replace('_', ' ')}</span>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <Icon icon="mdi:clock-outline" className="text-blue-400 w-5 h-5" />
-                            <div>
-                              <div className="text-sm font-medium">Payment Time</div>
-                              <div className="text-xs text-gray-500">{selectedPayment.time}</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <span className="block text-xs font-semibold text-yellow-500 uppercase tracking-wider mb-1">Payment Analytics</span>
-                      <div className="bg-white/90 border border-gray-100 rounded-xl p-4 shadow-sm">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <div className="text-xs sm:text-sm text-gray-500">Transaction Type</div>
-                            <div className="text-base sm:text-lg font-bold text-gray-800">Regular</div>
-                          </div>
-                          <div>
-                            <div className="text-xs sm:text-sm text-gray-500">Payment Channel</div>
-                            <div className="text-base sm:text-lg font-bold text-gray-800">Online</div>
-                          </div>
-                          <div>
-                            <div className="text-xs sm:text-sm text-gray-500">Processing Time</div>
-                            <div className="text-base sm:text-lg font-bold text-gray-800">2h</div>
-                          </div>
-                          <div>
-                            <div className="text-xs sm:text-sm text-gray-500">Verification</div>
-                            <div className="text-base sm:text-lg font-bold text-gray-800">Verified</div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-500 text-sm sm:text-base">Shipping Address</span>
+                            <span className="font-medium text-sm sm:text-base text-right">{selectedPayment.shipping_address_line1}</span>
                           </div>
                         </div>
                       </div>
@@ -585,22 +485,34 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
                     <div>
                       <span className="block text-xs font-semibold text-yellow-500 uppercase tracking-wider mb-1">Actions</span>
                       <div className="flex flex-wrap gap-2">
-                        {selectedPayment.status === 'Pending' && (
+                        {selectedPayment.payment_status === 'pending' && (
                           <>
-                            <button className="px-3 sm:px-4 py-1.5 sm:py-2 bg-green-50 text-green-600 rounded-lg text-xs sm:text-sm font-medium hover:bg-green-100 transition flex items-center gap-1">
+                            <button 
+                              onClick={() => handleUpdatePaymentStatus(selectedPayment.id, 'paid')}
+                              disabled={isUpdating}
+                              className="px-3 sm:px-4 py-1.5 sm:py-2 bg-green-50 text-green-600 rounded-lg text-xs sm:text-sm font-medium hover:bg-green-100 transition flex items-center gap-1 disabled:opacity-50"
+                            >
                               <Icon icon="mdi:check-circle" className="w-4 h-4" />
-                              Approve Payment
+                              Mark as Paid
                             </button>
-                            <button className="px-3 sm:px-4 py-1.5 sm:py-2 bg-red-50 text-red-600 rounded-lg text-xs sm:text-sm font-medium hover:bg-red-100 transition flex items-center gap-1">
+                            <button 
+                              onClick={() => handleUpdatePaymentStatus(selectedPayment.id, 'failed')}
+                              disabled={isUpdating}
+                              className="px-3 sm:px-4 py-1.5 sm:py-2 bg-red-50 text-red-600 rounded-lg text-xs sm:text-sm font-medium hover:bg-red-100 transition flex items-center gap-1 disabled:opacity-50"
+                            >
                               <Icon icon="mdi:close-circle" className="w-4 h-4" />
-                              Reject Payment
+                              Mark as Failed
                             </button>
                           </>
                         )}
-                        {selectedPayment.status === 'Successful' && (
-                          <button className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-50 text-blue-600 rounded-lg text-xs sm:text-sm font-medium hover:bg-blue-100 transition flex items-center gap-1">
-                            <Icon icon="mdi:download" className="w-4 h-4" />
-                            Download Receipt
+                        {selectedPayment.payment_status === 'paid' && (
+                          <button 
+                            onClick={() => handleUpdatePaymentStatus(selectedPayment.id, 'refunded')}
+                            disabled={isUpdating}
+                            className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-50 text-blue-600 rounded-lg text-xs sm:text-sm font-medium hover:bg-blue-100 transition flex items-center gap-1 disabled:opacity-50"
+                          >
+                            <Icon icon="mdi:cash-refund" className="w-4 h-4" />
+                            Process Refund
                           </button>
                         )}
                         <button className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gray-50 text-gray-600 rounded-lg text-xs sm:text-sm font-medium hover:bg-gray-100 transition flex items-center gap-1">

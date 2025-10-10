@@ -10,7 +10,7 @@ import Settings from './pages/settings';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
-import Customers from './pages/Customers';
+// import Customers from './pages/Customers'; // Removed - customer stats now shown in Dashboard only
 import { Session } from '@supabase/supabase-js';
 import { ProfileData } from './pages/profile';
 import PrivateRoute from './route/PrivateRoute';
@@ -101,8 +101,8 @@ function App() {
         return <Payments session={session} setIsOverlayOpen={setIsOverlayOpen} />;
       case 'REPORTS':
         return <Reports session={session} />;
-      case 'CUSTOMERS':
-        return <Customers session={session} />;
+      // case 'CUSTOMERS': // Removed - customer data now shown in Dashboard stats card only
+      //   return <Customers session={session} />;
       case 'PROFILE':
         return <Profile session={session} setProfile={setProfile} profile={profile} handleNavigation={handleNavigation} />;
       case 'SETTINGS':

@@ -36,10 +36,11 @@ router.get('/dashboard/stats', authenticate, async (req, res) => {
         startDate.setMonth(now.getMonth() - 1);
     }
 
-    // Get total customers count (use admin client to bypass RLS)
+    // Get total customers count (only customer type users)
     const { count: totalCustomers, error: customerError } = await supabaseAdmin
       .from('user_profiles')
-      .select('*', { count: 'exact', head: true });
+      .select('*', { count: 'exact', head: true })
+      .or('user_type.eq.customer,user_type.is.null');
 
     if (customerError) {
       console.error('Error fetching customer count:', customerError);
@@ -82,11 +83,12 @@ router.get('/dashboard/stats', authenticate, async (req, res) => {
       });
     }
 
-    // Get customer count for the period (use admin client to bypass RLS)
+    // Get customer count for the period (only customer type users)
     const { count: periodCustomers, error: periodCustomerError } = await supabaseAdmin
       .from('user_profiles')
       .select('*', { count: 'exact', head: true })
-      .gte('created_at', startDate.toISOString());
+      .gte('created_at', startDate.toISOString())
+      .or('user_type.eq.customer,user_type.is.null');
 
     // Calculate growth percentage
     const previousPeriodEarnings = totalEarnings - periodEarnings;
