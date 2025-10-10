@@ -1,0 +1,1 @@
+export type ViewType = 'products' | 'stock' | 'sale'; 
