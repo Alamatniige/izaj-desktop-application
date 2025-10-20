@@ -435,6 +435,7 @@ const handleViewChange = (newView: ViewType) => {
               session={session}
             />
           )}
+
           </>
         )}
       </main>

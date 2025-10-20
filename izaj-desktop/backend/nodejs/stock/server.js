@@ -12,7 +12,7 @@ router.get('/stock-summary', authenticate, async (req, res) => {
     const { data, error } = await supabase
       .from('products')
       .select('product_id, product_name')
-      .eq('is_published', true);
+      .eq('publish_status', true);
 
     // Audit log: record the stock summary fetch
     await logAuditEvent(
@@ -51,7 +51,7 @@ router.get('/stock-status', authenticate, async (req, res) => {
           last_sync_at
         )
       `)
-      .eq('is_published', true);
+      .eq('publish_status', true);
 
     if (error) {
       console.error('Error fetching stock status:', error);
@@ -61,7 +61,7 @@ router.get('/stock-status', authenticate, async (req, res) => {
       const { data: products, error: productsError } = await supabase
         .from('products')
         .select('product_id, product_name')
-        .eq('is_published', true);
+        .eq('publish_status', true);
 
       if (productsError) {
         return res.status(500).json({ error: productsError.message });
@@ -318,7 +318,7 @@ router.get('/product-status', authenticate, async (req, res) => {
     const { data, error } = await supabase
       .from('products')
       .select('publish_status')
-      .eq('is_published', true);
+      .eq('publish_status', true);
 
     if (error) {
       console.error('Error fetching product status:', error);

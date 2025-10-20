@@ -258,6 +258,13 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
 }, [mediaUrlsMap]);
 
 
+  const refreshProducts = useCallback(async () => {
+    if (session?.access_token) {
+      console.log('🔄 Refreshing products...');
+      await handleFetchProducts();
+    }
+  }, [session, handleFetchProducts]);
+
   return {
     publishedProducts,
     setPublishedProducts,
@@ -276,6 +283,7 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
     hasLoadedFromDB,
     stockStatus,
     isLoadingStock,
+    refreshProducts,
     filteredProducts,
     
     handleFetchProducts,

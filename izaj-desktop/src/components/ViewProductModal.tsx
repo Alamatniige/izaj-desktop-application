@@ -9,14 +9,15 @@ interface ViewProductModalProps {
   product: FetchedProduct;
   onClose: () => void;
   onDelete?: (productId: string | number) => void;
-  // onEdit?: (product: ViewProductModalProps['product']) => void; // Uncomment if edit functionality is added
+  onEdit?: (product: FetchedProduct) => void;
 }
 
 export function ViewProductModal({ 
   session,
   product, 
   onClose, 
-  onDelete
+  onDelete,
+  onEdit
 }: ViewProductModalProps) {
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -238,6 +239,17 @@ export function ViewProductModal({
         {/* Footer Actions */}
         <div className="flex flex-col sm:flex-row justify-end items-start sm:items-center p-3 sm:p-4 bg-gradient-to-r from-gray-50 to-white border-t border-gray-100 w-full gap-3 sm:gap-2">
           <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
+            {/* Edit Button */}
+            {onEdit && (
+              <button
+                onClick={() => onEdit(product)}
+                className="flex-1 sm:flex-none px-4 sm:px-6 py-2 sm:py-3 rounded-xl border-2 border-blue-200 text-blue-600 font-medium hover:bg-blue-50 hover:border-blue-300 transition-colors text-sm sm:text-base flex items-center justify-center gap-2"
+              >
+                <Icon icon="mdi:pencil-outline" className="text-lg" />
+                Edit
+              </button>
+            )}
+
             {/* Delete Button */}
             {onDelete && (
               <button

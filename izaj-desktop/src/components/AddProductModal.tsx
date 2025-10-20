@@ -52,6 +52,11 @@ export function AddProductModal({
     createSale
   } = useSale(session);
 
+  // Debug logging
+  console.log('AddProductModal - products:', products);
+  console.log('AddProductModal - isLoading:', isLoading);
+  console.log('AddProductModal - session:', session);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 

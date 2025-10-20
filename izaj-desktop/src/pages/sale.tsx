@@ -1,6 +1,7 @@
 import { Icon } from "@iconify/react";
 import { useState, useCallback } from "react";
 import { AddProductModal } from "../components/AddProductModal";
+import { ViewSaleModal } from "../components/ViewSaleModal";
 import { Session } from "@supabase/supabase-js";
 import { toast } from "react-hot-toast";
 import { useProducts } from "../hooks/useProducts";
@@ -26,9 +27,8 @@ export default function Sale({
   onViewChange,
 }: SaleProps) {
   const [showDropdown, setShowDropdown] = useState(false);
-  const [, setSelectedSaleForView] = useState<unknown | null>( //Fix the type problem
-    null
-  );
+  const [showViewSaleModal, setShowViewSaleModal] = useState(false);
+  const [selectedSaleForView, setSelectedSaleForView] = useState<any | null>(null);
 
   const {
     pendingProducts: pendingSales,
@@ -43,6 +43,7 @@ export default function Sale({
     searchTerm,
     setSelectedCategory,
     onSaleProducts,
+    fetchOnSaleProducts,
   } = useFilter(session);
 
 
@@ -56,11 +57,19 @@ export default function Sale({
       setShowAddSaleModal(false);
       if (shouldRefresh) {
         await refreshProductsData();
+        await fetchOnSaleProducts(); // Refresh on-sale products
         toast.success("Sales updated successfully!");
       }
     },
-    [refreshProductsData, setShowAddSaleModal]
+    [refreshProductsData, fetchOnSaleProducts, setShowAddSaleModal]
   );
+
+  // Debug logging
+  console.log('Sale page - onSaleProducts:', onSaleProducts);
+  console.log('Sale page - onSaleProducts length:', onSaleProducts.length);
+  onSaleProducts.forEach((product, index) => {
+    console.log(`Product ${index}:`, product.product_name, 'media_urls:', product.media_urls);
+  });
 
   const saleCategories = [
     'All',
@@ -72,6 +81,9 @@ export default function Sale({
       (selectedCategory === 'All' || sale.category === selectedCategory) &&
       sale.product_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  console.log('Sale page - filteredSales:', filteredSales);
+  console.log('Sale page - filteredSales length:', filteredSales.length);
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -165,15 +177,13 @@ export default function Sale({
               <div
                 key={sale.id}
                 className="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-yellow-200 hover:border-yellow-400 transition cursor-pointer"
-                onClick={() =>
-                  setSelectedSaleForView({
-                    ...sale,
-                    media_urls: mediaUrlsMap[sale.id] || [],
-                  })
-                }
+                onClick={() => {
+                  setSelectedSaleForView(sale);
+                  setShowViewSaleModal(true);
+                }}
               >
                 <img
-                  src={mediaUrlsMap[sale.id]?.[0] || "/placeholder.png"}
+                  src={sale.media_urls?.[0] || "/placeholder.png"}
                   alt={sale.product_name}
                   className="w-full h-40 object-cover rounded-xl mb-4"
                 />
@@ -194,7 +204,9 @@ export default function Sale({
                 <div className="flex justify-between items-center mt-4">
                   <p className="text-gray-500 text-sm">Discount</p>
                   <p className="text-lg font-semibold text-green-600">
-                   {/* {sale.discount_percentage || 0}% */}
+                    {sale.sale?.[0]?.percentage ? `${sale.sale[0].percentage}%` : 
+                     sale.sale?.[0]?.fixed_amount ? `₱${sale.sale[0].fixed_amount}` : 
+                     'No discount'}
                   </p>
                 </div>
               </div>
@@ -212,6 +224,18 @@ export default function Sale({
             onSuccess={() => handleAddSaleModalClose(true)}
             mode="sale"
             fetchedProducts={pendingSales}
+          />
+        )}
+
+        {/* View Sale Modal */}
+        {showViewSaleModal && (
+          <ViewSaleModal
+            session={session}
+            sale={selectedSaleForView}
+            onClose={() => {
+              setShowViewSaleModal(false);
+              setSelectedSaleForView(null);
+            }}
           />
         )}
       </main>

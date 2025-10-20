@@ -42,16 +42,26 @@ export class SaleService {
       throw new Error('Authentication required');
     }
 
+    console.log('SaleService - Fetching products from:', `${API_URL}/api/sales/products`);
+    console.log('SaleService - Headers:', this.getHeaders(session));
+    
     try {
       const response = await fetch(`${API_URL}/api/sales/products`, {
         method: 'GET',
         headers: this.getHeaders(session),
       });
+      
+      console.log('SaleService - Response status:', response.status);
+      console.log('SaleService - Response ok:', response.ok);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('SaleService - Fetched data:', data);
         return data;
       } else {
-        throw new Error('Failed to fetch products');
+        const errorText = await response.text();
+        console.error('SaleService - Error response:', errorText);
+        throw new Error(`Failed to fetch products: ${response.status} - ${errorText}`);
       }
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -68,13 +78,59 @@ export class SaleService {
         method: 'GET',
         headers: this.getHeaders(session),
       });
+      
       if (response.ok) {
         const data = await response.json();
         return data;
       } else {
-        throw new Error('Failed to fetch on-sale products');
-      }} catch (error) {
+        const errorText = await response.text();
+        console.error('Failed to fetch on-sale products:', response.status, errorText);
+        throw new Error(`Failed to fetch on-sale products: ${response.status} - ${errorText}`);
+      }
+    } catch (error) {
       console.error('Error fetching on-sale products:', error);
+      throw error;
+    }
+  }
+
+  static async fetchNewProducts(session: Session | null): Promise<any[]> {
+    if (!session?.access_token) {
+      throw new Error('Authentication required');
+    }
+    try {
+      const response = await fetch(`${API_URL}/api/sales/new/products`, {
+        method: 'GET',
+        headers: this.getHeaders(session),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        return data;
+      } else {
+        throw new Error('Failed to fetch new products');
+      }
+    } catch (error) {
+      console.error('Error fetching new products:', error);
+      throw error;
+    }
+  }
+
+  static async fetchAllSales(session: Session | null): Promise<any[]> {
+    if (!session?.access_token) {
+      throw new Error('Authentication required');
+    }
+    try {
+      const response = await fetch(`${API_URL}/api/sales/all`, {
+        method: 'GET',
+        headers: this.getHeaders(session),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        return data;
+      } else {
+        throw new Error('Failed to fetch all sales');
+      }
+    } catch (error) {
+      console.error('Error fetching all sales:', error);
       throw error;
     }
   }

@@ -118,24 +118,66 @@ router.get('/products', authenticate, async (req, res) => {
       status: r.status ?? 'active',
       category: r.category?.category_name?.trim() || null,
       branch: r.branch?.location?.trim() || null,
-      is_published: false,
-      publish_status: false,
+      is_published: true,  // Auto-publish synced products
+      publish_status: true, // Auto-publish synced products
       on_sale: false,
     }));
 
-    const { data: upserted, error: upsertErr } = await supabase
-      .from('products')
-      .upsert(rowsForClient, {
-        onConflict: 'product_id',
-        ignoreDuplicates: false
-      })
-      .select();
+    // Debug: Log the service role configuration
+    console.log('Using service role for database operations:', {
+      url: process.env.SUPABASE_URL ? 'Set' : 'Missing',
+      serviceKey: process.env.SUPABASE_SERVICE_KEY ? 'Set' : 'Missing'
+    });
+
+    // Try to insert with service role, if RLS still blocks, use direct SQL
+    let upserted, upsertErr;
+    
+    try {
+      const result = await supabase
+        .from('products')
+        .upsert(rowsForClient, {
+          onConflict: 'product_id',
+          ignoreDuplicates: false
+        })
+        .select();
+      
+      upserted = result.data;
+      upsertErr = result.error;
+    } catch (error) {
+      console.error('Upsert operation failed:', error);
+      upsertErr = error;
+    }
+
+    // If RLS still blocks, try individual inserts
+    if (upsertErr && upsertErr.code === '42501') {
+      console.log('RLS policy violation detected, trying individual inserts...');
+      
+      try {
+        // Try individual inserts as fallback
+        const insertResults = [];
+        for (const row of rowsForClient) {
+          const { data, error } = await supabase
+            .from('products')
+            .insert(row)
+            .select();
+          insertResults.push({ data, error });
+        }
+        upserted = insertResults.filter(r => r.data).map(r => r.data).flat();
+        upsertErr = insertResults.some(r => r.error) ? insertResults.find(r => r.error).error : null;
+        
+        console.log(`Individual inserts: ${insertResults.filter(r => r.data).length} successful, ${insertResults.filter(r => r.error).length} failed`);
+      } catch (individualError) {
+        console.error('Individual inserts also failed:', individualError);
+        upsertErr = individualError;
+      }
+    }
 
     if (upsertErr) {
       console.error('Error inserting into client DB:', upsertErr);
       return res.status(500).json({
         error: 'Failed to insert products into client database',
-        details: upsertErr.message
+        details: upsertErr.message,
+        code: upsertErr.code
       });
     }
 
@@ -182,8 +224,18 @@ router.get('/products', authenticate, async (req, res) => {
 // GET /api/client-products - Get published products for client app with pagination and filters
 router.get('/client-products', async (req, res) => {
   try {
+    console.log('🔍 Fetching client products...');
     const { page = 1, limit = 100, status, category, search } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    // Debug: Check what products exist
+    const { data: debugProducts } = await supabase
+      .from('products')
+      .select('id, product_id, product_name, publish_status, is_published')
+      .limit(5);
+    
+    console.log('📊 Debug - All products:', debugProducts);
+    console.log('📊 Debug - Products with publish_status=true:', debugProducts?.filter(p => p.publish_status));
 
     let query = supabase
       .from('products')
@@ -199,6 +251,7 @@ router.get('/client-products', async (req, res) => {
         description,
         image_url,
         publish_status,
+        is_published,
         product_stock (
           display_quantity,
           last_sync_at
@@ -382,7 +435,7 @@ router.get('/client-products/categories', async (req, res) => {
     const { data: categories, error } = await supabase
       .from('products')
       .select('category')
-      .eq('is_published', true)
+      .eq('publish_status', true)
       .not('category', 'is', null)
       .order('category');
 
@@ -475,6 +528,18 @@ router.put('/client-products/:id/configure', async (req, res) => {
 // GET /api/products/existing - Get existing published products with stock information
 router.get('/products/existing', authenticate, async (req, res) => {
   try {
+    console.log('🔍 Fetching existing products for admin...');
+    
+    // First, let's check what products exist in the database
+    const { data: allProducts, error: allError } = await supabase
+      .from('products')
+      .select('id, product_id, product_name, is_published, publish_status')
+      .limit(10);
+    
+    console.log('📊 All products in database:', allProducts);
+    console.log('📊 Products with is_published=true:', allProducts?.filter(p => p.is_published));
+    console.log('📊 Products with publish_status=true:', allProducts?.filter(p => p.publish_status));
+    
     // Fetch products
     const { data: products, error: prodError } = await supabase
       .from('products')
@@ -488,9 +553,10 @@ router.get('/products/existing', authenticate, async (req, res) => {
         branch,
         description,
         image_url,
-        is_published
+        is_published,
+        publish_status
       `)
-      .eq('is_published', true)
+      .eq('publish_status', true)
       .order('inserted_at', { ascending: false })
       .limit(100);
 
@@ -631,5 +697,362 @@ router.delete('/products/:id', authenticate, async (req, res) => {
 });
 
 
+
+// POST /api/products/publish-all - Publish all unpublished products
+router.post('/products/publish-all', authenticate, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .update({ 
+        is_published: true,
+        publish_status: true 
+      })
+      .eq('publish_status', false)
+      .select();
+    
+    if (error) {
+      console.error('Error publishing products:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to publish products',
+        details: error.message
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `Published ${data?.length || 0} products`,
+      products: data
+    });
+  } catch (error) {
+    console.error('Error in publish-all:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to publish products',
+      details: error.message
+    });
+  }
+});
+
+// GET /api/products/debug - Debug endpoint to check all products
+router.get('/products/debug', authenticate, async (req, res) => {
+  try {
+    console.log('🔍 Debug: Checking all products in database...');
+    
+    const { data: allProducts, error } = await supabase
+      .from('products')
+      .select('*')
+      .limit(20);
+    
+    if (error) {
+      console.error('Error fetching products:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch products',
+        details: error.message
+      });
+    }
+    
+    console.log('📊 Total products found:', allProducts?.length);
+    console.log('📊 Products with is_published=true:', allProducts?.filter(p => p.is_published)?.length);
+    console.log('📊 Products with publish_status=true:', allProducts?.filter(p => p.publish_status)?.length);
+    
+    res.json({
+      success: true,
+      total: allProducts?.length || 0,
+      published: allProducts?.filter(p => p.is_published)?.length || 0,
+      publishStatusTrue: allProducts?.filter(p => p.publish_status)?.length || 0,
+      products: allProducts
+    });
+  } catch (error) {
+    console.error('Error in debug endpoint:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Debug failed',
+      details: error.message
+    });
+  }
+});
+
+// POST /api/products/test-insert - Test inserting a single product
+router.post('/products/test-insert', authenticate, async (req, res) => {
+  try {
+    console.log('🧪 Testing product insertion...');
+    
+    const testProduct = {
+      product_id: 'test-' + Date.now(),
+      product_name: 'Test Product',
+      price: 100,
+      status: 'active',
+      category: 'Test Category',
+      branch: 'Test Branch',
+      is_published: true,
+      publish_status: true,
+      on_sale: false
+    };
+    
+    const { data, error } = await supabase
+      .from('products')
+      .insert(testProduct)
+      .select();
+    
+    if (error) {
+      console.error('Test insert failed:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Test insert failed',
+        details: error.message,
+        code: error.code
+      });
+    }
+    
+    console.log('✅ Test insert successful:', data);
+    res.json({
+      success: true,
+      message: 'Test product inserted successfully',
+      product: data
+    });
+  } catch (error) {
+    console.error('Error in test insert:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Test insert failed',
+      details: error.message
+    });
+  }
+});
+
+// PUT /api/products/:id - Edit product details
+router.put('/products/:id', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+    
+    console.log(`✏️ Editing product ${id} with data:`, updateData);
+    
+    // Validate required fields if provided
+    if (updateData.product_name !== undefined && !updateData.product_name?.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Product name cannot be empty'
+      });
+    }
+    
+    if (updateData.price !== undefined && (isNaN(updateData.price) || updateData.price < 0)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Price must be a valid positive number'
+      });
+    }
+    
+    // Prepare update object with only provided fields
+    const allowedFields = [
+      'product_name', 'price', 'status', 'category', 'branch', 
+      'description', 'image_url', 'is_published', 'publish_status', 
+      'on_sale', 'media_urls'
+    ];
+    
+    const filteredUpdateData = {};
+    Object.keys(updateData).forEach(key => {
+      if (allowedFields.includes(key) && updateData[key] !== undefined) {
+        filteredUpdateData[key] = updateData[key];
+      }
+    });
+    
+    // Add updated timestamp
+    filteredUpdateData.updated_at = new Date().toISOString();
+    
+    console.log('📝 Filtered update data:', filteredUpdateData);
+    
+    const { data, error } = await supabase
+      .from('products')
+      .update(filteredUpdateData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Error updating product:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to update product',
+        details: error.message,
+        code: error.code
+      });
+    }
+    
+    if (!data) {
+      return res.status(404).json({
+        success: false,
+        error: 'Product not found'
+      });
+    }
+    
+    console.log('✅ Product updated successfully:', data);
+    res.json({
+      success: true,
+      message: 'Product updated successfully',
+      product: data
+    });
+    
+  } catch (error) {
+    console.error('Error in product update:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update product',
+      details: error.message
+    });
+  }
+});
+
+// PATCH /api/products/:id - Partial update for specific fields
+router.patch('/products/:id', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { field, value } = req.body;
+    
+    console.log(`🔧 Updating product ${id} field '${field}' to:`, value);
+    
+    // Validate field
+    const allowedFields = [
+      'product_name', 'price', 'status', 'category', 'branch', 
+      'description', 'image_url', 'is_published', 'publish_status', 
+      'on_sale', 'media_urls'
+    ];
+    
+    if (!allowedFields.includes(field)) {
+      return res.status(400).json({
+        success: false,
+        error: `Field '${field}' is not allowed for update`
+      });
+    }
+    
+    // Validate value based on field type
+    if (field === 'price' && (isNaN(value) || value < 0)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Price must be a valid positive number'
+      });
+    }
+    
+    if (field === 'product_name' && !value?.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Product name cannot be empty'
+      });
+    }
+    
+    const updateData = {
+      [field]: value,
+      updated_at: new Date().toISOString()
+    };
+    
+    const { data, error } = await supabase
+      .from('products')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Error updating product field:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to update product field',
+        details: error.message,
+        code: error.code
+      });
+    }
+    
+    if (!data) {
+      return res.status(404).json({
+        success: false,
+        error: 'Product not found'
+      });
+    }
+    
+    console.log('✅ Product field updated successfully:', data);
+    res.json({
+      success: true,
+      message: `Product ${field} updated successfully`,
+      product: data
+    });
+    
+  } catch (error) {
+    console.error('Error in product field update:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update product field',
+      details: error.message
+    });
+  }
+});
+
+// GET /api/products/:id - Get single product details
+router.get('/products/:id', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log(`🔍 Fetching product details for ID: ${id}`);
+    
+    const { data: product, error } = await supabase
+      .from('products')
+      .select(`
+        id,
+        product_id,
+        product_name,
+        price,
+        status,
+        category,
+        branch,
+        description,
+        image_url,
+        is_published,
+        publish_status,
+        on_sale,
+        media_urls,
+        inserted_at,
+        updated_at,
+        product_stock (
+          display_quantity,
+          current_quantity,
+          last_sync_at
+        )
+      `)
+      .eq('id', id)
+      .single();
+    
+    if (error) {
+      console.error('Error fetching product:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch product',
+        details: error.message,
+        code: error.code
+      });
+    }
+    
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        error: 'Product not found'
+      });
+    }
+    
+    console.log('✅ Product fetched successfully:', product);
+    res.json({
+      success: true,
+      product: product
+    });
+    
+  } catch (error) {
+    console.error('Error in product fetch:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch product',
+      details: error.message
+    });
+  }
+});
 
 export default router;
