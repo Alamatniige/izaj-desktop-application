@@ -99,10 +99,35 @@ router.put('/orders/:id/status', authenticate, async (req, res) => {
     const { id } = req.params;
     const { status, tracking_number, courier, admin_notes } = req.body;
 
+    console.log('📝 Updating order status:', { id, status, tracking_number, courier, admin_notes });
+
+    // First, get the current order to log the old status
+    const { data: currentOrder, error: fetchError } = await supabase
+      .from('orders')
+      .select('order_number, status')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) {
+      console.error('❌ Error fetching current order:', fetchError);
+      return res.status(404).json({
+        success: false,
+        error: 'Order not found',
+        details: fetchError.message
+      });
+    }
+
     const updateData = { status };
     if (tracking_number) updateData.tracking_number = tracking_number;
     if (courier) updateData.courier = courier;
     if (admin_notes) updateData.admin_notes = admin_notes;
+    
+    // Set delivered_at timestamp when marking as complete
+    if (status === 'complete') {
+      updateData.delivered_at = new Date().toISOString();
+    }
+
+    console.log('📝 Update data:', updateData);
 
     const { data, error } = await supabase
       .from('orders')
@@ -112,23 +137,36 @@ router.put('/orders/:id/status', authenticate, async (req, res) => {
       .single();
 
     if (error) {
+      console.error('❌ Supabase error:', error);
+      console.error('❌ Error code:', error.code);
+      console.error('❌ Error details:', error.details);
+      console.error('❌ Error hint:', error.hint);
+      
       return res.status(500).json({
         success: false,
         error: 'Failed to update order status',
-        details: error.message
+        details: error.message,
+        code: error.code,
+        hint: error.hint
       });
     }
 
-    // Log audit event
-    await logAuditEvent(req.user.id, AuditActions.UPDATE_ORDER_STATUS, {
-      order_id: id,
-      order_number: data.order_number,
-      old_status: data.status,
-      new_status: status,
-      tracking_number,
-      courier,
-      admin_notes
-    }, req);
+    // Log audit event (don't let this fail the request)
+    try {
+      await logAuditEvent(req.user.id, AuditActions.UPDATE_ORDER_STATUS, {
+        order_id: id,
+        order_number: currentOrder.order_number,
+        old_status: currentOrder.status,
+        new_status: status,
+        tracking_number,
+        courier,
+        admin_notes
+      }, req);
+    } catch (auditError) {
+      console.error('⚠️ Audit logging failed (non-critical):', auditError);
+    }
+
+    console.log('✅ Order status updated successfully');
 
     res.json({
       success: true,
@@ -137,10 +175,11 @@ router.put('/orders/:id/status', authenticate, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error updating order status:', error);
+    console.error('❌ Error updating order status:', error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });

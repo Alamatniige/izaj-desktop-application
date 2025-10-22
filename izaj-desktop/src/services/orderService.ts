@@ -118,19 +118,26 @@ export class OrderService {
         ...options
       };
 
+      console.log('📝 [OrderService] Updating order status:', { orderId, newStatus, options });
+
       const response = await fetch(`${API_URL}/api/orders/${orderId}/status`, {
         method: 'PUT',
         headers: this.getHeaders(session),
         body: JSON.stringify(updateData)
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error('Failed to update order status');
+        console.error('❌ [OrderService] Update failed:', data);
+        const errorMessage = data.details || data.error || 'Failed to update order status';
+        throw new Error(errorMessage);
       }
 
-      return await response.json();
+      console.log('✅ [OrderService] Update successful:', data);
+      return data;
     } catch (error) {
-      console.error('Error updating order status:', error);
+      console.error('❌ [OrderService] Error updating order status:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'

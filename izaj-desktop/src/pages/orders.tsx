@@ -58,11 +58,11 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
   };
 
   const handleOrderReceived = async (order: Order) => {
-    const confirmed = window.confirm(`Mark order ${order.order_number} as complete (Order Received)?`);
+    const confirmed = window.confirm(`Mark order ${order.order_number} as Complete?`);
     if (confirmed) {
       const result = await markAsComplete(order.id);
       if (result.success) {
-        alert('Order marked as complete!');
+        alert('Order marked as Complete!');
       } else {
         alert('Failed to update order');
       }
@@ -135,7 +135,7 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 mb-6 sm:mb-8">
           {[
             { key: 'pending', label: 'Pending', count: stats.pending, bg: 'bg-yellow-50', border: 'border-yellow-100', text: 'text-yellow-600', icon: 'mdi:clock-outline' },
             { key: 'approved', label: 'Approved', count: stats.approved, bg: 'bg-blue-50', border: 'border-blue-100', text: 'text-blue-600', icon: 'mdi:check-circle' },
@@ -144,20 +144,22 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
             { key: 'cancelled', label: 'Cancelled', count: stats.cancelled, bg: 'bg-red-50', border: 'border-red-100', text: 'text-red-600', icon: 'mdi:close-circle' },
           ].map((stat) => (
               <button
-              key={stat.key}
-              className={`${stat.bg} rounded-xl p-3 sm:p-4 border ${stat.border} w-full text-left transition-all duration-200 hover:scale-105 hover:shadow-md`}
-              onClick={() => {
-                setFilter(stat.key as typeof filter);
-                setCurrentPage(1);
-              }}
-              type="button"
-            >
-              <div className="flex justify-between items-center">
-                <span className="text-xs sm:text-sm text-gray-600 font-medium">{stat.label}</span>
-                <Icon icon={stat.icon} className={`w-4 h-4 ${stat.text}`} />
-              </div>
-              <div className="mt-2 text-xl sm:text-2xl font-bold text-gray-800">{stat.count}</div>
-            </button>
+                key={stat.key}
+                className={`${stat.bg} rounded-lg p-2 sm:p-3 border-2 w-full text-left transition-all duration-200 hover:scale-105 hover:shadow-md ${
+                  filter === stat.key ? `${stat.border} border-4 shadow-lg` : stat.border
+                }`}
+                onClick={() => {
+                  setFilter(stat.key as typeof filter);
+                  setCurrentPage(1);
+                }}
+                type="button"
+              >
+                <div className="flex justify-between items-center">
+                  <span className={`text-xs font-medium ${filter === stat.key ? stat.text : 'text-gray-600'}`}>{stat.label}</span>
+                  <Icon icon={stat.icon} className={`w-3 h-3 ${stat.text}`} />
+                </div>
+                <div className="mt-1 text-lg sm:text-xl font-bold text-gray-800">{stat.count}</div>
+              </button>
           ))}
           </div>
 
@@ -167,24 +169,40 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
             { key: 'all', label: 'All Orders', icon: 'mdi:package-variant-closed' },
             { key: 'pending', label: 'Pending', icon: 'mdi:clock-outline' },
             { key: 'approved', label: 'Approved', icon: 'mdi:check-circle' },
-          ].map((tab) => (
-            <button
-              key={tab.key}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
-                filter === tab.key
-                  ? 'bg-yellow-400 text-white shadow-lg'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-              onClick={() => {
-                setFilter(tab.key as typeof filter);
-                setCurrentPage(1);
-              }}
-              type="button"
-            >
-              <Icon icon={tab.icon} className="w-4 h-4" />
-              {tab.label}
-            </button>
-          ))}
+            { key: 'in_transit', label: 'In Transit', icon: 'mdi:truck-fast' },
+            { key: 'complete', label: 'Complete', icon: 'mdi:check-all' },
+            { key: 'cancelled', label: 'Cancelled', icon: 'mdi:close-circle' },
+          ].map((tab) => {
+            const getActiveColor = (key: string) => {
+              switch (key) {
+                case 'pending': return 'bg-yellow-400';
+                case 'approved': return 'bg-blue-500';
+                case 'in_transit': return 'bg-purple-500';
+                case 'complete': return 'bg-green-500';
+                case 'cancelled': return 'bg-red-500';
+                default: return 'bg-yellow-400';
+              }
+            };
+            
+            return (
+              <button
+                key={tab.key}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
+                  filter === tab.key
+                    ? `${getActiveColor(tab.key)} text-white shadow-lg`
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+                onClick={() => {
+                  setFilter(tab.key as typeof filter);
+                  setCurrentPage(1);
+                }}
+                type="button"
+              >
+                <Icon icon={tab.icon} className="w-4 h-4" />
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Order Table */}
@@ -228,7 +246,7 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
                       </td>
                       <td className="px-4 py-3 text-gray-500 text-xs">{formatOrderDate(order.created_at)}</td>
                       <td className="px-4 py-3">
-                    <span
+                        <span
                           className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold text-white ${
                             order.status === 'pending' ? 'bg-yellow-500' :
                             order.status === 'approved' ? 'bg-blue-500' :
@@ -264,10 +282,10 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
                             <button
                               onClick={() => handleOrderReceived(order)}
                               className="p-2 text-gray-600 hover:text-green-500 hover:bg-green-50 rounded-lg transition-all"
-                              title="Order Received (Mark as Complete)"
+                              title="Mark as Complete"
                               type="button"
                             >
-                              <Icon icon="mdi:package-variant-closed-check" className="w-4 h-4" />
+                              <Icon icon="mdi:check-all" className="w-4 h-4" />
                             </button>
                           )}
                         </div>
@@ -373,10 +391,7 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
                 
                 {selectedOrder.status === 'approved' && (
                   <button
-                    onClick={() => {
-                      setSelectedOrder(null);
-                      handleMarkAsInTransit(selectedOrder);
-                    }}
+                    onClick={() => confirmStatusUpdate('in_transit')}
                     className="w-full px-4 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-all font-medium flex items-center justify-center gap-2"
                     type="button"
                   >
@@ -387,12 +402,12 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
                 
                 {selectedOrder.status === 'in_transit' && (
                   <button
-                    onClick={() => handleOrderReceived(selectedOrder)}
+                    onClick={() => confirmStatusUpdate('complete')}
                     className="w-full px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all font-medium flex items-center justify-center gap-2"
                     type="button"
                   >
-                    <Icon icon="mdi:package-variant-closed-check" className="w-5 h-5" />
-                    Order Received (Mark as Complete)
+                    <Icon icon="mdi:check-all" className="w-5 h-5" />
+                    Mark as Complete
                   </button>
                 )}
 
