@@ -112,7 +112,7 @@ const Sidebar = ({
           </div>
           {!sidebarCollapsed && (
             <h1
-              className="text-xl sm:text-2xl md:text-4xl font-regular text-gray-800 drop-shadow-lg ml-3 sm:ml-4 md:ml-6"
+              className="text-xl sm:text-2xl md:text-4xl font-semibold text-black ml-3 sm:ml-4 md:ml-6"
               style={{
                 color: "#000000",
                 fontFamily: "'Playfair Display', serif",

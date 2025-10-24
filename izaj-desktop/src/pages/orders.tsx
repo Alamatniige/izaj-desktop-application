@@ -140,7 +140,7 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
             { key: 'pending', label: 'Pending', count: stats.pending, bg: 'bg-yellow-50', border: 'border-yellow-100', text: 'text-yellow-600', icon: 'mdi:clock-outline' },
             { key: 'approved', label: 'Approved', count: stats.approved, bg: 'bg-blue-50', border: 'border-blue-100', text: 'text-blue-600', icon: 'mdi:check-circle' },
             { key: 'in_transit', label: 'In Transit', count: stats.in_transit, bg: 'bg-purple-50', border: 'border-purple-100', text: 'text-purple-600', icon: 'mdi:truck-fast' },
-            { key: 'complete', label: 'Complete', count: stats.complete, bg: 'bg-green-50', border: 'border-green-100', text: 'text-green-600', icon: 'mdi:check-all' },
+            { key: 'complete', label: 'Completed', count: stats.complete, bg: 'bg-green-50', border: 'border-green-100', text: 'text-green-600', icon: 'mdi:check-all' },
             { key: 'cancelled', label: 'Cancelled', count: stats.cancelled, bg: 'bg-red-50', border: 'border-red-100', text: 'text-red-600', icon: 'mdi:close-circle' },
           ].map((stat) => (
               <button
@@ -170,7 +170,7 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
             { key: 'pending', label: 'Pending', icon: 'mdi:clock-outline' },
             { key: 'approved', label: 'Approved', icon: 'mdi:check-circle' },
             { key: 'in_transit', label: 'In Transit', icon: 'mdi:truck-fast' },
-            { key: 'complete', label: 'Complete', icon: 'mdi:check-all' },
+            { key: 'complete', label: 'Completed', icon: 'mdi:check-all' },
             { key: 'cancelled', label: 'Cancelled', icon: 'mdi:close-circle' },
           ].map((tab) => {
             const getActiveColor = (key: string) => {

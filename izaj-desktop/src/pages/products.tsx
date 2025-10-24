@@ -257,8 +257,8 @@ const handleViewChange = (newView: ViewType) => {
               <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 lg:gap-0 mb-8">
                 <div className="flex flex-wrap items-center gap-2 sm:gap-4">
                 <button
-                  className={`text-black font-semibold border-b-2 flex items-center gap-1 px-3 py-2 rounded-lg transition-all duration-200 
-                    ${statusFilter === 'All' ? 'border-black bg-yellow-50' : 'border-transparent hover:bg-yellow-50'}`}
+                  className={`text-black font-semibold border-b-2 flex items-center gap-1 px-3 py-2 rounded-lg transition-all duration-200 hover:scale-105
+                    ${statusFilter === 'All' ? 'border-black bg-yellow-50' : 'border-transparent hover:bg-yellow-50 hover:scale-105'}`}
                   onClick={() => setStatusFilter('All')}
                 >
                   <Icon icon="mdi:format-list-bulleted" width={18} />
@@ -266,44 +266,41 @@ const handleViewChange = (newView: ViewType) => {
                 </button>
                 <button
                   className={`text-black font-semibold border-b-2 flex items-center gap-1 px-3 py-2 rounded-lg transition-all duration-200 
-                    ${statusFilter === 'Active' ? 'border-black bg-yellow-50' : 'border-transparent hover:bg-yellow-50'}`}
+                    ${statusFilter === 'Active' ? 'border-black bg-yellow-50' : 'border-transparent hover:bg-yellow-50 hover:scale-105'}`}
                   onClick={() => setStatusFilter('Active')}
                 >
                   <Icon icon="mdi:check-circle-outline" width={18} />
-                  Active
+                  Published
                 </button>
                 <button
                   className={`text-black font-semibold border-b-2 flex items-center gap-1 px-3 py-2 rounded-lg transition-all duration-200 
-                    ${statusFilter === 'Inactive' ? 'border-black bg-yellow-50' : 'border-transparent hover:bg-yellow-50'}`}
+                    ${statusFilter === 'Inactive' ? 'border-black bg-yellow-50' : 'border-transparent hover:bg-yellow-50 hover:scale-105'}`}
                   onClick={() => setStatusFilter('Inactive')}
                 >
                   <Icon icon="mdi:cross-circle-outline" width={18} />
-                  Inactive
+                  Unpublished
                 </button>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full lg:w-auto">
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <input 
-                    type="text" 
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
-                    placeholder="Search products..." 
-                    className="..." 
-                  />
+                  <div className="relative flex items-center gap-2 w-full sm:w-auto">
+                  <Icon icon="mdi:magnify" width={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <input 
+                      type="text" 
+                      value={searchTerm}
+                      onChange={e => setSearchTerm(e.target.value)}
+                      placeholder="Search products..." 
+                      className="w-full lg:w-64 pl-10 pr-4 py-2 border shadow-lg border-gray-200 rounded-lg text-sm"
+                    />
 
                     <select
                       value={selectedCategory}
                       onChange={e => setSelectedCategory(e.target.value)}
-                      className="px-3 py-2 border rounded-lg text-sm"
+                      className="px-3 py-2 border shadow-lg border-gray-200 rounded-lg text-sm"
                     >
                       {categories.map(cat => (
                         <option key={cat} value={cat}>{cat}</option>
                       ))}
                     </select>
-                    <button className="px-3 py-2 border rounded-lg text-sm flex items-center justify-center gap-1 w-[150px]">
-                      <Icon icon="mdi:tune-variant" width={16} />
-                      Advance Filter
-                    </button>
                   </div>
                 </div>
               </div>

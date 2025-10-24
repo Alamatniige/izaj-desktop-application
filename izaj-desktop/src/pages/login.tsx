@@ -1,8 +1,9 @@
 import { Icon } from '@iconify/react';
 import { useLogin } from '../hooks/useLogin';
+import { Session } from '@supabase/supabase-js';
 
 interface LoginProps {
-  onLogin: (session: any) => void;
+  onLogin: (session: Session) => void;
   handleNavigation: (page: 'LOGIN' | 'FORGOTPASS') => void;
 }
 
@@ -22,17 +23,17 @@ export default function Login({ onLogin, handleNavigation }: LoginProps) {
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100">
       <div className="bg-white rounded-3xl shadow-2xl border border-yellow-100 px-10 py-12 w-full max-w-md flex flex-col items-center relative">
         {/* Logo */}
-        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-yellow-100 rounded-full p-3 shadow-lg">
+        <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-yellow-100 rounded-full p-3 shadow-lg">
           <img
             src="/izaj.jpg"
             alt="IZAJ Logo"
-            className="w-16 h-16 rounded-full bg-yellow-400 border-4 border-yellow-200 shadow"
+            className="w-24 h-24 rounded-full bg-yellow-400 border-4 border-yellow-200 shadow"
           />
         </div>
 
         <div className="mt-12 mb-2 flex flex-col items-center">
           <h2
-            className="text-4xl font-bold text-gray-800 mb-1"
+            className="text-4xl font-semibold text-black mb-1"
             style={{
               color: '#000000',
               fontFamily: "'Playfair Display', serif",
@@ -45,7 +46,7 @@ export default function Login({ onLogin, handleNavigation }: LoginProps) {
           <span className="text-yellow-500 font-semibold tracking-widest text-xs mb-2">ADMIN PANEL</span>
         </div>
 
-        <div className="text-gray-500 mb-6 text-sm">Sign in to your account</div>
+        <div className="text-gray-700 mb-6 text-md">Sign in to your account</div>
 
         <form onSubmit={handleSubmit} className="w-full space-y-5">
           {error && (
