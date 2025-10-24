@@ -107,7 +107,7 @@ export default function ForgotPass({ onLogin, handleNavigation }: ForgotPassProp
             {loading ? (
               <>
                 <Icon icon="mdi:loading" className="inline mr-2 text-lg animate-spin" />
-                Sending...
+                Sending Reset Link...
               </>
             ) : (
               <>
@@ -118,22 +118,20 @@ export default function ForgotPass({ onLogin, handleNavigation }: ForgotPassProp
           </button>
         </form>
 
+        <div className="mt-6 text-center">
+          <button 
+            onClick={e => {
+              e.preventDefault();
+              handleNavigation('LOGIN');
+            }}
+            className="text-gray-600 hover:text-gray-700 font-medium hover:underline transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 rounded px-2 py-1 text-sm"
+            style={{ fontFamily: "'Jost', sans-serif" }}
+          >
+            ← Back to Login
+          </button>
+        </div>
+
         <div className="mt-6 pt-4 border-t border-gray-200">
-          <div className="text-center mb-4">
-            <button 
-              type="button"
-              disabled={loading}
-              onClick={e => {
-                e.preventDefault();
-                handleNavigation('LOGIN');
-              }}
-              className="text-sm text-gray-600 hover:text-gray-700 font-medium hover:underline transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 rounded px-1 py-1 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 mx-auto"
-              style={{ fontFamily: "'Jost', sans-serif" }}
-            >
-              <Icon icon="mdi:arrow-left" className="w-4 h-4" />
-              Back to Login
-            </button>
-          </div>
           <div className="text-xs text-gray-500 text-center">
             <div className="flex items-center justify-center space-x-2 mb-2">
               <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
