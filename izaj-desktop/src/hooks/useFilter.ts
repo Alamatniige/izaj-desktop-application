@@ -119,7 +119,6 @@ export const useFilter = (session: Session | null, options: UseFilterOptions = {
       }
       }, [enabled, session]);
 
-
     const visibleProducts = useMemo(() => {
     if (!searchTerm) return filteredProducts;
     return filteredProducts.filter(product =>

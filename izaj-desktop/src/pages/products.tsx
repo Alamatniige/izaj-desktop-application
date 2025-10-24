@@ -37,7 +37,6 @@ export function Products({ showAddProductModal, setShowAddProductModal, session,
   const [selectedProductForView, setSelectedProductForView] = useState<FetchedProduct | null>(null);
   const [showAddSaleModal, setShowAddSaleModal] = useState(false);
   
-
   const {
     publishedProducts,
     setPublishedProducts,
