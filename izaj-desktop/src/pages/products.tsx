@@ -37,7 +37,6 @@ export function Products({ showAddProductModal, setShowAddProductModal, session,
   const [selectedProductForView, setSelectedProductForView] = useState<FetchedProduct | null>(null);
   const [showAddSaleModal, setShowAddSaleModal] = useState(false);
   
-
   const {
     publishedProducts,
     setPublishedProducts,
@@ -129,138 +128,121 @@ const handleViewChange = (newView: ViewType) => {
           <>
             {/* Header section */}
             {!showAddProductModal && (
-              <div className="bg-gradient-to-r from-white via-gray-50 to-white rounded-2xl p-6 mb-8 border border-gray-100 shadow-sm">
-                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-                  {/* Title Section */}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-4 mb-3">
-                      {/* Icon with background */}
-                      <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-red-400 to-red-500 rounded-xl shadow-lg">
-                        <Icon icon="mdi:package-variant" className="text-2xl text-white" />
-                      </div>
-                      
-                      {/* Title with dropdown */}
-                      <div className="relative">
-                        <button 
-                          onClick={() => setShowDropdown(!showDropdown)}
-                          className="flex items-center gap-3 text-2xl lg:text-3xl font-bold text-gray-800 hover:text-gray-600 transition-colors group"
-                          style={{ fontFamily: "'Jost', sans-serif" }}
-                        >
-                          <span>{filter === 'sale' ? 'Sale' : 'Products'}</span>
-                          <Icon 
-                            icon="mdi:chevron-down" 
-                            className={`text-xl transition-transform duration-200 ${showDropdown ? 'rotate-180' : ''}`} 
-                          />
-                        </button>
-                        
-                        {/* Dropdown Menu */}
-                        {showDropdown && (
-                          <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 py-3 z-20">
-                            <button
-                              onClick={() => handleViewChange('products')}
-                              className={`w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors ${
-                                view === 'products' && filter === 'all'
-                                  ? 'bg-blue-50 text-blue-700 font-semibold border-l-4 border-blue-500'
-                                  : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-                              }`}
-                              style={{ fontFamily: "'Jost', sans-serif" }}
-                            >
-                              <Icon icon="mdi:grid" className="text-lg" />
-                              <span>Products</span>
-                            </button>
-                            <button
-                              onClick={() => handleViewChange('stock')}
-                              className={`w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors ${
-                                (view as ViewType) === 'stock'
-                                  ? 'bg-blue-50 text-blue-700 font-semibold border-l-4 border-blue-500'
-                                  : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-                              }`}
-                              style={{ fontFamily: "'Jost', sans-serif" }}
-                            >
-                              <Icon icon="mdi:package-variant" className="text-lg" />
-                              <span>Stock</span>
-                            </button>
-                            <button
-                              onClick={() => handleViewChange('sale')}
-                              className={`w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors ${
-                                filter === 'sale'
-                                  ? 'bg-blue-50 text-blue-700 font-semibold border-l-4 border-blue-500'
-                                  : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-                              }`}
-                              style={{ fontFamily: "'Jost', sans-serif" }}
-                            >
-                              <Icon icon="mdi:tag-outline" className="text-lg" />
-                              <span>Sale</span>
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {/* Description */}
-                    <p className="text-gray-600 text-base mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>
-                      {filter === 'sale' 
-                        ? 'Manage product sales and discounts' 
-                        : 'Manage product inventory and listings'}
-                    </p>
-                    
-                    {/* Sync stats display */}
-                    {fetchSuccess && syncStats.synced > 0 && (
-                      <div className="flex items-center gap-2 text-sm text-green-600" style={{ fontFamily: "'Jost', sans-serif" }}>
-                        <Icon icon="mdi:check-circle" className="text-lg" />
-                        <span>Last sync: {syncStats.synced} synced, {syncStats.skipped} skipped</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Action buttons */}
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-                    {/* Sync Products Button */}
-                    <button
-                      onClick={() => handleFetchProducts(true)}
-                      disabled={isFetching}
-                      className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold border-2 shadow-lg hover:shadow-xl transition-all duration-200 focus:ring-2 focus:outline-none ${
-                        fetchSuccess && !isFetching
-                          ? 'bg-green-500 text-white border-green-500 hover:bg-green-600'
-                          : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300 focus:ring-gray-200'
-                      }`}
-                      style={{ fontFamily: "'Jost', sans-serif" }}
-                    >
-                      <Icon 
-                        icon={isFetching ? "mdi:loading" : fetchSuccess ? "mdi:check" : "mdi:refresh"} 
-                        className={`text-lg ${isFetching ? 'animate-spin' : ''}`} 
-                      />
-                      <span className="text-sm">
-                        {isFetching ? 'Syncing...' : fetchSuccess ? 'Synced' : 'Sync Products'}
-                      </span>
-                    </button>
-
-                    {/* Manage Stock Button */}
-                    {!isLoadingStock && stockStatus.needsSync > 0 && (
-                      <button
-                        className="flex items-center justify-center gap-2 px-4 py-3 bg-yellow-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:bg-yellow-600 transition-all duration-200"
-                        onClick={() => setShowManageStockModal(true)}
-                        style={{ fontFamily: "'Jost', sans-serif" }}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 mb-8">
+                <div>
+                  <div className="flex items-center gap-3">
+                    <Icon icon="mdi:package-variant" className="text-3xl text-red-400" />
+                    <div className="relative">
+                      <button 
+                        onClick={() => setShowDropdown(!showDropdown)}
+                        className="flex items-center gap-2 text-xl sm:text-2xl font-bold text-gray-800 hover:text-gray-600 transition-colors"
                       >
-                        <Icon icon="mdi:sync" className="text-lg" />
-                        <span className="text-sm">Manage Stock ({stockStatus.needsSync})</span>
+                        {filter === 'sale' ? 'Sale' : 'Products'}
+                        <Icon icon="mdi:chevron-down" className="text-xl" />
                       </button>
-                    )}
-
-                    {/* Add Product button */}
-                    <button
-                      className="flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-gray-800 to-gray-900 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:from-gray-700 hover:to-gray-800 transition-all duration-200 relative"
-                      onClick={handleAddProductClick}
-                      style={{ fontFamily: "'Jost', sans-serif" }}
-                    >
-                      <Icon icon="mdi:plus-circle" className="text-lg text-red-400" />
-                      <span className="text-sm">{filter === 'sale' ? 'Add Sale' : 'Add Products'}</span>
-                      {pendingCount > 0 && (
-                        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full px-2 py-1 font-bold" style={{ fontFamily: "'Jost', sans-serif" }}>
-                          {pendingCount}
-                        </span>
+                      
+                      {/* Dropdown Menu */}
+                      {showDropdown && (
+                        <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-10">
+                          <button
+                            onClick={() => handleViewChange('products')}
+                            className={`w-full px-4 py-2 text-left text-sm flex items-center gap-2 ${
+                              view === 'products' && filter === 'all'
+                                ? 'bg-yellow-50 text-black font-medium border-l-4 border-yellow-400'
+                                : 'text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            <Icon icon="mdi:grid" className="text-lg" />
+                            Products
+                          </button>
+                          <button
+                            onClick={() => handleViewChange('stock')}
+                            className={`w-full px-4 py-2 text-left text-sm flex items-center gap-2 ${
+                              (view as ViewType) === 'stock'
+                                ? 'bg-yellow-50 text-black font-medium border-l-4 border-yellow-400'
+                                : 'text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            <Icon icon="mdi:package-variant" className="text-lg" />
+                            Stock
+                          </button>
+                          <button
+                            onClick={() => handleViewChange('sale')}
+                            className={`w-full px-4 py-2 text-left text-sm flex items-center gap-2 ${
+                              filter === 'sale'
+                                ? 'bg-yellow-50 text-black font-medium border-l-4 border-yellow-400'
+                                : 'text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            <Icon icon="mdi:tag-outline" className="text-lg" />
+                            Sale
+                          </button>
+                        </div>
                       )}
-                    </button>
+                    </div>
+                  </div>
+                  <p className="text-gray-500 mt-1 text-sm sm:text-base">
+                    {filter === 'sale' 
+                      ? 'Manage product sales and discounts' 
+                      : 'Manage product inventory and listings'}
+                  </p>
+                  {/* Sync stats display */}
+                  {fetchSuccess && syncStats.synced > 0 && (
+                    <p className="text-xs text-green-600 mt-1">
+                      Last sync: {syncStats.synced} synced, {syncStats.skipped} skipped
+                    </p>
+                  )}
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <div className="relative flex-1 sm:flex-none"> 
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      
+                      {/* Sync Products Button */}
+                      <button
+                        onClick={() => handleFetchProducts(true)}
+                        disabled={isFetching}
+                        className={`w-full sm:w-auto px-4 sm:px-6 py-2.5 rounded-xl font-medium border-2 shadow-lg hover:shadow-xl transition-all duration-200 focus:ring-2 focus:outline-none flex items-center justify-center gap-2 ${
+                          fetchSuccess && !isFetching
+                            ? 'bg-green-500 text-white border-green-500 hover:bg-green-600'
+                            : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300 focus:ring-gray-200'
+                        }`}
+                        style={{ boxShadow: '0 4px 12px 0 rgba(0,0,0,0.12)' }}
+                      >
+                        <Icon 
+                          icon={isFetching ? "mdi:loading" : fetchSuccess ? "mdi:check" : "mdi:refresh"} 
+                          className={`text-xl ${isFetching ? 'animate-spin' : ''}`} 
+                        />
+                        {isFetching ? 'Syncing Products...' : fetchSuccess ? 'Products Synced' : 'Sync Products'}
+                      </button>
+
+                      {/* Manage Stock Button */}
+                      {!isLoadingStock && stockStatus.needsSync > 0 && (
+                        <button
+                          className="flex-1 sm:flex-none w-full sm:w-auto flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 bg-yellow-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl border-2 border-yellow-200 hover:border-yellow-400 transition-all duration-200"
+                          onClick={() => setShowManageStockModal(true)}
+                        >
+                          <Icon icon="mdi:sync" className="text-xl" />
+                          {`Manage Stock (${stockStatus.needsSync})`}
+                        </button>
+                      )}
+
+                      {/* Add Product button */}
+                      <button
+                        className="flex-1 sm:flex-none w-full sm:w-auto flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 bg-black text-white font-semibold rounded-xl shadow-lg hover:shadow-xl border-2 border-red-200 hover:border-red-400 transition-all duration-200 relative"
+                        style={{ boxShadow: '0 4px 24px rgba(252, 211, 77, 0.15)' }}
+                        onClick={handleAddProductClick}
+                      >
+                        <Icon icon="mdi:plus-circle" className="text-xl text-red-400" />
+                        {filter === 'sale' ? 'Add Sale' : 'Add Products'}
+                        {pendingCount > 0 && (
+                          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
+                            {pendingCount}
+                          </span>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -272,92 +254,53 @@ const handleViewChange = (newView: ViewType) => {
               }}>
 
               { /* Filter and search controls */}
-              <div className="bg-gradient-to-r from-gray-50 to-white rounded-2xl p-6 mb-4 border border-gray-100 shadow-sm -mt-12">
-                <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 xl:gap-8">
-                  {/* Status Filter Buttons */}
-                  <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex items-center gap-2 bg-white rounded-xl p-1 shadow-sm border border-gray-200">
-                      <button
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 ${
-                          statusFilter === 'All' 
-                            ? 'bg-blue-500 text-white shadow-md' 
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
-                        }`}
-                        onClick={() => setStatusFilter('All')}
-                        style={{ fontFamily: "'Jost', sans-serif" }}
-                      >
-                        <Icon icon="mdi:format-list-bulleted" width={16} />
-                        All
-                      </button>
-                      <button
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 ${
-                          statusFilter === 'Active' 
-                            ? 'bg-green-500 text-white shadow-md' 
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
-                        }`}
-                        onClick={() => setStatusFilter('Active')}
-                        style={{ fontFamily: "'Jost', sans-serif" }}
-                      >
-                        <Icon icon="mdi:check-circle-outline" width={16} />
-                        Active
-                      </button>
-                      <button
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 ${
-                          statusFilter === 'Inactive' 
-                            ? 'bg-red-500 text-white shadow-md' 
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
-                        }`}
-                        onClick={() => setStatusFilter('Inactive')}
-                        style={{ fontFamily: "'Jost', sans-serif" }}
-                      >
-                        <Icon icon="mdi:cross-circle-outline" width={16} />
-                        Inactive
-                      </button>
-                    </div>
-                  </div>
+              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 lg:gap-0 mb-8">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+                <button
+                  className={`text-black font-semibold border-b-2 flex items-center gap-1 px-3 py-2 rounded-lg transition-all duration-200 hover:scale-105
+                    ${statusFilter === 'All' ? 'border-black bg-yellow-50' : 'border-transparent hover:bg-yellow-50 hover:scale-105'}`}
+                  onClick={() => setStatusFilter('All')}
+                >
+                  <Icon icon="mdi:format-list-bulleted" width={18} />
+                  All
+                </button>
+                <button
+                  className={`text-black font-semibold border-b-2 flex items-center gap-1 px-3 py-2 rounded-lg transition-all duration-200 
+                    ${statusFilter === 'Active' ? 'border-black bg-yellow-50' : 'border-transparent hover:bg-yellow-50 hover:scale-105'}`}
+                  onClick={() => setStatusFilter('Active')}
+                >
+                  <Icon icon="mdi:check-circle-outline" width={18} />
+                  Published
+                </button>
+                <button
+                  className={`text-black font-semibold border-b-2 flex items-center gap-1 px-3 py-2 rounded-lg transition-all duration-200 
+                    ${statusFilter === 'Inactive' ? 'border-black bg-yellow-50' : 'border-transparent hover:bg-yellow-50 hover:scale-105'}`}
+                  onClick={() => setStatusFilter('Inactive')}
+                >
+                  <Icon icon="mdi:cross-circle-outline" width={18} />
+                  Unpublished
+                </button>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full lg:w-auto">
+                  <div className="relative flex items-center gap-2 w-full sm:w-auto">
+                  <Icon icon="mdi:magnify" width={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <input 
+                      type="text" 
+                      value={searchTerm}
+                      onChange={e => setSearchTerm(e.target.value)}
+                      placeholder="Search products..." 
+                      className="w-full lg:w-64 pl-10 pr-4 py-2 border shadow-lg border-gray-200 rounded-lg text-sm"
+                    />
 
-                  {/* Search and Filter Controls */}
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto">
-                    {/* Search Bar */}
-                    <div className="relative flex-1 sm:flex-none sm:w-80">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Icon icon="mdi:magnify" className="h-5 w-5 text-gray-400" />
-                      </div>
-                      <input 
-                        type="text" 
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                        placeholder="Search products..." 
-                        className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 shadow-sm"
-                        style={{ fontFamily: "'Jost', sans-serif" }}
-                      />
-                    </div>
-
-                    {/* Category Filter */}
-                    <div className="relative">
-                      <select
-                        value={selectedCategory}
-                        onChange={e => setSelectedCategory(e.target.value)}
-                        className="appearance-none bg-white border border-gray-200 rounded-xl px-4 py-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 shadow-sm cursor-pointer"
-                        style={{ fontFamily: "'Jost', sans-serif" }}
-                      >
-                        {categories.map(cat => (
-                          <option key={cat} value={cat}>{cat}</option>
-                        ))}
-                      </select>
-                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                        <Icon icon="mdi:chevron-down" className="h-4 w-4 text-gray-400" />
-                      </div>
-                    </div>
-
-                    {/* Advance Filter Button */}
-                    <button className="flex items-center justify-center px-3 py-3 bg-white border border-gray-200 text-gray-700 font-semibold rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 group relative" style={{ fontFamily: "'Jost', sans-serif" }}>
-                      <Icon icon="mdi:tune-variant" width={16} />
-                      {/* Tooltip */}
-                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
-                        Advance Filter
-                      </div>
-                    </button>
+                    <select
+                      value={selectedCategory}
+                      onChange={e => setSelectedCategory(e.target.value)}
+                      className="px-3 py-2 border shadow-lg border-gray-200 rounded-lg text-sm"
+                    >
+                      {categories.map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>
@@ -367,7 +310,7 @@ const handleViewChange = (newView: ViewType) => {
                 <div className="flex items-center justify-center py-12">
                   <div className="flex items-center gap-3">
                     <Icon icon="mdi:loading" className="text-2xl animate-spin text-gray-500" />
-                    <span className="text-gray-500" style={{ fontFamily: "'Jost', sans-serif" }}>Loading products...</span>
+                    <span className="text-gray-500">Loading products...</span>
                   </div>
                 </div>
               )}
@@ -376,109 +319,74 @@ const handleViewChange = (newView: ViewType) => {
               {!isFetching && filteredProducts.length === 0 && hasLoadedFromDB && (
                 <div className="flex flex-col items-center justify-center py-12">
                   <Icon icon="mdi:package-variant-closed" className="text-6xl text-gray-300 mb-4" />
-                  <h3 className="text-lg font-medium text-gray-500 mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>No products found</h3>
-                  <p className="text-gray-400 mb-4" style={{ fontFamily: "'Jost', sans-serif" }}>Click the Sync button to fetch products from your inventory.</p>
+                  <h3 className="text-lg font-medium text-gray-500 mb-2">No products found</h3>
+                  <p className="text-gray-400 mb-4">Click the Sync button to fetch products from your inventory.</p>
                 </div>
               )}
 
               {/* Products grid */}
               {filteredProducts.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 sm:gap-8 lg:gap-10">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
                   {filteredProducts.map((product) => (
                     <div 
                       key={product.id} 
-                      className="group relative bg-white rounded-3xl shadow-lg hover:shadow-2xl border border-gray-100 overflow-hidden cursor-pointer transition-all duration-300 hover:-translate-y-2"
-                      style={{
-                        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)',
-                        background: 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)'
-                      }}
+                      className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl border-l-4 border-yellow-200 hover:border-yellow-400 transition-all duration-200 flex flex-col justify-between group cursor-pointer"
                       onClick={() => setSelectedProductForView({
                       ...product,
                       mediaUrl: mediaUrlsMap[product.id] || [],
                       status: String(product.publish_status),
                     })}
                     >
-                      {/* Status Badge */}
-                      <div className="absolute top-4 right-4 z-10">
-                        <span className={`inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm backdrop-blur-sm ${getStatusColor(product.publish_status)}`} style={{ fontFamily: "'Jost', sans-serif" }}>
+                      <div className="mb-4">
+                        <div className="relative mb-4">
+                          <img
+                            src={mediaUrlsMap[product.id]?.[0] || '/placeholder.png'}
+                            alt={product.product_name}
+                            className="w-full h-40 sm:h-48 object-cover rounded-xl bg-gray-100 group-hover:scale-[1.02] transition-transform duration-200"
+                          />
+                        </div>
+                        <h3 className="font-semibold text-lg sm:text-xl mb-2 text-gray-800">{product.product_name}</h3>
+                        <div className="space-y-1 mb-2">
+                          <p className="text-gray-500 text-sm">
+                            Category: {getCategoryName(product.category)}
+                          </p>
+                          {product.branch && (
+                            <p className="text-gray-500 text-sm">
+                              Branch: {getBranchName(product.branch)}
+                            </p>
+                          )}
+                        </div>
+                        <span className={`inline-block px-2 sm:px-3 py-1 text-xs sm:text-sm rounded-full ${getStatusColor(product.publish_status)} font-medium`}>
                           {getStatusText(product.publish_status)}
                         </span>
                       </div>
 
-                      {/* Product Image */}
-                      <div className="relative overflow-hidden">
-                        <div className="aspect-[4/3] bg-gradient-to-br from-gray-50 to-gray-100">
-                          <img
-                            src={mediaUrlsMap[product.id]?.[0] || '/placeholder.png'}
-                            alt={product.product_name}
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out"
-                          />
-                        </div>
-                        {/* Overlay gradient */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                      </div>
-
-                      {/* Product Info */}
-                      <div className="p-6 space-y-4">
-                        {/* Product Name */}
-                        <div>
-                          <h3 className="font-bold text-xl text-gray-900 mb-2 line-clamp-2 group-hover:text-gray-700 transition-colors" style={{ fontFamily: "'Jost', sans-serif" }}>
-                            {product.product_name}
-                          </h3>
-                          
-                          {/* Category and Branch */}
-                          <div className="flex flex-wrap gap-2 mb-3">
-                            <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 rounded-lg" style={{ fontFamily: "'Jost', sans-serif" }}>
-                              <Icon icon="mdi:tag-outline" className="w-3 h-3 mr-1" />
-                              {getCategoryName(product.category)}
-                            </span>
-                            {product.branch && (
-                              <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-purple-50 text-purple-700 rounded-lg" style={{ fontFamily: "'Jost', sans-serif" }}>
-                                <Icon icon="mdi:store" className="w-3 h-3 mr-1" />
-                                {getBranchName(product.branch)}
-                              </span>
-                            )}
+                      <div className="space-y-3 sm:space-y-4">
+                        <div className="flex justify-between items-center border-t border-gray-100 pt-3 sm:pt-4">
+                          <div>
+                            <p className="text-xs sm:text-sm text-gray-500">Price</p>
+                            <p className="text-xl sm:text-2xl font-bold text-gray-800">
+                              {formatPrice(product.price)}
+                            </p>                          
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs sm:text-sm text-gray-500">Stock</p>
+                            <p className={`text-base sm:text-lg font-semibold ${getStockColor(product.display_quantity)}`}>
+                              {product.display_quantity}
+                            </p>
                           </div>
                         </div>
 
-                        {/* Price and Stock Section */}
-                        <div className="space-y-4">
-                          {/* Price */}
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Price</p>
-                              <p className="text-2xl font-bold text-gray-900" style={{ fontFamily: "'Jost', sans-serif" }}>
-                                {formatPrice(product.price)}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Stock</p>
-                              <p className={`text-xl font-bold ${getStockColor(product.display_quantity)}`} style={{ fontFamily: "'Jost', sans-serif" }}>
-                                {product.display_quantity}
-                              </p>
-                            </div>
+                        <div className="space-y-1 sm:space-y-2">
+                          <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full transition-all duration-300 ${getStockProgressColor(product.display_quantity)}`}
+                              style={{ width: getStockProgressWidth(product.display_quantity) }}
+                            ></div>
                           </div>
-
-                          {/* Stock Progress Bar */}
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between text-xs text-gray-500" style={{ fontFamily: "'Jost', sans-serif" }}>
-                              <span>Stock Level</span>
-                              <span className="font-medium">{getStockLevel(product.display_quantity)}</span>
-                            </div>
-                            <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
-                              <div
-                                className={`h-full transition-all duration-500 ease-out ${getStockProgressColor(product.display_quantity)}`}
-                                style={{ width: getStockProgressWidth(product.display_quantity) }}
-                              ></div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Hover Action Indicator */}
-                        <div className="flex items-center justify-center pt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                          <div className="flex items-center gap-2 text-sm font-medium text-gray-600" style={{ fontFamily: "'Jost', sans-serif" }}>
-                            <Icon icon="mdi:eye" className="w-4 h-4" />
-                            <span>View Details</span>
+                          <div className="flex flex-row gap-6 text-xs text-gray-500">
+                            <span>Stock level</span>
+                            <span>{getStockLevel(product.display_quantity)}</span>
                           </div>
                         </div>
                       </div>

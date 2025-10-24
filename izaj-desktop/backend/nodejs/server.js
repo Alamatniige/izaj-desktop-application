@@ -8,8 +8,8 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load environment variables from root .env file (one level up from backend/nodejs)
-dotenv.config({ path: join(__dirname, '..', '..', '.env') });
+// Load environment variables from root .env file (specify exact path)
+dotenv.config({ path: join(process.cwd(), 'izaj-desktop', '.env') });
 
 // Import route modules
 import audit from './audit/server.js'
