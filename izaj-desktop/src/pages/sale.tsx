@@ -88,133 +88,247 @@ export default function Sale({
   return (
     <div className="flex-1 overflow-y-auto">
       <main className="flex-1 px-8 py-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-          <div>
-            <div className="flex items-center gap-3">
-              <Icon icon="mdi:tag-outline" className="text-3xl text-yellow-500" />
-              <div className="relative">
-                <button
-                  onClick={() => setShowDropdown(!showDropdown)}
-                  className="flex items-center gap-2 text-2xl font-bold text-gray-800 hover:text-gray-600"
-                >
-                  Sale
-                  <Icon icon="mdi:chevron-down" />
-                </button>
-                {showDropdown && (
-                  <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-10">
-                    <button
-                      onClick={() => onViewChange?.("products")}
-                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                    >
-                    <Icon icon="mdi:grid" className="text-lg" />
-                      Products
-                    </button>
-                    <button
-                      onClick={() => onViewChange?.("stock")}
-                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                    >
-                    <Icon icon="mdi:package-variant" className="text-lg" />
-                      Stock
-                    </button>
-                    <button
-                      onClick={() => onViewChange?.("sale")}
-                      className="w-full px-4 py-2 text-left text-sm bg-yellow-50 text-black font-medium hover:bg-yellow-100 flex items-center gap-2 border-l-4 border-yellow-400"
-                    >
-                    <Icon icon="mdi:tag-outline" className="text-lg" />
-                      Sale
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-            <p className="text-gray-500 mt-1 text-sm">
-              Manage product discounts
-            </p>
-          </div>
-
-          {/* Add Sale button */}
-          <button
-            className="flex items-center gap-2 px-6 py-2.5 bg-black text-white font-semibold rounded-xl shadow-lg hover:shadow-xl"
-            onClick={handleAddSaleClick}
-          >
-            <Icon icon="mdi:plus-circle" className="text-xl text-yellow-500" />
-            Add Sale
-          </button>
-        </div>
-
-        {/* Filters + Search */}
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search sales..."
-              className="px-3 py-2 border rounded-lg text-sm"
-            />
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="px-3 py-2 border rounded-lg text-sm"
-            >
-              {saleCategories.map((cat) => (
-                <option
-                  key={typeof cat === "string" ? cat : cat?.category_name ?? ""}
-                  value={typeof cat === "string" ? cat : cat?.category_name ?? ""}
-                >
-                  {typeof cat === "string" ? cat : cat?.category_name ?? ""}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Sales grid */}
-        {filteredSales.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-            {filteredSales.map((sale) => (
-              <div
-                key={sale.id}
-                className="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-yellow-200 hover:border-yellow-400 transition cursor-pointer"
-                onClick={() => {
-                  setSelectedSaleForView(sale);
-                  setShowViewSaleModal(true);
-                }}
-              >
-                <img
-                  src={sale.media_urls?.[0] || "/placeholder.png"}
-                  alt={sale.product_name}
-                  className="w-full h-40 object-cover rounded-xl mb-4"
-                />
-                <h3 className="font-semibold text-lg text-gray-800 mb-2">
-                  {sale.product_name}
-                </h3>
-                <p className="text-gray-500 text-sm mb-1">
-                  Category: {getCategoryName(sale.category)}
-                </p>
-                <span
-                  className={`inline-block px-3 py-1 text-sm rounded-full ${getStatusColor(
-                    sale.publish_status
-                  )}`}
-                >
-                  {getStatusText(sale.publish_status)}
-                </span>
-
-                <div className="flex justify-between items-center mt-4">
-                  <p className="text-gray-500 text-sm">Discount</p>
-                  <p className="text-lg font-semibold text-green-600">
-                    {sale.sale?.[0]?.percentage ? `${sale.sale[0].percentage}%` : 
-                     sale.sale?.[0]?.fixed_amount ? `₱${sale.sale[0].fixed_amount}` : 
-                     'No discount'}
-                  </p>
+        {/* Header section */}
+        <div className="bg-gradient-to-r from-white via-gray-50 to-white rounded-2xl p-6 mb-8 border border-gray-100 shadow-sm">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+            {/* Title Section */}
+            <div className="flex-1">
+              <div className="flex items-center gap-4 mb-3">
+                {/* Icon with background */}
+                <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-xl shadow-lg">
+                  <Icon icon="mdi:tag-outline" className="text-2xl text-white" />
+                </div>
+                
+                {/* Title with dropdown */}
+                <div className="relative">
+                  <button 
+                    onClick={() => setShowDropdown(!showDropdown)}
+                    className="flex items-center gap-3 text-2xl lg:text-3xl font-bold text-gray-800 hover:text-gray-600 transition-colors group"
+                    style={{ fontFamily: "'Jost', sans-serif" }}
+                  >
+                    <span>Sale</span>
+                    <Icon 
+                      icon="mdi:chevron-down" 
+                      className={`text-xl transition-transform duration-200 ${showDropdown ? 'rotate-180' : ''}`} 
+                    />
+                  </button>
+                  
+                  {/* Dropdown Menu */}
+                  {showDropdown && (
+                    <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 py-3 z-20">
+                      <button
+                        onClick={() => onViewChange?.('products')}
+                        className="w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                        style={{ fontFamily: "'Jost', sans-serif" }}
+                      >
+                        <Icon icon="mdi:grid" className="text-lg" />
+                        <span>Products</span>
+                      </button>
+                      <button
+                        onClick={() => onViewChange?.('stock')}
+                        className="w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                        style={{ fontFamily: "'Jost', sans-serif" }}
+                      >
+                        <Icon icon="mdi:package-variant" className="text-lg" />
+                        <span>Stock</span>
+                      </button>
+                      <button
+                        onClick={() => onViewChange?.('sale')}
+                        className="w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors bg-blue-50 text-blue-700 font-semibold border-l-4 border-blue-500"
+                        style={{ fontFamily: "'Jost', sans-serif" }}
+                      >
+                        <Icon icon="mdi:tag-outline" className="text-lg" />
+                        <span>Sale</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
-            ))}
+              
+              {/* Description */}
+              <p className="text-gray-600 text-base mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                Manage product sales and discounts
+              </p>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+              {/* Add Sale button */}
+              <button
+                className="flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-gray-800 to-gray-900 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:from-gray-700 hover:to-gray-800 transition-all duration-200 relative"
+                onClick={handleAddSaleClick}
+                style={{ fontFamily: "'Jost', sans-serif" }}
+              >
+                <Icon icon="mdi:plus-circle" className="text-lg text-yellow-400" />
+                <span className="text-sm">Add Sale</span>
+              </button>
+            </div>
           </div>
-        ) : (
-          <p className="text-gray-500 text-center py-12">No sales found</p>
-        )}
+        </div>
+
+        <div className="max-w-7xl mx-auto bg-white rounded-3xl shadow-2xl border border-white p-4 sm:p-8 mb-8"
+          style={{
+            boxShadow: '0 4px 32px 0 rgba(252, 211, 77, 0.07)',
+          }}>
+
+          { /* Filter and search controls */}
+          <div className="bg-gradient-to-r from-gray-50 to-white rounded-2xl p-6 mb-4 border border-gray-100 shadow-sm -mt-12">
+            <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 xl:gap-8">
+              {/* Search and Filter Controls */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto">
+                {/* Search Bar */}
+                <div className="relative flex-1 sm:flex-none sm:w-80">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Icon icon="mdi:magnify" className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search sales..."
+                    className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all duration-200"
+                    style={{ fontFamily: "'Jost', sans-serif" }}
+                  />
+                </div>
+
+                {/* Category Filter */}
+                <div className="relative">
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="appearance-none block w-full px-4 py-3 pr-10 border border-gray-200 rounded-xl leading-5 bg-white focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all duration-200"
+                    style={{ fontFamily: "'Jost', sans-serif" }}
+                  >
+                    {saleCategories.map((cat) => (
+                      <option
+                        key={typeof cat === "string" ? cat : cat?.category_name ?? ""}
+                        value={typeof cat === "string" ? cat : cat?.category_name ?? ""}
+                      >
+                        {typeof cat === "string" ? cat : cat?.category_name ?? ""}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <Icon icon="mdi:chevron-down" className="h-5 w-5 text-gray-400" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Sales grid */}
+          {filteredSales.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 sm:gap-8 lg:gap-10">
+              {filteredSales.map((sale) => (
+                <div 
+                  key={sale.id} 
+                  className="group relative bg-white rounded-3xl shadow-lg hover:shadow-2xl border border-gray-100 overflow-hidden cursor-pointer transition-all duration-300 hover:-translate-y-2"
+                  style={{
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)',
+                    background: 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)'
+                  }}
+                  onClick={() => {
+                    setSelectedSaleForView(sale);
+                    setShowViewSaleModal(true);
+                  }}
+                >
+                  {/* Status Badge */}
+                  <div className="absolute top-4 right-4 z-10">
+                    <span className={`inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm backdrop-blur-sm ${getStatusColor(sale.publish_status)}`} style={{ fontFamily: "'Jost', sans-serif" }}>
+                      {getStatusText(sale.publish_status)}
+                    </span>
+                  </div>
+
+                  {/* Product Image */}
+                  <div className="relative overflow-hidden">
+                    <div className="aspect-[4/3] bg-gradient-to-br from-gray-50 to-gray-100">
+                      <img
+                        src={sale.media_urls?.[0] || '/placeholder.png'}
+                        alt={sale.product_name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out"
+                      />
+                    </div>
+                    {/* Overlay gradient */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  </div>
+
+                  {/* Product Info */}
+                  <div className="p-6 space-y-4">
+                    {/* Product Name */}
+                    <div>
+                      <h3 className="font-bold text-xl text-gray-900 mb-2 line-clamp-2 group-hover:text-gray-700 transition-colors" style={{ fontFamily: "'Jost', sans-serif" }}>
+                        {sale.product_name}
+                      </h3>
+                      
+                      {/* Category */}
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 rounded-lg" style={{ fontFamily: "'Jost', sans-serif" }}>
+                          <Icon icon="mdi:tag-outline" className="w-3 h-3 mr-1" />
+                          {getCategoryName(sale.category)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Price and Discount Section */}
+                    <div className="space-y-4">
+                      {/* Price */}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Original Price</p>
+                          <p className="text-2xl font-bold text-gray-900" style={{ fontFamily: "'Jost', sans-serif" }}>
+                            ₱{sale.price?.toLocaleString() || '0'}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Discount</p>
+                          <p className="text-xl font-bold text-green-600" style={{ fontFamily: "'Jost', sans-serif" }}>
+                            {sale.sale?.[0]?.percentage ? `${sale.sale[0].percentage}%` : 
+                             sale.sale?.[0]?.fixed_amount ? `₱${sale.sale[0].fixed_amount}` : 
+                             'No discount'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Sale Price */}
+                      <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-4 border border-green-100">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-green-700" style={{ fontFamily: "'Jost', sans-serif" }}>Sale Price</span>
+                          <span className="text-lg font-bold text-green-600" style={{ fontFamily: "'Jost', sans-serif" }}>
+                            ₱{sale.sale?.[0]?.percentage 
+                              ? (sale.price - (sale.price * sale.sale[0].percentage / 100)).toLocaleString()
+                              : sale.sale?.[0]?.fixed_amount 
+                                ? Math.max(0, sale.price - sale.sale[0].fixed_amount).toLocaleString()
+                                : sale.price?.toLocaleString() || '0'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Hover Action Indicator */}
+                    <div className="flex items-center justify-center pt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <div className="flex items-center gap-2 text-sm font-medium text-gray-600" style={{ fontFamily: "'Jost', sans-serif" }}>
+                        <Icon icon="mdi:eye" className="w-4 h-4" />
+                        <span>View Details</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mb-6">
+                <Icon icon="mdi:tag-outline" className="text-4xl text-gray-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-700 mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                No sales found
+              </h3>
+              <p className="text-gray-500 max-w-md" style={{ fontFamily: "'Jost', sans-serif" }}>
+                Start by creating your first sale to offer discounts and promotions to your customers.
+              </p>
+            </div>
+          )}
+        </div>
 
         {/* Add Sale Modal */}
         {showAddSaleModal && (

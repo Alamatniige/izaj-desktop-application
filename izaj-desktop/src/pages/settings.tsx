@@ -10,9 +10,7 @@ interface SettingsProps {
   session: Session | null;
 }
 
-const Settings: React.FC<SettingsProps> = ({ handleNavigation, session }) => {
-  
-  const [isMobileView, setIsMobileView] = useState(false);
+const Settings: React.FC<SettingsProps> = ({ session }) => {
   const [activeTab, setActiveTab] = useState('general');
   const [isAddAdminModalOpen, setIsAddAdminModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -90,16 +88,6 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation, session }) => {
       console.error('Failed to fetch admin users:', error);
     }
   }, [session?.access_token]);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobileView(window.innerWidth < 1024);
-    };
-
-    handleResize(); 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   useEffect(() => {
     if (!session?.access_token) return;
@@ -334,31 +322,31 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation, session }) => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
-      {/* Main Header */}
-      <header className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 bg-white shadow-sm border-b border-gray-200 flex-shrink-0">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center gap-3">
-            {isMobileView && (
-              <button
-                onClick={() => handleNavigation?.('DASHBOARD')}
-                className="p-2 hover:bg-yellow-50 rounded-lg transition"
-              >
-                <Icon icon="mdi:arrow-left" className="w-6 h-6 text-gray-600" />
-              </button>
-            )}
-            <h2 className="flex items-center gap-2 sm:gap-3 text-2xl sm:text-3xl font-bold text-gray-800">
-              <Icon icon="mdi:cog" className="text-yellow-400 w-6 h-6 sm:w-8 sm:h-8" />
-              Settings
-            </h2>
+    <div className="flex-1 overflow-y-auto">
+      <main className="flex-1 px-8 py-6">
+        {/* Header Section */}
+        <div className="bg-gradient-to-r from-white via-gray-50 to-white rounded-2xl p-6 mb-8 border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-xl shadow-lg">
+              <Icon icon="mdi:cog" className="text-2xl text-white" />
+            </div>
+            <div>
+              <h2 className="text-2xl lg:text-3xl font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
+                Settings
+              </h2>
+              <p className="text-gray-600 text-base" style={{ fontFamily: "'Jost', sans-serif" }}>
+                Manage your application settings and system configuration
+              </p>
+            </div>
           </div>
         </div>
-      </header>
 
-      {/* Main Content */}
-      <div className="flex-1">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
-          <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg overflow-hidden">
+        {/* Main Content */}
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden"
+            style={{
+              boxShadow: '0 4px 32px 0 rgba(251, 191, 36, 0.07)',
+            }}>
             
             {/* Tabs Navigation */}
             <div className="border-b border-gray-200 overflow-x-auto">
@@ -370,13 +358,13 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation, session }) => {
                     className={`
                       py-3 sm:py-4 px-1 border-b-2 font-medium text-xs sm:text-sm flex items-center gap-1 sm:gap-2 whitespace-nowrap
                       ${activeTab === tab.id
-                        ? 'border-yellow-400 text-yellow-600'
+                        ? 'border-yellow-500 text-yellow-600 font-semibold'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                       }
                     `}
                   >
                     <Icon icon={tab.icon} className="w-4 h-4 sm:w-5 sm:h-5" />
-                    {tab.label}
+                    <span style={{ fontFamily: "'Jost', sans-serif" }}>{tab.label}</span>
                   </button>
                 ))}
               </nav>
@@ -391,7 +379,7 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation, session }) => {
                   <div className="space-y-4 sm:space-y-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                       <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">Website Name</label>
+                        <label className="block text-sm font-medium text-gray-700" style={{ fontFamily: "'Jost', sans-serif" }}>Website Name</label>
                         <input
                           type="text"
                           value={settings.general.websiteName}
@@ -399,46 +387,50 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation, session }) => {
                             ...settings,
                             general: { ...settings.general, websiteName: e.target.value }
                           })}
-                          className="w-full px-3 sm:px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-yellow-200 focus:border-yellow-400"
+                          className="w-full px-3 sm:px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-500 transition-all duration-200"
+                          style={{ fontFamily: "'Jost', sans-serif" }}
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">Timezone</label>
+                        <label className="block text-sm font-medium text-gray-700" style={{ fontFamily: "'Jost', sans-serif" }}>Timezone</label>
                         <select
                           value={settings.general.timezone}
                           onChange={(e) => setSettings({
                             ...settings,
                             general: { ...settings.general, timezone: e.target.value }
                           })}
-                          className="w-full px-3 sm:px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-yellow-200 focus:border-yellow-400"
+                          className="w-full px-3 sm:px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-500 transition-all duration-200"
+                          style={{ fontFamily: "'Jost', sans-serif" }}
                         >
                           <option value="Asia/Manila">Asia/Manila</option>
                           <option value="UTC">UTC</option>
                         </select>
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">Language</label>
+                        <label className="block text-sm font-medium text-gray-700" style={{ fontFamily: "'Jost', sans-serif" }}>Language</label>
                         <select
                           value={settings.general.language}
                           onChange={(e) => setSettings({
                             ...settings,
                             general: { ...settings.general, language: e.target.value }
                           })}
-                          className="w-full px-3 sm:px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-yellow-200 focus:border-yellow-400"
+                          className="w-full px-3 sm:px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-500 transition-all duration-200"
+                          style={{ fontFamily: "'Jost', sans-serif" }}
                         >
                           <option value="English">English</option>
                           <option value="Filipino">Filipino</option>
                         </select>
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">Currency</label>
+                        <label className="block text-sm font-medium text-gray-700" style={{ fontFamily: "'Jost', sans-serif" }}>Currency</label>
                         <select
                           value={settings.general.currency}
                           onChange={(e) => setSettings({
                             ...settings,
                             general: { ...settings.general, currency: e.target.value }
                           })}
-                          className="w-full px-3 sm:px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-yellow-200 focus:border-yellow-400"
+                          className="w-full px-3 sm:px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-500 transition-all duration-200"
+                          style={{ fontFamily: "'Jost', sans-serif" }}
                         >
                           <option value="PHP">PHP (₱)</option>
                           <option value="USD">USD ($)</option>
@@ -446,7 +438,7 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation, session }) => {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700">Store Address</label>
+                      <label className="block text-sm font-medium text-gray-700" style={{ fontFamily: "'Jost', sans-serif" }}>Store Address</label>
                       <textarea
                         value={settings.general.storeAddress}
                         onChange={(e) => setSettings({
@@ -455,10 +447,11 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation, session }) => {
                         })}
                         rows={3}
                         className="w-full px-3 sm:px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-yellow-200 focus:border-yellow-400"
+                        style={{ fontFamily: "'Jost', sans-serif" }}
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700">Logo</label>
+                      <label className="block text-sm font-medium text-gray-700" style={{ fontFamily: "'Jost', sans-serif" }}>Logo</label>
                       <div className="mt-1 flex justify-center px-4 sm:px-6 pt-4 sm:pt-5 pb-4 sm:pb-6 border-2 border-gray-300 border-dashed rounded-lg">
                         <div className="space-y-1 text-center">
                           <Icon icon="mdi:upload" className="mx-auto h-8 w-8 sm:h-12 sm:w-12 text-gray-400" />
@@ -481,7 +474,7 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation, session }) => {
                   <div className="space-y-6 sm:space-y-8">
                     
                     {/* Admin Users Section */}
-                    <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
+                    <div className="bg-white rounded-3xl border border-gray-100 p-4 sm:p-6 shadow-lg">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-0 mb-4 sm:mb-6">
                         <h3 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
                           <Icon icon="mdi:account-tie" className="text-yellow-400" />
@@ -489,9 +482,10 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation, session }) => {
                         </h3>
                         <button 
                           onClick={() => setIsAddAdminModalOpen(true)}
-                          className="px-3 sm:px-4 py-2 bg-yellow-400 text-white rounded-lg hover:bg-yellow-500 flex items-center justify-center gap-2"
+                          className="px-4 py-2 bg-yellow-500 text-white rounded-xl hover:bg-yellow-600 transition shadow-lg hover:shadow-xl flex items-center justify-center gap-2 font-semibold"
+                          style={{ fontFamily: "'Jost', sans-serif" }}
                         >
-                          <Icon icon="mdi:plus" className="w-4 h-4 sm:w-5 sm:h-5" />
+                          <Icon icon="mdi:plus" className="w-5 h-5" />
                           Add Admin
                         </button>
                       </div>
@@ -617,20 +611,20 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation, session }) => {
                       )}
 
                       <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead>
+                        <table className="min-w-full divide-y divide-gray-100">
+                          <thead className="bg-gradient-to-r from-gray-50 to-white">
                             <tr>
-                              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Name</th>
+                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Email</th>
+                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Role</th>
+                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
+                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
                             </tr>
                           </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
+                          <tbody className="bg-white divide-y divide-gray-100">
                             {settings.userManagement.adminUsers.map((user) => (
-                              <tr key={user.id}>
-                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                              <tr key={user.id} className="hover:bg-gray-50 transition-colors duration-200">
+                                <td className="px-6 py-4 whitespace-nowrap">
                                   <div className="flex items-center">
                                     <div className="flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10">
                                       <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-gray-200 flex items-center justify-center">
@@ -642,22 +636,22 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation, session }) => {
                                     </div>
                                   </div>
                                 </td>
-                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                                <td className="px-6 py-4 whitespace-nowrap">
                                   <div className="text-sm text-gray-900">{user.email}</div>
                                 </td>
-                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-xl bg-blue-100 text-blue-800 shadow-sm">
                                     {user.role}
                                   </span>
                                 </td>
-                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-xl shadow-sm ${
                                     user.status === true ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                                   }`}>
                                     {user.status}
                                   </span>
                                 </td>
-                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                   <button
                                     onClick={() =>
                                       setConfirmModal({
@@ -874,17 +868,17 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation, session }) => {
                       </div>
                     )}
 
-                    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                    <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-lg">
                       <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
+                        <table className="min-w-full divide-y divide-gray-100">
+                          <thead className="bg-gradient-to-r from-gray-50 to-white">
                             <tr>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Time</th>
+                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">User</th>
+                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Action</th>
                             </tr>
                           </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
+                          <tbody className="bg-white divide-y divide-gray-100">
                             {getFilteredLogs().length > 0 ? (
                               getFilteredLogs().map((log) => (
                                 <tr key={log.id} className="hover:bg-gray-50">
@@ -929,7 +923,7 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation, session }) => {
             </div>
           </div>
         </div>
-      </div>
+      </main>
 
       {/* Confirmation Modal */}
       {confirmModal.open && confirmModal.user && (
@@ -947,8 +941,8 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation, session }) => {
             </div>
             <p className="mb-8 text-gray-700">
               {confirmModal.action === 'delete'
-                ? `Are you sure you want to delete ${confirmModal.user.name}? This action cannot be undone.`
-                : `Are you sure you want to ${confirmModal.newStatus ? 'activate' : 'deactivate'} the account for ${confirmModal.user.name}?`}
+                ? `Are you sure you want to delete ${confirmModal.user?.name}? This action cannot be undone.`
+                : `Are you sure you want to ${confirmModal.newStatus ? 'activate' : 'deactivate'} the account for ${confirmModal.user?.name}?`}
             </p>
             <div className="flex justify-end gap-4">
               <button

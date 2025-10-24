@@ -4,15 +4,15 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"tauri dev\" \"nodemon ./backend/nodejs/server.js\"",
-    "vite": "vite",
-    "build": "tsc -b && vite build",
+    "dev": "concurrently \"tauri dev\" \"bun --bun ./backend/nodejs/server.js\"",
+    "vite": "npx vite",
+    "build": "npx tsc -b && npx vite build",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
-    "lint": "eslint .",
-    "preview": "vite preview",
-    "start": "node ./backend/nodejs/server.js"
+    "lint": "npx eslint .",
+    "preview": "npx vite preview",
+    "start": "bun --bun ./backend/nodejs/server.js"
   },
   "dependencies": {
     "@iconify/react": "^6.0.0",

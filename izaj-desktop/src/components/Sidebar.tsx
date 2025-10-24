@@ -51,53 +51,50 @@ const Sidebar = ({
   return (
     <>
       <div
-        className={`fixed inset-0 z-50 bg-black/40 transition-opacity duration-300 lg:hidden ${
+        className={`fixed inset-0 z-50 bg-black/50 backdrop-blur-sm transition-all duration-300 lg:hidden ${
           mobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
         onClick={() => setMobileMenuOpen(false)}
       ></div>
       <aside
         className={`
-          m-0 lg:m-4 z-50 fixed lg:static top-0 left-0
-          h-[calc(100vh-2rem)]
+          m-0 z-50 fixed lg:static top-0 left-0
+          h-screen
           overflow-hidden
           transition-all duration-300 ease-in-out
           ${sidebarCollapsed ? 'w-14 sm:w-16 md:w-20' : 'w-56 sm:w-60 md:w-64'}
-          bg-white shadow-2xl hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] border-r border-white flex flex-col
-          shrink-0 rounded-none lg:rounded-2xl
+          bg-gradient-to-b from-white via-gray-50 to-white border-r border-gray-100 flex flex-col
+          shrink-0 shadow-2xl lg:shadow-xl
           ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0
         `}
-        style={{
-          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08)',
-        }}
       >
         {/* Mobile header: Logo, Title, and Close Button */}
-        <div className="flex items-center justify-between px-2 sm:px-3 md:px-4 py-2 sm:py-3 md:py-4 lg:hidden">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between px-4 py-4 lg:hidden border-b border-gray-100 bg-gradient-to-r from-yellow-50 to-white">
+          <div className="flex items-center gap-3">
             <div className="flex-shrink-0 flex items-center justify-center">
               <img
                 src="/izaj.jpg"
                 alt="IZAJ Logo"
-                className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-full bg-yellow-400 border-4 border-yellow-200 shadow-lg"
+                className="w-10 h-10 rounded-full bg-yellow-400 border-4 border-yellow-200 shadow-lg"
               />
             </div>
             <h1
-              className="text-xl sm:text-2xl md:text-4xl font-regular text-gray-800 drop-shadow-lg"
+              className="text-2xl font-regular text-gray-800 drop-shadow-lg"
               style={{
                 color: "#000000",
                 fontFamily: "'Playfair Display', serif",
                 textShadow: "-2px 0px 2px rgba(0, 0, 0, 0.5)",
-                letterSpacing: "10px",
+                letterSpacing: "8px",
               }}
             >
               IZAJ
             </h1>
           </div>
           <button
-            className="p-1.5 sm:p-2 rounded-lg bg-white hover:bg-yellow-50 border border-yellow-50 shadow transition"
+            className="p-2 rounded-xl bg-white hover:bg-red-50 border border-gray-200 shadow-md transition-all duration-200 active:scale-95"
             onClick={() => setMobileMenuOpen(false)}
           >
-            <Icon icon="mdi:close" className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-gray-600" />
+            <Icon icon="mdi:close" className="w-6 h-6 text-gray-600" />
           </button>
         </div>
 
@@ -126,20 +123,31 @@ const Sidebar = ({
         </div>
 
         <div className="flex-1 overflow-y-auto flex flex-col">
-          <nav className={`${sidebarCollapsed ? 'p-1.5 sm:p-2' : 'p-3 sm:p-4 md:p-6'} flex-1`}>
-            <ul className="space-y-1 sm:space-y-1.5 md:space-y-2">
+          <nav className={`${sidebarCollapsed ? 'p-2' : 'p-4 lg:p-6'} flex-1`}>
+            <ul className="space-y-2">
               {navigationItems.map((item, idx) => (
                 <li key={idx}>
                   <button
                     className={`w-full flex items-center transition-all duration-200 ${
-                      sidebarCollapsed ? 'justify-center px-1.5 sm:px-2 py-1.5 sm:py-2 md:py-3' : 'gap-1.5 sm:gap-2 md:gap-3 px-1.5 sm:px-2 md:px-3 py-1.5 sm:py-2'
-                    } text-gray-800 hover:bg-yellow-100 rounded-lg font-medium relative group ${
-                      currentPage === item.label ? 'bg-yellow-100 border-l-4 border-yellow-400 shadow-md' : ''
+                      sidebarCollapsed ? 'justify-center px-2 py-3' : 'gap-3 px-3 py-3'
+                    } text-gray-700 hover:bg-gradient-to-r hover:from-gray-100 hover:to-gray-200 rounded-xl font-semibold relative group active:scale-95 ${
+                      currentPage === item.label 
+                        ? 'bg-gradient-to-r from-gray-100 to-gray-200 border-l-4 border-gray-900 shadow-lg text-gray-900' 
+                        : 'hover:text-gray-900'
                     }`}
                     onClick={() => handleNavigation(item.label)}
                   >
-                    <Icon icon={item.icon} className={`${sidebarCollapsed ? 'w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6' : 'w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5'} text-gray-800 group-hover:scale-110 transition-transform`} />
-                    {!sidebarCollapsed && <span className="text-xs sm:text-sm md:text-base">{item.label}</span>}
+                    <Icon 
+                      icon={item.icon} 
+                      className={`${sidebarCollapsed ? 'w-6 h-6' : 'w-5 h-5'} transition-transform ${
+                        currentPage === item.label ? 'text-gray-900' : 'text-gray-600 group-hover:text-gray-900'
+                      }`} 
+                    />
+                    {!sidebarCollapsed && (
+                      <span className={`text-sm lg:text-base ${currentPage === item.label ? 'text-gray-900' : 'text-gray-700'} group-hover:text-gray-900`} style={{ fontFamily: "'Jost', sans-serif" }}>
+                        {item.label}
+                      </span>
+                    )}
                   </button>
                 </li>
               ))}
@@ -147,54 +155,62 @@ const Sidebar = ({
           </nav>
       
           <div
-            className={`flex flex-col items-center ${sidebarCollapsed ? 'px-1.5 sm:px-2' : 'px-3 sm:px-4 md:px-6'} pb-3 sm:pb-4 md:pb-6 gap-1.5 sm:gap-2`}
-            style={{ marginTop: '-4rem' }}
+            className={`flex flex-col items-center ${sidebarCollapsed ? 'px-2' : 'px-4 lg:px-6'} pb-4 lg:pb-6 gap-2 border-t border-gray-100 pt-4`}
           >
             <button
-              className={`flex items-center w-full transition ${
-                sidebarCollapsed ? 'justify-center px-1.5 sm:px-2 py-1.5 sm:py-2 md:py-3 mb-1.5 sm:mb-2' : 'gap-1.5 sm:gap-2 md:gap-3 mb-3 sm:mb-4 justify-start'
+              className={`flex items-center w-full transition-all duration-200 active:scale-95 hover:bg-gray-50 rounded-xl ${
+                sidebarCollapsed ? 'justify-center px-2 py-3 mb-2' : 'gap-3 mb-4 justify-start px-3 py-3'
+              } ${
+                currentPage === 'PROFILE' ? 'bg-gray-50 shadow-sm' : ''
               }`}
               onClick={() => handleNavigation('PROFILE')}
             >
               <img
                 src={avatar || "/profile.jpg"}
                 alt="Profile"
-                className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-full bg-gray-300 border-2 border-yellow-200"
+                className="w-8 h-8 rounded-full bg-gray-300 border-2 border-gray-200 shadow-sm"
                 onError={e => { (e.currentTarget as HTMLImageElement).src = "/profile.jpg"; }}
               />
               {!sidebarCollapsed && (
-                <span className="text-[10px] sm:text-xs md:text-sm font-medium text-gray-600 hover:text-gray-800">Profile</span>
+                <span className={`text-sm font-semibold ${
+                  currentPage === 'PROFILE' ? 'text-gray-900' : 'text-gray-600'
+                } hover:text-gray-900`} style={{ fontFamily: "'Jost', sans-serif" }}>Profile</span>
               )}
             </button>
             <button
-              className={`flex items-center w-full transition ${
-                sidebarCollapsed ? 'justify-center px-1.5 sm:px-2 py-1.5 sm:py-2 md:py-3' : 'gap-1.5 sm:gap-2 md:gap-3 justify-start'
+              className={`flex items-center w-full transition-all duration-200 active:scale-95 hover:bg-gray-50 rounded-xl ${
+                sidebarCollapsed ? 'justify-center px-2 py-3' : 'gap-3 justify-start px-3 py-3'
+              } ${
+                currentPage === 'SETTINGS' ? 'bg-gray-50 shadow-sm' : ''
               }`}
               onClick={() => handleNavigation('SETTINGS')}
             >
               <Icon
                 icon="mdi:cog-outline"
-                className={`${sidebarCollapsed ? 'w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6' : 'w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5'} text-gray-400`}
+                className={`${sidebarCollapsed ? 'w-6 h-6' : 'w-5 h-5'} ${
+                  currentPage === 'SETTINGS' ? 'text-gray-900' : 'text-gray-500'
+                }`}
               />
               {!sidebarCollapsed && (
-                <span className="text-[10px] sm:text-xs md:text-sm font-medium text-gray-600 hover:text-gray-800">Settings</span>
+                <span className={`text-sm font-semibold ${
+                  currentPage === 'SETTINGS' ? 'text-gray-900' : 'text-gray-600'
+                } hover:text-gray-900`} style={{ fontFamily: "'Jost', sans-serif" }}>Settings</span>
               )}
             </button>
 
             {/* Logout Button */}
-            
             <button
-              className={`flex items-center w-full mt-1.5 sm:mt-2 transition ${
-                sidebarCollapsed ? 'justify-center px-1.5 sm:px-2 py-1.5 sm:py-2 md:py-3' : 'gap-1.5 sm:gap-2 md:gap-3 justify-start'
+              className={`flex items-center w-full mt-2 transition-all duration-200 active:scale-95 hover:bg-red-50 rounded-xl ${
+                sidebarCollapsed ? 'justify-center px-2 py-3' : 'gap-3 justify-start px-3 py-3'
               }`}
               onClick={handleLogout}
             >
               <Icon
                 icon="mdi:logout"
-                className={`${sidebarCollapsed ? 'w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6' : 'w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5'} text-red-400`}
+                className={`${sidebarCollapsed ? 'w-6 h-6' : 'w-5 h-5'} text-red-500`}
               />
               {!sidebarCollapsed && (
-                <span className="text-[10px] sm:text-xs md:text-sm font-medium text-red-600 hover:text-red-800">Log Out</span>
+                <span className="text-sm font-semibold text-red-600 hover:text-red-700" style={{ fontFamily: "'Jost', sans-serif" }}>Log Out</span>
               )}
             </button>
           

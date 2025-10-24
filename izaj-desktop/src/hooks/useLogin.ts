@@ -12,6 +12,7 @@ export const useLogin = ({ onLogin }: UseLoginProps) => {
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [rememberedAccounts, setRememberedAccounts] = useState<
     { email: string; password: string }[]
   >([]);
@@ -21,24 +22,36 @@ export const useLogin = ({ onLogin }: UseLoginProps) => {
     if (stored) {
       const parsed = JSON.parse(stored);
       setRememberedAccounts(parsed);
+      
+      // Load the last remembered email if available
+      if (parsed.length > 0) {
+        const lastAccount = parsed[parsed.length - 1];
+        setEmail(lastAccount.email);
+      }
     }
   }, []);
 
   useEffect(() => {
     const match = rememberedAccounts.find((acc) => acc.email === email);
-    if (match) {
-      setPassword(decrypt(match.password));
+    if (match && match.password) {
+      try {
+        setPassword(decrypt(match.password));
+      } catch (error) {
+        setPassword('');
+      }
     } else {
       setPassword('');
     }
-  }, [email]);
+  }, [email, rememberedAccounts]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
+    setError('');
+    setSuccess('');
+    
     try {
       const data = await authService.login({ email, password });
-      setError('');
-      setSuccess('');
 
       if (rememberMe) {
         const updated = [
@@ -48,15 +61,21 @@ export const useLogin = ({ onLogin }: UseLoginProps) => {
         localStorage.setItem('rememberedAccounts', JSON.stringify(updated));
         setRememberedAccounts(updated);
       } else {
-        const filtered = rememberedAccounts.filter((acc) => acc.email !== email);
-        localStorage.setItem('rememberedAccounts', JSON.stringify(filtered));
-        setRememberedAccounts(filtered);
+        // Still save email, but don't save password
+        const updated = [
+          ...rememberedAccounts.filter((acc) => acc.email !== email),
+          { email, password: '' },
+        ];
+        localStorage.setItem('rememberedAccounts', JSON.stringify(updated));
+        setRememberedAccounts(updated);
       }
 
       onLogin(data.session);
     } catch (err) {
       console.error('Login error:', err);
       setError(err instanceof Error ? err.message : 'Something went wrong.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -82,6 +101,7 @@ export const useLogin = ({ onLogin }: UseLoginProps) => {
     setRememberMe,
     error,
     success,
+    isLoading,
     handleSubmit,
     handleForgotPassword,
     rememberedAccounts,

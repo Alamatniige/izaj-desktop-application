@@ -64,7 +64,7 @@ function Stock({ onViewChange, session }: StockProps) {
         <div className="flex items-center justify-center h-64">
           <div className="flex items-center gap-2">
             <Icon icon="mdi:loading" className="text-2xl animate-spin text-gray-400" />
-            <span className="text-gray-600">Loading stock data...</span>
+            <span className="text-gray-600" style={{ fontFamily: "'Jost', sans-serif" }}>Loading stock data...</span>
           </div>
         </div>
       </main>
@@ -72,228 +72,299 @@ function Stock({ onViewChange, session }: StockProps) {
   }
 
   return (
-    <main className="flex-1 px-4 sm:px-8 py-4 sm:py-6 overflow-auto">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 lg:gap-0 mb-6 sm:mb-8">
-        <div>
-          <div className="flex items-center gap-3">
-            <Icon icon="mdi:package-variant" className="text-2xl sm:text-3xl text-red-400" />
-            <div className="relative">
-              <button 
-                onClick={() => setShowDropdown(!showDropdown)}
-                className="flex items-center gap-2 text-xl sm:text-2xl font-bold text-gray-800 hover:text-gray-600 transition-colors"
-              >
-                Stock
-                <Icon icon="mdi:chevron-down" className="text-xl" />
-              </button>
+    <div className="flex-1 overflow-y-auto">
+      <main className="flex-1 px-8 py-6">
+        {/* Header section */}
+        <div className="bg-gradient-to-r from-white via-gray-50 to-white rounded-2xl p-6 mb-8 border border-gray-100 shadow-sm -mt-4">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+            {/* Title Section */}
+            <div className="flex-1">
+              <div className="flex items-center gap-4 mb-3">
+                {/* Icon with background */}
+                <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-green-400 to-green-500 rounded-xl shadow-lg">
+                  <Icon icon="mdi:package-variant" className="text-2xl text-white" />
+                </div>
+                
+                {/* Title with dropdown */}
+                <div className="relative">
+                  <button 
+                    onClick={() => setShowDropdown(!showDropdown)}
+                    className="flex items-center gap-3 text-2xl lg:text-3xl font-bold text-gray-800 hover:text-gray-600 transition-colors group"
+                    style={{ fontFamily: "'Jost', sans-serif" }}
+                  >
+                    <span>Stock</span>
+                    <Icon 
+                      icon="mdi:chevron-down" 
+                      className={`text-xl transition-transform duration-200 ${showDropdown ? 'rotate-180' : ''}`} 
+                    />
+                  </button>
+                  
+                  {/* Dropdown Menu */}
+                  {showDropdown && (
+                    <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 py-3 z-20">
+                      <button
+                        onClick={() => onViewChange('products')}
+                        className="w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                        style={{ fontFamily: "'Jost', sans-serif" }}
+                      >
+                        <Icon icon="mdi:grid" className="text-lg" />
+                        <span>Products</span>
+                      </button>
+                      <button
+                        onClick={() => onViewChange('stock')}
+                        className="w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors bg-blue-50 text-blue-700 font-semibold border-l-4 border-blue-500"
+                        style={{ fontFamily: "'Jost', sans-serif" }}
+                      >
+                        <Icon icon="mdi:package-variant" className="text-lg" />
+                        <span>Stock</span>
+                      </button>
+                      <button
+                        onClick={() => onViewChange('sale')}
+                        className="w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                        style={{ fontFamily: "'Jost', sans-serif" }}
+                      >
+                        <Icon icon="mdi:tag-outline" className="text-lg" />
+                        <span>Sale</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
               
-              {/* Dropdown Menu */}
-              {showDropdown && (
-                <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-10">
+              {/* Description */}
+              <p className="text-gray-600 text-base mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                Manage product inventory and stock levels
+              </p>
+            </div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full lg:w-auto">
+              <div className="bg-white p-4 rounded-xl shadow-md border border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-100 rounded-lg">
+                    <Icon icon="mdi:package" className="text-xl text-purple-500" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500" style={{ fontFamily: "'Jost', sans-serif" }}>All Products</p>
+                    <p className="text-lg font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>{stats.allProducts.toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white p-4 rounded-xl shadow-md border border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <Icon icon="mdi:check-circle" className="text-xl text-green-500" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500" style={{ fontFamily: "'Jost', sans-serif" }}>Active Products</p>
+                    <p className="text-lg font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>{stats.activeProducts.toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white p-4 rounded-xl shadow-md border border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-yellow-100 rounded-lg">
+                    <Icon icon="mdi:shopping" className="text-xl text-yellow-500" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500" style={{ fontFamily: "'Jost', sans-serif" }}>Product Sold</p>
+                    <p className="text-lg font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>{stats.productsSold.toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto bg-white rounded-3xl shadow-2xl border border-white p-4 sm:p-8 mb-8"
+          style={{
+            boxShadow: '0 4px 32px 0 rgba(252, 211, 77, 0.07)',
+          }}>
+
+          { /* Filter and search controls */}
+          <div className="bg-gradient-to-r from-gray-50 to-white rounded-2xl p-6 mb-4 border border-gray-100 shadow-sm -mt-12">
+            <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 xl:gap-8">
+              {/* Status Filter Buttons */}
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2 bg-white rounded-xl p-1 shadow-sm border border-gray-200">
                   <button
-                    onClick={() => onViewChange('products')}
-                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 ${
+                      statusFilter === 'All' 
+                        ? 'bg-blue-500 text-white shadow-md' 
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
+                    }`}
+                    onClick={() => setStatusFilter('All')}
+                    style={{ fontFamily: "'Jost', sans-serif" }}
                   >
-                    <Icon icon="mdi:grid" className="text-lg" />
-                    Products
+                    <Icon icon="mdi:format-list-bulleted" width={16} />
+                    All
                   </button>
                   <button
-                    className="w-full px-4 py-2 text-left text-sm bg-yellow-50 text-black font-medium hover:bg-yellow-100 flex items-center gap-2 border-l-4 border-yellow-400"
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 ${
+                      statusFilter === 'Active' 
+                        ? 'bg-green-500 text-white shadow-md' 
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
+                    }`}
+                    onClick={() => setStatusFilter('Active')}
+                    style={{ fontFamily: "'Jost', sans-serif" }}
                   >
-                    <Icon icon="mdi:package-variant" className="text-lg" />
-                    Stock
+                    <Icon icon="mdi:check-circle-outline" width={16} />
+                    Active
                   </button>
                   <button
-                    onClick={() => onViewChange('sale')}
-                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 ${
+                      statusFilter === 'Inactive' 
+                        ? 'bg-red-500 text-white shadow-md' 
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
+                    }`}
+                    onClick={() => setStatusFilter('Inactive')}
+                    style={{ fontFamily: "'Jost', sans-serif" }}
                   >
-                    <Icon icon="mdi:tag-outline" className="text-lg" />
-                    Sale
+                    <Icon icon="mdi:cross-circle-outline" width={16} />
+                    Inactive
                   </button>
+                </div>
+              </div>
+
+              {/* Search and Filter Controls */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto">
+                {/* Search Bar */}
+                <div className="relative flex-1 sm:flex-none sm:w-80">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Icon icon="mdi:magnify" className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input 
+                    type="text" 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search products..." 
+                    className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 shadow-sm"
+                    style={{ fontFamily: "'Jost', sans-serif" }}
+                  />
+                </div>
+
+                {/* Category Filter */}
+                <div className="relative">
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value as FilterType | 'All')}
+                    className="appearance-none bg-white border border-gray-200 rounded-xl px-4 py-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 shadow-sm cursor-pointer"
+                    style={{ fontFamily: "'Jost', sans-serif" }}
+                  >
+                    <option value="All">All Categories</option>
+                    {categories.map(category => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <Icon icon="mdi:chevron-down" className="h-4 w-4 text-gray-400" />
+                  </div>
+                </div>
+
+                {/* Refresh Button */}
+                <button
+                  onClick={handleRefresh}
+                  className="flex items-center justify-center px-3 py-3 bg-white border-2 border-gray-200 text-gray-700 font-semibold rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 transition-all duration-200 relative group"
+                  style={{ fontFamily: "'Jost', sans-serif" }}
+                >
+                  <Icon icon="mdi:refresh" className="text-lg" />
+                  {/* Tooltip */}
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
+                    Refresh
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[800px]">
+              <thead>
+                <tr className="text-sm text-gray-500 border-b border-gray-200">
+                  <th className="font-medium text-left py-4 px-4" style={{ fontFamily: "'Jost', sans-serif" }}>Product Name</th>
+                  <th className="font-medium text-left py-4 px-4" style={{ fontFamily: "'Jost', sans-serif" }}>Price</th>
+                  <th className="font-medium text-left py-4 px-4" style={{ fontFamily: "'Jost', sans-serif" }}>Sold</th>
+                  <th className="font-medium text-left py-4 px-4" style={{ fontFamily: "'Jost', sans-serif" }}>Stock</th>
+                  <th className="font-medium text-left py-4 px-4" style={{ fontFamily: "'Jost', sans-serif" }}>Status</th>
+                  <th className="font-medium text-left py-4 px-4" style={{ fontFamily: "'Jost', sans-serif" }}>Category</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredProducts.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-12">
+                      <div className="flex flex-col items-center justify-center">
+                        <Icon icon="mdi:package-variant-closed" className="text-6xl text-gray-300 mb-4" />
+                        <h3 className="text-lg font-medium text-gray-500 mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                          {searchQuery || selectedCategory !== 'All' || statusFilter !== 'All' 
+                            ? 'No products found matching your filters' 
+                            : 'No products available'}
+                        </h3>
+                        <p className="text-gray-400" style={{ fontFamily: "'Jost', sans-serif" }}>
+                          Try adjusting your search or filter criteria
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredProducts.map((product) => (
+                    <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                      <td className="py-4 px-4">
+                        <div>
+                          <p className="font-medium text-gray-800 text-base" style={{ fontFamily: "'Jost', sans-serif" }}>{product.product_name}</p>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 text-base" style={{ fontFamily: "'Jost', sans-serif" }}>
+                        {formatPrice(product.price)}
+                      </td>
+                      <td className="py-4 px-4 text-base" style={{ fontFamily: "'Jost', sans-serif" }}>
+                        {product.sold || 0}
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className={`font-medium text-base ${getStockStatusColor(product.display_quantity)}`} style={{ fontFamily: "'Jost', sans-serif" }}>
+                          {product.display_quantity}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <span
+                          className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${getStatusBadgeClass(product.publish_status)}`}
+                        >
+                          <span style={{ fontFamily: "'Jost', sans-serif" }}>{product.publish_status ? '🟢' : '🔴'}</span>
+                          <span style={{ fontFamily: "'Jost', sans-serif" }}>{product.publish_status ? 'Active' : 'Inactive'}</span>
+                        </span>
+                      </td>
+                      <td className="py-4 px-4 text-base" style={{ fontFamily: "'Jost', sans-serif" }}>
+                        {typeof product.category === 'object' && product.category !== null
+                          ? product.category.category_name
+                          : product.category || 'Uncategorized'}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination/Footer Info */}
+          {filteredProducts.length > 0 && (
+            <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-gray-500">
+              <div>
+                <span style={{ fontFamily: "'Jost', sans-serif" }}>Showing {filteredProducts.length} of {filteredProducts.length} products</span>
+              </div>
+              {syncStats.synced > 0 && (
+                <div className="flex items-center gap-2">
+                  <Icon icon="mdi:sync" className="text-green-500" />
+                  <span style={{ fontFamily: "'Jost', sans-serif" }}>Last sync: {syncStats.synced} products updated</span>
                 </div>
               )}
             </div>
-          </div>
-          <p className="text-sm sm:text-base text-gray-500 mt-1">
-            {currentView === 'restock' 
-              ? 'Manage product restocking and inventory replenishment' 
-              : 'Manage product inventory and stock levels'}
-          </p>
+          )}
         </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 w-full lg:w-auto">
-          <div className="bg-white p-3 sm:p-4 rounded-xl shadow-md border border-gray-100">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Icon icon="mdi:package" className="text-xl sm:text-2xl text-purple-500" />
-              </div>
-              <div>
-                <p className="text-xs sm:text-sm text-gray-500">All Products</p>
-                <p className="text-lg sm:text-xl font-bold text-gray-800">{stats.allProducts.toLocaleString()}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white p-3 sm:p-4 rounded-xl shadow-md border border-gray-100">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Icon icon="mdi:check-circle" className="text-xl sm:text-2xl text-green-500" />
-              </div>
-              <div>
-                <p className="text-xs sm:text-sm text-gray-500">Active Products</p>
-                <p className="text-lg sm:text-xl font-bold text-gray-800">{stats.activeProducts.toLocaleString()}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white p-3 sm:p-4 rounded-xl shadow-md border border-gray-100">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-yellow-100 rounded-lg">
-                <Icon icon="mdi:shopping" className="text-xl sm:text-2xl text-yellow-500" />
-              </div>
-              <div>
-                <p className="text-xs sm:text-sm text-gray-500">Product Sold</p>
-                <p className="text-lg sm:text-xl font-bold text-gray-800">{stats.productsSold.toLocaleString()}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl border border-gray-100 p-4 sm:p-6">
-        {/* Filters */}
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 lg:gap-0 mb-6">
-          <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-            <select 
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as 'All' | 'Active' | 'Inactive')}
-              className="px-3 sm:px-4 py-2 border border-gray-200 rounded-lg text-sm"
-            >
-              <option value="All">All Products</option>
-              <option value="Active">Active Products</option>
-              <option value="Inactive">Inactive Products</option>
-            </select>
-            <select 
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value as FilterType | 'All')}
-              className="px-3 sm:px-4 py-2 border border-gray-200 rounded-lg text-sm"
-            >
-              <option value="All">Category: All Category</option>
-              {categories.map(category => (
-                <option key={category} value={category}>
-                  Category: {category}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full lg:w-auto">
-            <div className="relative flex-1 lg:flex-none">
-              <Icon icon="mdi:magnify" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Search products..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full lg:w-64 pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm"
-              />
-            </div>
-            <button
-              onClick={handleRefresh}
-              className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              <Icon icon="mdi:refresh" className="text-lg" />
-              <span className="text-sm">Refresh</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[800px]">
-            <thead>
-              <tr className="text-sm text-gray-500 border-b border-gray-200">
-                <th className="font-medium text-left py-3 sm:py-4 px-2 sm:px-4">
-                  <input type="checkbox" className="rounded border-gray-300" />
-                </th>
-                <th className="font-medium text-left py-3 sm:py-4 px-2 sm:px-4">Product Name</th>
-                <th className="font-medium text-left py-3 sm:py-4 px-2 sm:px-4">Price</th>
-                <th className="font-medium text-left py-3 sm:py-4 px-2 sm:px-4">Sold</th>
-                <th className="font-medium text-left py-3 sm:py-4 px-2 sm:px-4">Stock</th>
-                <th className="font-medium text-left py-3 sm:py-4 px-2 sm:px-4">Status</th>
-                <th className="font-medium text-left py-3 sm:py-4 px-2 sm:px-4">Category</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredProducts.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="text-center py-8 text-gray-500">
-                    {searchQuery || selectedCategory !== 'All' || statusFilter !== 'All' 
-                      ? 'No products found matching your filters' 
-                      : 'No products available'}
-                  </td>
-                </tr>
-              ) : (
-                filteredProducts.map((product) => (
-                  <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 sm:py-4 px-2 sm:px-4">
-                      <input type="checkbox" className="rounded border-gray-300" />
-                    </td>
-                    <td className="py-3 sm:py-4 px-2 sm:px-4">
-                      <div>
-                        <p className="font-medium text-gray-800 text-sm sm:text-base">{product.product_name}</p>
-                      </div>
-                    </td>
-                    <td className="py-3 sm:py-4 px-2 sm:px-4 text-sm sm:text-base">
-                      {formatPrice(product.price)}
-                    </td>
-                    <td className="py-3 sm:py-4 px-2 sm:px-4 text-sm sm:text-base">
-                      {product.sold || 0}
-                    </td>
-                    <td className="py-3 sm:py-4 px-2 sm:px-4">
-                    <span className={`font-medium text-sm sm:text-base ${getStockStatusColor(product.display_quantity)}`}>
-                      {product.display_quantity}
-                    </span>
-                    </td>
-                    <td className="py-3 sm:py-4 px-2 sm:px-4">
-                      <td className="py-3 sm:py-4 px-2 sm:px-4">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-small 
-                            ${getStatusBadgeClass(product.publish_status)}`}
-                        >
-                          {product.publish_status ? '🟢' : '🔴'}
-                          {product.publish_status ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                    </td>
-                    <td className="py-3 sm:py-4 px-2 sm:px-4 text-sm sm:text-base">
-                      {typeof product.category === 'object' && product.category !== null
-                        ? product.category.category_name
-                        : product.category || 'Uncategorized'}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination/Footer Info */}
-        {filteredProducts.length > 0 && (
-          <div className="mt-4 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-gray-500">
-            <div>
-              Showing {filteredProducts.length} of {filteredProducts.length} products
-            </div>
-            {syncStats.synced > 0 && (
-              <div className="flex items-center gap-2">
-                <Icon icon="mdi:sync" className="text-green-500" />
-                <span>Last sync: {syncStats.synced} products updated</span>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }
 

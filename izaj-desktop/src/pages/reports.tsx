@@ -14,30 +14,41 @@ function Reports({session}: ReportsProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <div className="flex-1">
-      <div className="px-8 py-8 bg-white">
-        {/* Section Header */}
-        <div className="max-w-7xl mx-auto mb-8">
-          <h2 className="flex items-center gap-3 text-3xl font-bold text-gray-800 mb-2">
-            <Icon icon="mdi:chart-bar" className="text-sky-400 w-8 h-8" />
-            Reports & Analytics
-          </h2>
-          <p className="text-gray-500 text-md">Overview of sales, products, and performance</p>
+    <div className="flex-1 overflow-y-auto">
+      <main className="flex-1 px-8 py-6">
+        {/* Header Section */}
+        <div className="bg-gradient-to-r from-white via-gray-50 to-white rounded-2xl p-6 mb-8 border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-sky-400 to-sky-500 rounded-xl shadow-lg">
+              <Icon icon="mdi:chart-bar" className="text-2xl text-white" />
+            </div>
+            <div>
+              <h2 className="text-2xl lg:text-3xl font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
+                Reports & Analytics
+              </h2>
+              <p className="text-gray-600 text-base" style={{ fontFamily: "'Jost', sans-serif" }}>
+                Overview of sales, products, and performance
+              </p>
+            </div>
+          </div>
         </div>
 
 
         {/* Main Grid */}
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
           {/* Sales Trend (Chart) */}
           <div 
-            className="lg:col-span-2 bg-white rounded-2xl shadow-lg border-l-4 border-sky-200 p-6 flex flex-col hover:scale-[1.01] transition-transform cursor-pointer"
+            className="lg:col-span-2 bg-white rounded-3xl shadow-2xl border border-gray-100 p-6 flex flex-col hover:shadow-xl transition-all duration-200 cursor-pointer"
             onClick={() => setIsExpanded(!isExpanded)}
+            style={{
+              boxShadow: '0 4px 32px 0 rgba(252, 211, 77, 0.07)',
+            }}
           >
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <Icon icon="mdi:chart-line" className="text-sky-400 w-6 h-6" />
-                <h3 className="text-lg font-semibold text-gray-800">Sales Trend</h3>
-                <select className="text-sm text-gray-500 border border-gray-300 rounded px-3 py-1 bg-white">
+                <h3 className="text-lg font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Sales Trend</h3>
+                <select className="text-sm text-gray-500 border border-gray-300 rounded px-3 py-1 bg-white" style={{ fontFamily: "'Jost', sans-serif" }}>
                   <option>Year (2023)</option>
                 </select>
               </div>
@@ -65,7 +76,7 @@ function Reports({session}: ReportsProps) {
                   points="0,200 50,180 100,150 150,140 200,160 250,120 300,100 350,90 400,60 450,40 500,20 500,240 0,240"
                 />
               </svg>
-              <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs text-gray-400 px-4">
+              <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs text-gray-400 px-4" style={{ fontFamily: "'Jost', sans-serif" }}>
                 <span>January</span>
                 <span>March</span>
                 <span>May</span>
@@ -73,7 +84,7 @@ function Reports({session}: ReportsProps) {
                 <span>September</span>
                 <span>November</span>
               </div>
-              <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-xs text-gray-400 py-4">
+              <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-xs text-gray-400 py-4" style={{ fontFamily: "'Jost', sans-serif" }}>
                 <span>600k</span>
                 <span>400k</span>
                 <span>200k</span>
@@ -82,8 +93,8 @@ function Reports({session}: ReportsProps) {
             </div>
             {/* Top Products List */}
             <div className={`mt-8 transition-all duration-300 ${isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
-              <h4 className="text-md font-semibold text-gray-700 mb-2">Top Products</h4>
-              <ul className="text-sm text-gray-800 space-y-1 mb-4">
+              <h4 className="text-md font-semibold text-gray-700 mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>Top Products</h4>
+              <ul className="text-sm text-gray-800 space-y-1 mb-4" style={{ fontFamily: "'Jost', sans-serif" }}>
                 <li>Top 1 <strong>Plug In Pendant Light</strong></li>
                 <li>Top 2 <strong>Modern Chandelier Light</strong></li>
                 <li>Top 3 <strong>Cluster Chandelier</strong></li>
@@ -94,21 +105,31 @@ function Reports({session}: ReportsProps) {
           {/* Right Column Cards */}
           <div className="space-y-8">
             {/* Website Visits */}
-            <div className="bg-white rounded-2xl shadow-lg border-l-4 border-green-200 p-8 flex flex-col items-center hover:scale-[1.01] transition-transform">
+            <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 p-6 flex flex-col items-center hover:shadow-xl transition-all duration-200"
+              style={{
+                boxShadow: '0 4px 32px 0 rgba(252, 211, 77, 0.07)',
+              }}>
               <div className="flex items-center gap-3 mb-6">
-                <Icon icon="mdi:web" className="w-10 h-10 text-green-400" />
-                <h3 className="text-xl font-bold text-green-500">Website Visits</h3>
+                <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-green-500 rounded-xl flex items-center justify-center shadow-lg">
+                  <Icon icon="mdi:web" className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Website Visits</h3>
               </div>
-              <span className="text-6xl font-bold text-center my-auto">123</span>
+              <span className="text-6xl font-bold text-center my-auto text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>123</span>
             </div>
             {/* Stock Level */}
-            <div className="bg-white rounded-2xl shadow-lg border-l-4 border-indigo-200 p-6 flex flex-col items-center hover:scale-[1.01] transition-transform">
+            <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 p-6 flex flex-col items-center hover:shadow-xl transition-all duration-200"
+              style={{
+                boxShadow: '0 4px 32px 0 rgba(252, 211, 77, 0.07)',
+              }}>
               <div className="flex items-center gap-3 mb-4">
-                <Icon icon="mdi:warehouse" className="w-8 h-8 text-indigo-400" />
-                <h3 className="text-lg font-bold text-indigo-500">Stock Level</h3>
+                <div className="w-10 h-10 bg-gradient-to-br from-indigo-400 to-indigo-500 rounded-xl flex items-center justify-center shadow-lg">
+                  <Icon icon="mdi:warehouse" className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Stock Level</h3>
               </div>
               <Icon icon="mdi:chart-line-variant" className="text-5xl text-indigo-400 mb-2" />
-              <button className="mt-4 px-4 py-2 bg-black text-white text-sm rounded-lg flex items-center gap-1 hover:bg-gray-900 transition">
+              <button className="mt-4 px-4 py-2 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white text-sm rounded-xl flex items-center gap-1 hover:from-indigo-600 hover:to-indigo-700 transition shadow-lg hover:shadow-xl" style={{ fontFamily: "'Jost', sans-serif" }}>
                 <Icon icon="mdi:chart-box-outline" />
                 View
               </button>
@@ -117,48 +138,63 @@ function Reports({session}: ReportsProps) {
         </div>
 
         {/* Bottom Grid - Actionable Cards */}
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-10 mb-8">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
           {/* Total Sales Revenue */}
-          <div className="bg-white rounded-2xl shadow-lg border-l-4 border-sky-300 p-6 flex flex-col justify-between hover:scale-[1.01] transition-transform">
+          <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 p-6 flex flex-col justify-between hover:shadow-xl transition-all duration-200"
+            style={{
+              boxShadow: '0 4px 32px 0 rgba(252, 211, 77, 0.07)',
+            }}>
             <div className="flex items-center gap-4 mb-4">
-              <Icon icon="mdi:cash-multiple" className="w-8 h-8 text-sky-400" />
-              <h3 className="text-lg font-bold text-sky-500">Total Sales Revenue</h3>
+              <div className="w-10 h-10 bg-gradient-to-br from-sky-400 to-sky-500 rounded-xl flex items-center justify-center shadow-lg">
+                <Icon icon="mdi:cash-multiple" className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Total Sales Revenue</h3>
             </div>
-            <p className="text-3xl font-bold mb-1">₱ 1,111,111.00</p>
-            <p className="text-sm text-gray-500 mb-4">Your total sale</p>
-            <button className="self-end px-4 py-2 bg-black text-white text-sm rounded-lg flex items-center gap-1 hover:bg-gray-900 transition">
+            <p className="text-3xl font-bold mb-1 text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>₱ 1,111,111.00</p>
+            <p className="text-sm text-gray-500 mb-4" style={{ fontFamily: "'Jost', sans-serif" }}>Your total sale</p>
+            <button className="self-end px-4 py-2 bg-gradient-to-r from-sky-500 to-sky-600 text-white text-sm rounded-xl flex items-center gap-1 hover:from-sky-600 hover:to-sky-700 transition shadow-lg hover:shadow-xl" style={{ fontFamily: "'Jost', sans-serif" }}>
               <Icon icon="mdi:eye-outline" />
               View
             </button>
           </div>
           {/* Best Sales by Product */}
-          <div className="bg-white rounded-2xl shadow-lg border-l-4 border-yellow-300 p-6 flex flex-col justify-between hover:scale-[1.01] transition-transform">
+          <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 p-6 flex flex-col justify-between hover:shadow-xl transition-all duration-200"
+            style={{
+              boxShadow: '0 4px 32px 0 rgba(252, 211, 77, 0.07)',
+            }}>
             <div className="flex items-center gap-4 mb-4">
-              <Icon icon="mdi:package-variant-closed" className="w-8 h-8 text-yellow-400" />
-              <h3 className="text-lg font-bold text-yellow-500">Best Sales by Product</h3>
+              <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-xl flex items-center justify-center shadow-lg">
+                <Icon icon="mdi:package-variant-closed" className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Best Sales by Product</h3>
             </div>
-            <p className="text-lg font-semibold">Plug In Pendant Light</p>
-            <p className="text-sm text-gray-500 mb-4">#PROD–000001</p>
-            <button className="self-end px-4 py-2 bg-black text-white text-sm rounded-lg flex items-center gap-1 hover:bg-gray-900 transition">
+            <p className="text-lg font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Plug In Pendant Light</p>
+            <p className="text-sm text-gray-500 mb-4" style={{ fontFamily: "'Jost', sans-serif" }}>#PROD–000001</p>
+            <button className="self-end px-4 py-2 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white text-sm rounded-xl flex items-center gap-1 hover:from-yellow-600 hover:to-yellow-700 transition shadow-lg hover:shadow-xl" style={{ fontFamily: "'Jost', sans-serif" }}>
               <Icon icon="mdi:chart-box-outline" />
               View
             </button>
           </div>
           {/* Best Sales by Category */}
-          <div className="bg-white rounded-2xl shadow-lg border-l-4 border-pink-300 p-6 flex flex-col justify-between hover:scale-[1.01] transition-transform">
+          <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 p-6 flex flex-col justify-between hover:shadow-xl transition-all duration-200"
+            style={{
+              boxShadow: '0 4px 32px 0 rgba(252, 211, 77, 0.07)',
+            }}>
             <div className="flex items-center gap-4 mb-4">
-              <Icon icon="mdi:box" className="w-8 h-8 text-pink-400" />
-              <h3 className="text-lg font-bold text-pink-500">Best Sales by Category</h3>
+              <div className="w-10 h-10 bg-gradient-to-br from-pink-400 to-pink-500 rounded-xl flex items-center justify-center shadow-lg">
+                <Icon icon="mdi:box" className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Best Sales by Category</h3>
             </div>
-            <p className="text-lg font-semibold">Pendant Light</p>
-            <p className="text-sm text-gray-500 mb-4">Best product sale</p>
-            <button className="self-end px-4 py-2 bg-black text-white text-sm rounded-lg flex items-center gap-1 hover:bg-gray-900 transition">
+            <p className="text-lg font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Pendant Light</p>
+            <p className="text-sm text-gray-500 mb-4" style={{ fontFamily: "'Jost', sans-serif" }}>Best product sale</p>
+            <button className="self-end px-4 py-2 bg-gradient-to-r from-pink-500 to-pink-600 text-white text-sm rounded-xl flex items-center gap-1 hover:from-pink-600 hover:to-pink-700 transition shadow-lg hover:shadow-xl" style={{ fontFamily: "'Jost', sans-serif" }}>
               <Icon icon="mdi:chart-box-outline" />
               View
             </button>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

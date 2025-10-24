@@ -61,20 +61,26 @@ const Dashboard = ({ session }: DashboardProps) => {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-0">
-      <main
-        className="flex-1 px-8 py-8 bg-white
-          scrollbar-thin scrollbar-thumb-yellow-200 scrollbar-track-gray-100 transition-all duration-300 rounded-3xl mb-8"
-        style={{
-          minHeight: 0,
-          boxShadow: '0 4px 32px 0 rgba(252, 211, 77, 0.07)',
-        }}
-      >
-        <div className="max-w-7xl mx-auto space-y-10 pb-8">
-          <h2 className="flex items-center gap-3 text-3xl font-bold text-gray-800 mb-8">
-            <Icon icon="mdi:view-dashboard" className="text-yellow-400 w-8 h-8" />
-            Dashboard
-          </h2>
+    <div className="flex-1 overflow-y-auto">
+      <main className="flex-1 px-8 py-6">
+        {/* Header section */}
+        <div className="bg-gradient-to-r from-white via-gray-50 to-white rounded-2xl p-6 mb-8 border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-xl shadow-lg">
+              <Icon icon="mdi:view-dashboard" className="text-2xl text-white" />
+            </div>
+            <div>
+              <h2 className="text-2xl lg:text-3xl font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
+                Dashboard
+              </h2>
+              <p className="text-gray-600 text-base" style={{ fontFamily: "'Jost', sans-serif" }}>
+                Overview of your business performance and analytics
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto space-y-8 pb-8">
 
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
@@ -83,20 +89,24 @@ const Dashboard = ({ session }: DashboardProps) => {
           ) : (
             <>
               {/* Top Row - Stats Cards */}
-              <DragDropContext onDragEnd={handleDragEnd}>
-                <Droppable 
-                droppableId="stats-cards" 
-                direction="horizontal" 
-                isDropDisabled={false} 
-                isCombineEnabled={false}
-                ignoreContainerClipping={false}  
-                >
-                  {(provided) => (
-                    <div
-                      className="grid grid-cols-1 lg:grid-cols-3 gap-8"
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                    >
+              <div className="bg-white rounded-3xl shadow-2xl border border-white p-4 sm:p-8 mb-8"
+                style={{
+                  boxShadow: '0 4px 32px 0 rgba(252, 211, 77, 0.07)',
+                }}>
+                <DragDropContext onDragEnd={handleDragEnd}>
+                  <Droppable 
+                  droppableId="stats-cards" 
+                  direction="horizontal" 
+                  isDropDisabled={false} 
+                  isCombineEnabled={false}
+                  ignoreContainerClipping={false}  
+                  >
+                    {(provided) => (
+                      <div
+                        className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                      >
                       {cardOrder.map((cardId, index) => {
                         switch (cardId) {
                           case 'customer':
@@ -112,8 +122,8 @@ const Dashboard = ({ session }: DashboardProps) => {
                                   >
                                     <div className="flex justify-between items-start mb-4">
                                       <div>
-                                        <h3 className="text-lg font-semibold text-gray-800">Customer</h3>
-                                        <p className="text-gray-500 text-sm">Total registered users</p>
+                                        <h3 className="text-lg font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Customer</h3>
+                                        <p className="text-gray-500 text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>Total registered users</p>
                                       </div>
                                     </div>
                                     <div className="flex items-center justify-center mb-6">
@@ -133,14 +143,14 @@ const Dashboard = ({ session }: DashboardProps) => {
                                           />
                                         </svg>
                                         <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                          <span className="text-3xl font-bold text-gray-800">
+                                          <span className="text-3xl font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
                                             {stats?.customers.total || 0}
                                           </span>
-                                          <span className="text-gray-500 text-sm">Total</span>
+                                          <span className="text-gray-500 text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>Total</span>
                                         </div>
                                       </div>
                                     </div>
-                                    <div className="text-gray-400 text-xs">
+                                    <div className="text-gray-400 text-xs" style={{ fontFamily: "'Jost', sans-serif" }}>
                                       Data from website registrations
                                     </div>
                                   </div>
@@ -158,7 +168,7 @@ const Dashboard = ({ session }: DashboardProps) => {
                                     className={`bg-white rounded-2xl shadow-lg border-l-4 border-blue-200 p-6 transition-all duration-200 hover:scale-[1.025] hover:shadow-2xl hover:border-blue-400 cursor-move
                                       ${snapshot.isDragging ? 'shadow-2xl scale-105' : ''}`}
                                   >
-                                    <h3 className="text-lg font-semibold text-gray-800 mb-6">Order Status</h3>
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-6" style={{ fontFamily: "'Jost', sans-serif" }}>Order Status</h3>
                                     <div className="space-y-4">
                                       {stats && Object.entries(stats.orders).filter(([key]) => key !== 'total').map(([status, count]) => (
                                         <div key={status} className="flex justify-between items-center">
@@ -169,11 +179,11 @@ const Dashboard = ({ session }: DashboardProps) => {
                                                 className={`w-3 h-3 ${getOrderStatusColor(status)}`}
                                               />
                                             </span>
-                                            <span className="text-sm text-gray-600 capitalize">
+                                            <span className="text-sm text-gray-600 capitalize" style={{ fontFamily: "'Jost', sans-serif" }}>
                                               {status.replace('_', ' ')}
                                             </span>
                                           </div>
-                                          <span className="font-semibold text-gray-800">{count}</span>
+                                          <span className="font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>{count}</span>
                                         </div>
                                       ))}
                                     </div>
@@ -193,9 +203,10 @@ const Dashboard = ({ session }: DashboardProps) => {
                                       ${snapshot.isDragging ? 'shadow-2xl scale-105' : ''}`}
                                   >
                                     <div className="flex justify-between items-start mb-4">
-                                      <h3 className="text-lg font-semibold text-gray-800">Earning</h3>
+                                      <h3 className="text-lg font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Earning</h3>
                                       <select 
                                         className="text-sm text-gray-500 bg-transparent border-none outline-none cursor-pointer"
+                                        style={{ fontFamily: "'Jost', sans-serif" }}
                                         value={selectedYear}
                                         onChange={(e) => setSelectedYear(Number(e.target.value))}
                                       >
@@ -204,7 +215,7 @@ const Dashboard = ({ session }: DashboardProps) => {
                                       </select>
                                     </div>
                                     <div className="flex items-center gap-2 mb-6">
-                                      <span className="text-2xl font-bold text-gray-800">
+                                      <span className="text-2xl font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
                                         {stats?.earnings.total || '₱0.00'}
                                       </span>
                                       {stats && stats.earnings.growth && parseFloat(stats.earnings.growth) !== 0 && (
@@ -212,7 +223,7 @@ const Dashboard = ({ session }: DashboardProps) => {
                                           parseFloat(stats.earnings.growth) >= 0 
                                             ? 'text-green-600 bg-green-100' 
                                             : 'text-red-600 bg-red-100'
-                                        }`}>
+                                        }`} style={{ fontFamily: "'Jost', sans-serif" }}>
                                           {stats.earnings.growth}%
                                         </span>
                                       )}
@@ -246,26 +257,32 @@ const Dashboard = ({ session }: DashboardProps) => {
                         }
                       })}
                       {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
-              </DragDropContext>
+                      </div>
+                    )}
+                  </Droppable>
+                </DragDropContext>
+              </div>
 
               {/* Bottom Row Stats Cards */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-                {/* Sales Report Container */}
-                <div className="lg:col-span-2">
-                  <div
-                    className={`bg-white rounded-2xl shadow-lg border-l-4 border-indigo-200 p-6 transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl hover:border-indigo-400 cursor-pointer
-                      ${salesExpanded ? 'h-auto' : 'h-[400px]'}
-                    `}
-                    onClick={() => setSalesExpanded((prev) => !prev)}
-                  >
+              <div className="bg-white rounded-3xl shadow-2xl border border-white p-4 sm:p-8 mb-8"
+                style={{
+                  boxShadow: '0 4px 32px 0 rgba(252, 211, 77, 0.07)',
+                }}>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  {/* Sales Report Container */}
+                  <div className="lg:col-span-2">
+                    <div
+                      className={`bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl shadow-lg border border-indigo-100 p-6 transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl hover:border-indigo-200 cursor-pointer
+                        ${salesExpanded ? 'h-auto' : 'h-[400px]'}
+                      `}
+                      onClick={() => setSalesExpanded((prev) => !prev)}
+                    >
                     <div className="flex items-center gap-2 mb-6">
                       <Icon icon="mdi:chart-line" className="text-indigo-400 w-6 h-6" />
-                      <h3 className="text-lg font-semibold text-gray-800">Sales Report</h3>
+                      <h3 className="text-lg font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Sales Report</h3>
                       <select 
                         className="text-sm text-gray-500 border border-gray-300 rounded px-3 py-1 bg-white"
+                        style={{ fontFamily: "'Jost', sans-serif" }}
                         value={selectedYear}
                         onChange={(e) => {
                           e.stopPropagation();
@@ -316,7 +333,7 @@ const Dashboard = ({ session }: DashboardProps) => {
                           );
                         })()}
                       </svg>
-                      <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs text-gray-400 px-4">
+                      <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs text-gray-400 px-4" style={{ fontFamily: "'Jost', sans-serif" }}>
                         <span>Jan</span>
                         <span>Mar</span>
                         <span>May</span>
@@ -324,7 +341,7 @@ const Dashboard = ({ session }: DashboardProps) => {
                         <span>Sep</span>
                         <span>Nov</span>
                       </div>
-                      <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-xs text-gray-400 py-4">
+                      <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-xs text-gray-400 py-4" style={{ fontFamily: "'Jost', sans-serif" }}>
                         {(() => {
                           const maxValue = Math.max(...monthlyEarnings, 1);
                           return (
@@ -343,35 +360,35 @@ const Dashboard = ({ session }: DashboardProps) => {
                       <div className="mt-8 transition-all duration-300">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                           <div className="bg-indigo-50 rounded-xl p-4 flex flex-col items-center">
-                            <span className="text-2xl font-bold text-indigo-600">
+                            <span className="text-2xl font-bold text-indigo-600" style={{ fontFamily: "'Jost', sans-serif" }}>
                               {salesReport.summary.totalSales}
                             </span>
-                            <span className="text-xs text-gray-500 mt-1">Total Sales</span>
+                            <span className="text-xs text-gray-500 mt-1" style={{ fontFamily: "'Jost', sans-serif" }}>Total Sales</span>
                           </div>
                           <div className="bg-indigo-50 rounded-xl p-4 flex flex-col items-center">
-                            <span className="text-2xl font-bold text-indigo-600">
+                            <span className="text-2xl font-bold text-indigo-600" style={{ fontFamily: "'Jost', sans-serif" }}>
                               {salesReport.summary.averageGrowth}%
                             </span>
-                            <span className="text-xs text-gray-500 mt-1">Growth Rate</span>
+                            <span className="text-xs text-gray-500 mt-1" style={{ fontFamily: "'Jost', sans-serif" }}>Growth Rate</span>
                           </div>
                           <div className="bg-indigo-50 rounded-xl p-4 flex flex-col items-center">
-                            <span className="text-2xl font-bold text-indigo-600">
+                            <span className="text-2xl font-bold text-indigo-600" style={{ fontFamily: "'Jost', sans-serif" }}>
                               {salesReport.summary.totalOrders}
                             </span>
-                            <span className="text-xs text-gray-500 mt-1">Transactions</span>
+                            <span className="text-xs text-gray-500 mt-1" style={{ fontFamily: "'Jost', sans-serif" }}>Transactions</span>
                           </div>
                         </div>
                       </div>
                     )}
+                    </div>
                   </div>
-                </div>
 
-                {/* Best Selling Container */}
-                <div className="lg:col-span-1">
-                  <div className="bg-white rounded-2xl shadow-lg border-l-4 border-pink-200 p-6 transition-transform duration-200 hover:scale-[1.01] hover:shadow-2xl hover:border-pink-400 h-[400px]">
+                  {/* Best Selling Container */}
+                  <div className="lg:col-span-1">
+                    <div className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-2xl shadow-lg border border-pink-100 p-6 transition-transform duration-200 hover:scale-[1.01] hover:shadow-2xl hover:border-pink-200 h-[400px]">
                     <div className="flex items-center gap-2 mb-6">
                       <Icon icon="mdi:star" className="text-pink-400 w-6 h-6" />
-                      <h3 className="text-lg font-semibold text-gray-800">Best Selling</h3>
+                      <h3 className="text-lg font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Best Selling</h3>
                     </div>
                     <div className="space-y-4 overflow-y-auto h-[calc(100%-4rem)]">
                       {bestSelling.length > 0 ? (
@@ -381,11 +398,11 @@ const Dashboard = ({ session }: DashboardProps) => {
                               <Icon icon="mdi:lightbulb-outline" className="w-6 h-6 text-gray-400" />
                             </div>
                             <div className="flex-1">
-                              <p className="font-medium text-sm text-gray-800">{item.product_name}</p>
-                              <p className="text-gray-500 text-xs">{item.total_quantity} sold</p>
+                              <p className="font-medium text-sm text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>{item.product_name}</p>
+                              <p className="text-gray-500 text-xs" style={{ fontFamily: "'Jost', sans-serif" }}>{item.total_quantity} sold</p>
                             </div>
                             <div className="text-right">
-                              <p className="text-sm font-semibold text-gray-800">
+                              <p className="text-sm font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
                                 {formatCurrency(item.total_revenue)}
                               </p>
                             </div>
@@ -394,11 +411,12 @@ const Dashboard = ({ session }: DashboardProps) => {
                       ) : (
                         <div className="flex flex-col items-center justify-center h-full text-gray-400">
                           <Icon icon="mdi:package-variant" className="w-12 h-12 mb-2" />
-                          <p className="text-sm">No sales data yet</p>
+                          <p className="text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>No sales data yet</p>
                         </div>
                       )}
                     </div>
                   </div>
+                    </div>
                 </div>
               </div>
             </>
