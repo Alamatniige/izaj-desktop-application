@@ -14,10 +14,6 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
     reviews,
     summary,
     isLoading,
-    searchQuery,
-    setSearchQuery,
-    activeFilter,
-    setActiveFilter,
     updateReviewStatus,
     addReply,
     deleteReview,
@@ -32,14 +28,6 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
   // States for action buttons
   const [isReplying, setIsReplying] = useState(false);
   const [replyText, setReplyText] = useState('');
-
-  const handleFilterClick = (filter: string) => {
-    setActiveFilter(filter);
-  };
-
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-  };
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     setAllSelected(e.target.checked);
@@ -65,10 +53,6 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
       setIsModalOpen(true);
       setIsFeedbackModalOpen(true);
     }
-  };
-
-  const handleAdvancedFilter = () => {
-    console.log('Opening advanced filter');
   };
 
   const closeModal = () => {
@@ -201,78 +185,6 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
           </div>
         </div>
 
-        {/* Filter Section */}
-        <div className="max-w-6xl mx-auto bg-white rounded-3xl shadow-2xl border border-white p-4 sm:p-8 mb-2 flex flex-col items-center"
-          style={{
-            boxShadow: '0 4px 32px 0 rgba(252, 211, 77, 0.07)',
-          }}>
-          <div className="bg-gradient-to-r from-gray-50 to-white rounded-2xl px-4 py-3 mb-1 border border-gray-100 shadow-sm -mt-12 w-full">
-            {/* Status Filter Buttons */}
-            <div className="flex flex-wrap lg:flex-nowrap items-center justify-between gap-4 mb-2 mt-2">
-              <div className="flex flex-wrap gap-2 flex-1">
-                {['All Feedbacks', 'Published', 'Pending'].map((label) => {
-                  const colors: Record<string, string> = {
-                    'All Feedbacks': 'bg-blue-500',
-                    'Published': 'bg-green-500',
-                    'Pending': 'bg-yellow-500'
-                  };
-                  const icons: Record<string, string> = {
-                    'All Feedbacks': 'mdi:star-outline',
-                    'Published': 'mdi:check-circle',
-                    'Pending': 'mdi:clock-outline'
-                  };
-                  
-                  return (
-                    <button
-                      key={label}
-                      onClick={() => handleFilterClick(label)}
-                      className={`px-3 py-1.5 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
-                        activeFilter === label
-                          ? `${colors[label]} text-white shadow-lg`
-                          : 'bg-white text-gray-700 hover:bg-gray-50 shadow-sm border border-gray-200'
-                      }`}
-                      style={{ fontFamily: "'Jost', sans-serif" }}
-                      type="button"
-                    >
-                      <Icon icon={icons[label]} className="w-4 h-4" />
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Search Bar and Advanced Filter Button */}
-              <div className="flex flex-col sm:flex-row gap-2 flex-shrink-0">
-                {/* Search Bar */}
-                <div className="relative w-48">
-                  <div className="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                    <Icon icon="mdi:magnify" className="w-5 h-5 text-gray-400" />
-                  </div>
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={handleSearch}
-                    placeholder="Search feedback..."
-                    className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all duration-200"
-                    style={{ fontFamily: "'Jost', sans-serif" }}
-                  />
-                </div>
-
-                {/* Advanced Filter Button */}
-                <button
-                  className="px-3 py-2 bg-white border border-gray-200 text-gray-700 font-semibold rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
-                  style={{ fontFamily: "'Jost', sans-serif" }}
-                  onClick={handleAdvancedFilter}
-                  type="button"
-                  title="Advanced Filter"
-                >
-                  <Icon icon="mdi:filter-variant" className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Feedback Table */}
         <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden mx-auto"
           style={{
@@ -369,7 +281,7 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
             onClick={closeModal}
           >
             <div
-              className="relative bg-white rounded-3xl shadow-2xl border border-gray-100 max-w-6xl w-full max-h-[85vh] overflow-hidden transform transition-all relative flex flex-col my-4 sm:my-6"
+              className=" bg-white rounded-3xl shadow-2xl border border-gray-100 max-w-6xl w-full max-h-[85vh] overflow-hidden transform transition-all relative flex flex-col my-4 sm:my-6"
               style={{
                 boxShadow: '0 20px 60px 0 rgba(0, 0, 0, 0.15)',
               }}

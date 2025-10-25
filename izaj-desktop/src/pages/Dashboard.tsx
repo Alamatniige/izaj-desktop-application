@@ -14,6 +14,7 @@ const Dashboard = ({ session }: DashboardProps) => {
     stats,
     salesReport,
     bestSelling,
+    categorySales,
     monthlyEarnings,
     isLoading,
     selectedYear,
@@ -203,7 +204,7 @@ const Dashboard = ({ session }: DashboardProps) => {
                                       ${snapshot.isDragging ? 'shadow-2xl scale-105' : ''}`}
                                   >
                                     <div className="flex justify-between items-start mb-4">
-                                      <h3 className="text-lg font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Earning</h3>
+                                      <h3 className="text-lg font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Total Revenue</h3>
                                       <select 
                                         className="text-sm text-gray-500 bg-transparent border-none outline-none cursor-pointer"
                                         style={{ fontFamily: "'Jost', sans-serif" }}
@@ -263,160 +264,198 @@ const Dashboard = ({ session }: DashboardProps) => {
                 </DragDropContext>
               </div>
 
+              {/* Sales Report - Full Width */}
+              <div className="bg-white rounded-3xl shadow-2xl border border-white p-4 sm:p-8 mb-8"
+                style={{
+                  boxShadow: '0 4px 32px 0 rgba(252, 211, 77, 0.07)',
+                }}>
+                <div
+                  className={`bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl shadow-lg border border-indigo-100 p-6 transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl hover:border-indigo-200 cursor-pointer
+                    ${salesExpanded ? 'h-auto' : 'h-[400px]'}
+                  `}
+                  onClick={() => setSalesExpanded((prev) => !prev)}
+                >
+                <div className="flex items-center gap-2 mb-6">
+                  <Icon icon="mdi:chart-line" className="text-indigo-400 w-6 h-6" />
+                  <h3 className="text-lg font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Sales Report</h3>
+                  <select 
+                    className="text-sm text-gray-500 border border-gray-300 rounded px-3 py-1 bg-white"
+                    style={{ fontFamily: "'Jost', sans-serif" }}
+                    value={selectedYear}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      setSelectedYear(Number(e.target.value));
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <option value={new Date().getFullYear()}>Year ({new Date().getFullYear()})</option>
+                    <option value={new Date().getFullYear() - 1}>Year ({new Date().getFullYear() - 1})</option>
+                  </select>
+                  <span className="ml-auto">
+                    <Icon
+                      icon={salesExpanded ? "mdi:chevron-up" : "mdi:chevron-down"}
+                      className="w-6 h-6 text-gray-400"
+                    />
+                  </span>
+                </div>
+                <div className="h-72 relative">
+                  <svg className="w-full h-full" viewBox="0 0 500 240">
+                    <defs>
+                      <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.3"/>
+                        <stop offset="100%" stopColor="#3b82f6" stopOpacity="0"/>
+                      </linearGradient>
+                    </defs>
+                    {/* Generate chart based on monthly earnings */}
+                    {(() => {
+                      const maxValue = Math.max(...monthlyEarnings, 1);
+                      const points = monthlyEarnings.map((value, index) => {
+                        const x = (index / 11) * 500;
+                        const y = 200 - ((value / maxValue) * 180);
+                        return `${x},${y}`;
+                      }).join(' ');
+                      
+                      return (
+                        <>
+                          <polyline
+                            fill="none"
+                            stroke="#3b82f6"
+                            strokeWidth="3"
+                            points={points}
+                          />
+                          <polygon
+                            fill="url(#gradient)"
+                            points={`${points} 500,240 0,240`}
+                          />
+                        </>
+                      );
+                    })()}
+                  </svg>
+                  <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs text-gray-400 px-4" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    <span>Jan</span>
+                    <span>Mar</span>
+                    <span>May</span>
+                    <span>Jul</span>
+                    <span>Sep</span>
+                    <span>Nov</span>
+                  </div>
+                  <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-xs text-gray-400 py-4" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    {(() => {
+                      const maxValue = Math.max(...monthlyEarnings, 1);
+                      return (
+                        <>
+                          <span>{formatCurrency(maxValue)}</span>
+                          <span>{formatCurrency(maxValue * 0.66)}</span>
+                          <span>{formatCurrency(maxValue * 0.33)}</span>
+                          <span>₱0</span>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+                {/* Expanded content */}
+                {salesExpanded && salesReport && (
+                  <div className="mt-8 transition-all duration-300">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="bg-indigo-50 rounded-xl p-4 flex flex-col items-center">
+                        <span className="text-2xl font-bold text-indigo-600" style={{ fontFamily: "'Jost', sans-serif" }}>
+                          {salesReport.summary.totalSales}
+                        </span>
+                        <span className="text-xs text-gray-500 mt-1" style={{ fontFamily: "'Jost', sans-serif" }}>Total Sales</span>
+                      </div>
+                      <div className="bg-indigo-50 rounded-xl p-4 flex flex-col items-center">
+                        <span className="text-2xl font-bold text-indigo-600" style={{ fontFamily: "'Jost', sans-serif" }}>
+                          {salesReport.summary.averageGrowth}%
+                        </span>
+                        <span className="text-xs text-gray-500 mt-1" style={{ fontFamily: "'Jost', sans-serif" }}>Growth Rate</span>
+                      </div>
+                      <div className="bg-indigo-50 rounded-xl p-4 flex flex-col items-center">
+                        <span className="text-2xl font-bold text-indigo-600" style={{ fontFamily: "'Jost', sans-serif" }}>
+                          {salesReport.summary.totalOrders}
+                        </span>
+                        <span className="text-xs text-gray-500 mt-1" style={{ fontFamily: "'Jost', sans-serif" }}>Transactions</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                </div>
+              </div>
+
               {/* Bottom Row Stats Cards */}
               <div className="bg-white rounded-3xl shadow-2xl border border-white p-4 sm:p-8 mb-8"
                 style={{
                   boxShadow: '0 4px 32px 0 rgba(252, 211, 77, 0.07)',
                 }}>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  {/* Sales Report Container */}
-                  <div className="lg:col-span-2">
-                    <div
-                      className={`bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl shadow-lg border border-indigo-100 p-6 transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl hover:border-indigo-200 cursor-pointer
-                        ${salesExpanded ? 'h-auto' : 'h-[400px]'}
-                      `}
-                      onClick={() => setSalesExpanded((prev) => !prev)}
-                    >
-                    <div className="flex items-center gap-2 mb-6">
-                      <Icon icon="mdi:chart-line" className="text-indigo-400 w-6 h-6" />
-                      <h3 className="text-lg font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Sales Report</h3>
-                      <select 
-                        className="text-sm text-gray-500 border border-gray-300 rounded px-3 py-1 bg-white"
-                        style={{ fontFamily: "'Jost', sans-serif" }}
-                        value={selectedYear}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          setSelectedYear(Number(e.target.value));
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <option value={new Date().getFullYear()}>Year ({new Date().getFullYear()})</option>
-                        <option value={new Date().getFullYear() - 1}>Year ({new Date().getFullYear() - 1})</option>
-                      </select>
-                      <span className="ml-auto">
-                        <Icon
-                          icon={salesExpanded ? "mdi:chevron-up" : "mdi:chevron-down"}
-                          className="w-6 h-6 text-gray-400"
-                        />
-                      </span>
-                    </div>
-                    <div className="h-72 relative">
-                      <svg className="w-full h-full" viewBox="0 0 500 240">
-                        <defs>
-                          <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.3"/>
-                            <stop offset="100%" stopColor="#3b82f6" stopOpacity="0"/>
-                          </linearGradient>
-                        </defs>
-                        {/* Generate chart based on monthly earnings */}
-                        {(() => {
-                          const maxValue = Math.max(...monthlyEarnings, 1);
-                          const points = monthlyEarnings.map((value, index) => {
-                            const x = (index / 11) * 500;
-                            const y = 200 - ((value / maxValue) * 180);
-                            return `${x},${y}`;
-                          }).join(' ');
-                          
-                          return (
-                            <>
-                              <polyline
-                                fill="none"
-                                stroke="#3b82f6"
-                                strokeWidth="3"
-                                points={points}
-                              />
-                              <polygon
-                                fill="url(#gradient)"
-                                points={`${points} 500,240 0,240`}
-                              />
-                            </>
-                          );
-                        })()}
-                      </svg>
-                      <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs text-gray-400 px-4" style={{ fontFamily: "'Jost', sans-serif" }}>
-                        <span>Jan</span>
-                        <span>Mar</span>
-                        <span>May</span>
-                        <span>Jul</span>
-                        <span>Sep</span>
-                        <span>Nov</span>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {/* Top Solds Container */}
+                  <div>
+                    <div className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-2xl shadow-lg border border-pink-100 p-6 transition-transform duration-200 hover:scale-[1.01] hover:shadow-2xl hover:border-pink-200 h-[400px]">
+                      <div className="flex items-center gap-2 mb-6">
+                        <Icon icon="mdi:star" className="text-pink-400 w-6 h-6" />
+                        <h3 className="text-lg font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Top Sold Products</h3>
                       </div>
-                      <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-xs text-gray-400 py-4" style={{ fontFamily: "'Jost', sans-serif" }}>
-                        {(() => {
-                          const maxValue = Math.max(...monthlyEarnings, 1);
-                          return (
-                            <>
-                              <span>{formatCurrency(maxValue)}</span>
-                              <span>{formatCurrency(maxValue * 0.66)}</span>
-                              <span>{formatCurrency(maxValue * 0.33)}</span>
-                              <span>₱0</span>
-                            </>
-                          );
-                        })()}
+                      <div className="space-y-4 overflow-y-auto h-[calc(100%-4rem)]">
+                        {bestSelling.length > 0 ? (
+                          bestSelling.map((item, index) => (
+                            <div key={index} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50">
+                              <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center">
+                                <Icon icon="mdi:lightbulb-outline" className="w-6 h-6 text-gray-400" />
+                              </div>
+                              <div className="flex-1">
+                                <p className="font-medium text-sm text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>{item.product_name}</p>
+                                <p className="text-gray-500 text-xs" style={{ fontFamily: "'Jost', sans-serif" }}>{item.total_quantity} sold</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
+                                  {formatCurrency(item.total_revenue)}
+                                </p>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                            <Icon icon="mdi:package-variant" className="w-12 h-12 mb-2" />
+                            <p className="text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>No sales data yet</p>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                    {/* Expanded content */}
-                    {salesExpanded && salesReport && (
-                      <div className="mt-8 transition-all duration-300">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                          <div className="bg-indigo-50 rounded-xl p-4 flex flex-col items-center">
-                            <span className="text-2xl font-bold text-indigo-600" style={{ fontFamily: "'Jost', sans-serif" }}>
-                              {salesReport.summary.totalSales}
-                            </span>
-                            <span className="text-xs text-gray-500 mt-1" style={{ fontFamily: "'Jost', sans-serif" }}>Total Sales</span>
-                          </div>
-                          <div className="bg-indigo-50 rounded-xl p-4 flex flex-col items-center">
-                            <span className="text-2xl font-bold text-indigo-600" style={{ fontFamily: "'Jost', sans-serif" }}>
-                              {salesReport.summary.averageGrowth}%
-                            </span>
-                            <span className="text-xs text-gray-500 mt-1" style={{ fontFamily: "'Jost', sans-serif" }}>Growth Rate</span>
-                          </div>
-                          <div className="bg-indigo-50 rounded-xl p-4 flex flex-col items-center">
-                            <span className="text-2xl font-bold text-indigo-600" style={{ fontFamily: "'Jost', sans-serif" }}>
-                              {salesReport.summary.totalOrders}
-                            </span>
-                            <span className="text-xs text-gray-500 mt-1" style={{ fontFamily: "'Jost', sans-serif" }}>Transactions</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                     </div>
                   </div>
 
-                  {/* Best Selling Container */}
-                  <div className="lg:col-span-1">
-                    <div className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-2xl shadow-lg border border-pink-100 p-6 transition-transform duration-200 hover:scale-[1.01] hover:shadow-2xl hover:border-pink-200 h-[400px]">
-                    <div className="flex items-center gap-2 mb-6">
-                      <Icon icon="mdi:star" className="text-pink-400 w-6 h-6" />
-                      <h3 className="text-lg font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Best Selling</h3>
-                    </div>
-                    <div className="space-y-4 overflow-y-auto h-[calc(100%-4rem)]">
-                      {bestSelling.length > 0 ? (
-                        bestSelling.map((item, index) => (
-                          <div key={index} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50">
-                            <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center">
-                              <Icon icon="mdi:lightbulb-outline" className="w-6 h-6 text-gray-400" />
+                  {/* Top Sold by Category Container */}
+                  <div>
+                    <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl shadow-lg border border-emerald-100 p-6 transition-transform duration-200 hover:scale-[1.01] hover:shadow-2xl hover:border-emerald-200 h-[400px]">
+                      <div className="flex items-center gap-2 mb-6">
+                        <Icon icon="mdi:chart-pie" className="text-emerald-400 w-6 h-6" />
+                        <h3 className="text-lg font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Top Sold by Category</h3>
+                      </div>
+                      <div className="space-y-4 overflow-y-auto h-[calc(100%-4rem)]">
+                        {categorySales.length > 0 ? (
+                          categorySales.map((item, index) => (
+                            <div key={index} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50">
+                              <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                                <Icon icon="mdi:tag" className="w-6 h-6 text-emerald-500" />
+                              </div>
+                              <div className="flex-1">
+                                <p className="font-medium text-sm text-gray-800 capitalize" style={{ fontFamily: "'Jost', sans-serif" }}>{item.category}</p>
+                                <p className="text-gray-500 text-xs" style={{ fontFamily: "'Jost', sans-serif" }}>{item.total_quantity} sold • {item.product_count} products</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
+                                  {formatCurrency(item.total_revenue)}
+                                </p>
+                              </div>
                             </div>
-                            <div className="flex-1">
-                              <p className="font-medium text-sm text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>{item.product_name}</p>
-                              <p className="text-gray-500 text-xs" style={{ fontFamily: "'Jost', sans-serif" }}>{item.total_quantity} sold</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
-                                {formatCurrency(item.total_revenue)}
-                              </p>
-                            </div>
+                          ))
+                        ) : (
+                          <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                            <Icon icon="mdi:chart-pie" className="w-12 h-12 mb-2" />
+                            <p className="text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>No category data yet</p>
                           </div>
-                        ))
-                      ) : (
-                        <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                          <Icon icon="mdi:package-variant" className="w-12 h-12 mb-2" />
-                          <p className="text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>No sales data yet</p>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
                   </div>
-                    </div>
                 </div>
               </div>
             </>

@@ -50,6 +50,13 @@ export interface BestSellingProduct {
   average_rating: number;
 }
 
+export interface CategorySales {
+  category: string;
+  total_quantity: number;
+  total_revenue: number;
+  product_count: number;
+}
+
 export class DashboardService {
   private static getHeaders(session: Session | null) {
     return {
@@ -126,6 +133,25 @@ export class DashboardService {
 
     if (!response.ok) {
       throw new Error('Failed to fetch monthly earnings');
+    }
+
+    return await response.json();
+  }
+
+  static async getCategorySales(
+    session: Session | null,
+    limit: number = 10
+  ): Promise<{ success: boolean; categorySales: CategorySales[] }> {
+    const params = new URLSearchParams();
+    params.append('limit', limit.toString());
+
+    const response = await fetch(`${API_URL}/api/dashboard/category-sales?${params.toString()}`, {
+      method: 'GET',
+      headers: this.getHeaders(session)
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch category sales');
     }
 
     return await response.json();

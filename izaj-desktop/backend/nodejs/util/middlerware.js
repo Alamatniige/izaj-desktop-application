@@ -1,4 +1,3 @@
-import { supabase } from '../supabaseClient.js';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';

@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"tauri dev\" \"bun --bun ./backend/nodejs/server.js\"",
+    "dev": "tauri dev",
     "vite": "npx vite",
     "build": "npx tsc -b && npx vite build",
     "tauri": "tauri",

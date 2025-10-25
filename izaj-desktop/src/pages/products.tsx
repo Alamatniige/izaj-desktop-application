@@ -325,16 +325,6 @@ const handleViewChange = (newView: ViewType) => {
                         <Icon icon="mdi:chevron-down" className="w-5 h-5 text-gray-400" />
                       </div>
                     </div>
-
-                    {/* Advanced Filter Button */}
-                    <button
-                      className="px-3 py-2 bg-white border border-gray-200 text-gray-700 font-semibold rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 relative"
-                      style={{ fontFamily: "'Jost', sans-serif" }}
-                      type="button"
-                      title="Advanced Filter"
-                    >
-                      <Icon icon="mdi:filter-variant" className="w-5 h-5 text-gray-700" />
-                    </button>
                   </div>
                 </div>
               </div>

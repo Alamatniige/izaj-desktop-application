@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import axios from 'axios';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -10,6 +11,9 @@ const __dirname = dirname(__filename);
 
 // Load environment variables from root .env file (specify exact path)
 dotenv.config({ path: join(process.cwd(), 'izaj-desktop', '.env') });
+
+// Python service configuration
+const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL || 'http://localhost:8002';
 
 // Import route modules
 import audit from './audit/server.js'
@@ -73,7 +77,49 @@ app.use('/api', products);
 app.use('/api/products', stock);
 app.use('/api/sales', sale);
 app.use('/api', reviews);
-app.use('/api', dashboard);
+// Dashboard proxy middleware - forward to Python service
+app.use('/api/dashboard', async (req, res) => {
+  try {
+    const pythonUrl = `${PYTHON_SERVICE_URL}${req.originalUrl}`;
+    console.log(`Proxying dashboard request to: ${pythonUrl}`);
+    
+    const response = await axios({
+      method: req.method,
+      url: pythonUrl,
+      data: req.body,
+      params: req.query,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': req.headers.authorization || ''
+      },
+      timeout: 30000 // 30 second timeout
+    });
+    
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error proxying to Python service:', error.message);
+    
+    if (error.response) {
+      // Python service responded with error
+      res.status(error.response.status).json(error.response.data);
+    } else if (error.code === 'ECONNREFUSED') {
+      // Python service is not running
+      res.status(503).json({
+        success: false,
+        error: 'Analytics service unavailable',
+        details: 'Python analytics service is not running. Please start it with: npm run start:python'
+      });
+    } else {
+      // Other errors
+      res.status(500).json({
+        success: false,
+        error: 'Failed to process analytics request',
+        details: error.message
+      });
+    }
+  }
+});
+
 app.use('/api', customers);
 app.use('/api', orders);
 
