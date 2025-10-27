@@ -60,10 +60,10 @@ def main():
     
     print("\n🎉 Setup completed successfully!")
     print("\n📋 Next steps:")
-    print("1. Add PYTHON_SERVICE_URL=http://localhost:8000 to your .env file")
+    print("1. Add PYTHON_SERVICE_URL=http://localhost:8002 to your .env file")
     print("2. Run: npm install (in backend/nodejs) to install concurrently")
     print("3. Run: npm run dev (in backend/nodejs) to start both services")
-    print("4. Visit: http://localhost:8000/docs to see Python API documentation")
+    print("4. Visit: http://localhost:8002/docs to see Python API documentation")
 
 if __name__ == "__main__":
     main()

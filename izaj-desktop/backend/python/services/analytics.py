@@ -25,12 +25,12 @@ class AnalyticsService:
         else:  # month
             start_date = now - timedelta(days=30)
         
-        # Get total customers count (only customer type users)
-        customer_response = self.supabase.table('user_profiles').select('*', count='exact').or_('user_type.eq.customer,user_type.is.null').execute()
+        # Get total customers count (all profiles)
+        customer_response = self.supabase.table('profiles').select('*', count='exact').execute()
         total_customers = customer_response.count or 0
         
-        # Get period customers count
-        period_customer_response = self.supabase.table('user_profiles').select('*', count='exact').gte('created_at', start_date.isoformat()).or_('user_type.eq.customer,user_type.is.null').execute()
+        # Get period customers count (in date range and non-admin)
+        period_customer_response = self.supabase.table('profiles').select('*', count='exact').gte('created_at', start_date.isoformat()).execute()
         period_customers = period_customer_response.count or 0
         
         # Get order statistics
@@ -41,7 +41,7 @@ class AnalyticsService:
         if orders_data:
             df_orders = pd.DataFrame(orders_data)
             df_orders['total_amount'] = pd.to_numeric(df_orders['total_amount'], errors='coerce').fillna(0)
-            df_orders['created_at'] = pd.to_datetime(df_orders['created_at'])
+            df_orders['created_at'] = pd.to_datetime(df_orders['created_at']).dt.tz_localize(None).dt.tz_localize(None)
             
             # Calculate order statistics
             order_stats = df_orders['status'].value_counts().to_dict()
@@ -99,7 +99,7 @@ class AnalyticsService:
         if orders_data:
             df_orders = pd.DataFrame(orders_data)
             df_orders['total_amount'] = pd.to_numeric(df_orders['total_amount'], errors='coerce').fillna(0)
-            df_orders['created_at'] = pd.to_datetime(df_orders['created_at'])
+            df_orders['created_at'] = pd.to_datetime(df_orders['created_at']).dt.tz_localize(None)
             df_orders['month'] = df_orders['created_at'].dt.month
             
             # Group by month
@@ -152,8 +152,15 @@ class AnalyticsService:
     
     async def get_best_selling_products(self, limit: int = 10, category: str = None) -> List[BestSellingProduct]:
         """Get best selling products"""
+        # First get completed order IDs
+        orders_response = self.supabase.table('orders').select('id').eq('status', 'complete').execute()
+        completed_order_ids = [order['id'] for order in (orders_response.data or [])]
+        
+        if not completed_order_ids:
+            return []
+        
         # Get order items from completed orders
-        query = self.supabase.table('order_items').select('product_id, product_name, quantity, unit_price, orders!inner(status)').eq('orders.status', 'complete')
+        query = self.supabase.table('order_items').select('product_id, product_name, quantity, unit_price, order_id').in_('order_id', completed_order_ids)
         
         if category:
             query = query.eq('category', category)
@@ -231,7 +238,7 @@ class AnalyticsService:
         if orders_data:
             df_orders = pd.DataFrame(orders_data)
             df_orders['total_amount'] = pd.to_numeric(df_orders['total_amount'], errors='coerce').fillna(0)
-            df_orders['created_at'] = pd.to_datetime(df_orders['created_at'])
+            df_orders['created_at'] = pd.to_datetime(df_orders['created_at']).dt.tz_localize(None)
             df_orders['month'] = df_orders['created_at'].dt.month
             
             # Group by month and sum
@@ -244,8 +251,15 @@ class AnalyticsService:
     
     async def get_category_sales(self, limit: int = 10) -> List[CategorySales]:
         """Get sales data grouped by category"""
+        # First get completed order IDs
+        orders_response = self.supabase.table('orders').select('id').eq('status', 'complete').execute()
+        completed_order_ids = [order['id'] for order in (orders_response.data or [])]
+        
+        if not completed_order_ids:
+            return []
+        
         # Get order items from completed orders (without category column for now)
-        response = self.supabase.table('order_items').select('product_id, product_name, quantity, unit_price, orders!inner(status)').eq('orders.status', 'complete').execute()
+        response = self.supabase.table('order_items').select('product_id, product_name, quantity, unit_price').in_('order_id', completed_order_ids).execute()
         order_items = response.data or []
         
         if not order_items:

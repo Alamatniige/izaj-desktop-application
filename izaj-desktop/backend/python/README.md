@@ -33,7 +33,7 @@ This is the Python FastAPI service that handles all dashboard analytics for the 
 
 3. **Add environment variable to your .env file:**
    ```
-   PYTHON_SERVICE_URL=http://localhost:8000
+   PYTHON_SERVICE_URL=http://localhost:8002
    ```
 
 ### Running the Service
@@ -48,7 +48,7 @@ npm run dev  # Starts both Node.js and Python services
 #### Option 2: Manual Python service
 ```bash
 cd backend/python
-uvicorn main:app --reload --port 8000
+uvicorn main:app --reload --port 8002
 ```
 
 ## API Endpoints
@@ -65,8 +65,8 @@ All endpoints are prefixed with `/api/dashboard`:
 ## API Documentation
 
 Once the service is running, visit:
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
+- **Swagger UI**: http://localhost:8002/docs
+- **ReDoc**: http://localhost:8002/redoc
 
 ## Architecture
 
@@ -75,7 +75,7 @@ Frontend (React)
     ↓
 Node.js Backend (port 3001)
     ↓ (proxies /api/dashboard/*)
-Python FastAPI (port 8000)
+Python FastAPI (port 8002)
     ↓
 Supabase Database
 ```
@@ -128,9 +128,9 @@ backend/python/
 - Check .env file exists with Supabase credentials
 
 ### Connection refused errors
-- Ensure Python service is running on port 8000
+- Ensure Python service is running on port 8002
 - Check PYTHON_SERVICE_URL in .env file
-- Verify no firewall blocking port 8000
+- Verify no firewall blocking port 8002
 
 ### Database connection issues
 - Verify SUPABASE_URL and SUPABASE_SERVICE_KEY in .env
