@@ -12,7 +12,10 @@ router.get('/orders', authenticate, async (req, res) => {
 
     let query = supabase
       .from('orders')
-      .select('*')
+      .select(`
+        *,
+        order_items(*)
+      `)
       .order('created_at', { ascending: false });
 
     if (status) {

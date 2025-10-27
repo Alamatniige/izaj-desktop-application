@@ -5,6 +5,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter, useNavigate } from 'react-router-dom';
 import App from './App.tsx';
 import { NotificationsProvider } from './utils/notificationsProvider.tsx';
+import { DarkModeProvider } from './utils/darkModeProvider.tsx';
 import { onOpenUrl } from '@tauri-apps/plugin-deep-link';
 
 function parseDeepLink(url: string) {
@@ -73,9 +74,11 @@ export function DeepLinkHandler() {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <BrowserRouter>
-    <NotificationsProvider>
-      <DeepLinkHandler />
-      <App />
-    </NotificationsProvider>
+    <DarkModeProvider>
+      <NotificationsProvider>
+        <DeepLinkHandler />
+        <App />
+      </NotificationsProvider>
+    </DarkModeProvider>
   </BrowserRouter>
 );

@@ -63,23 +63,23 @@ const Sidebar = ({
           overflow-hidden
           transition-all duration-300 ease-in-out
           ${sidebarCollapsed ? 'w-14 sm:w-16 md:w-20' : 'w-56 sm:w-60 md:w-64'}
-          bg-gradient-to-b from-white via-gray-50 to-white border-r border-gray-100 flex flex-col
+          bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 border-r border-gray-100 dark:border-gray-800 flex flex-col
           shrink-0 shadow-2xl lg:shadow-xl
           ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0
         `}
       >
         {/* Mobile header: Logo, Title, and Close Button */}
-        <div className="flex items-center justify-between px-4 py-4 lg:hidden border-b border-gray-100 bg-gradient-to-r from-yellow-50 to-white">
+        <div className="flex items-center justify-between px-4 py-4 lg:hidden border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-yellow-50 to-white dark:from-gray-800 dark:to-gray-700">
           <div className="flex items-center gap-3">
             <div className="flex-shrink-0 flex items-center justify-center">
               <img
                 src="/izaj.jpg"
                 alt="IZAJ Logo"
-                className="w-10 h-10 rounded-full bg-yellow-400 border-4 border-yellow-200 shadow-lg"
+                className="w-10 h-10 rounded-full bg-yellow-400 border-4 border-yellow-200 dark:border-yellow-600 shadow-lg"
               />
             </div>
             <h1
-              className="text-2xl font-regular text-gray-800 drop-shadow-lg"
+              className="text-2xl font-regular text-gray-800 dark:text-gray-100 drop-shadow-lg"
               style={{
                 color: "#000000",
                 fontFamily: "'Playfair Display', serif",
@@ -91,10 +91,10 @@ const Sidebar = ({
             </h1>
           </div>
           <button
-            className="p-2 rounded-xl bg-white hover:bg-red-50 border border-gray-200 shadow-md transition-all duration-200 active:scale-95"
+            className="p-2 rounded-xl bg-white dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-900/30 border border-gray-200 dark:border-gray-700 shadow-md transition-all duration-200 active:scale-95"
             onClick={() => setMobileMenuOpen(false)}
           >
-            <Icon icon="mdi:close" className="w-6 h-6 text-gray-600" />
+            <Icon icon="mdi:close" className="w-6 h-6 text-gray-600 dark:text-gray-300" />
           </button>
         </div>
 
@@ -109,7 +109,7 @@ const Sidebar = ({
           </div>
           {!sidebarCollapsed && (
             <h1
-              className="text-xl sm:text-2xl md:text-4xl font-semibold text-black ml-3 sm:ml-4 md:ml-6"
+              className="text-xl sm:text-2xl md:text-4xl font-semibold text-black dark:text-gray-100 ml-3 sm:ml-4 md:ml-6"
               style={{
                 color: "#000000",
                 fontFamily: "'Playfair Display', serif",
@@ -130,21 +130,21 @@ const Sidebar = ({
                   <button
                     className={`w-full flex items-center transition-all duration-200 ${
                       sidebarCollapsed ? 'justify-center px-2 py-3' : 'gap-3 px-3 py-3'
-                    } text-gray-700 hover:bg-gradient-to-r hover:from-gray-100 hover:to-gray-200 rounded-xl font-semibold relative group active:scale-95 ${
+                    } text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-gray-100 hover:to-gray-200 dark:hover:from-gray-700 dark:hover:to-gray-600 rounded-xl font-semibold relative group active:scale-95 ${
                       currentPage === item.label 
-                        ? 'bg-gradient-to-r from-gray-100 to-gray-200 border-l-4 border-gray-900 shadow-lg text-gray-900' 
-                        : 'hover:text-gray-900'
+                        ? 'bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 border-l-4 border-gray-900 dark:border-gray-400 shadow-lg text-gray-900 dark:text-gray-100' 
+                        : 'hover:text-gray-900 dark:hover:text-gray-100'
                     }`}
                     onClick={() => handleNavigation(item.label)}
                   >
                     <Icon 
                       icon={item.icon} 
                       className={`${sidebarCollapsed ? 'w-6 h-6' : 'w-5 h-5'} transition-transform ${
-                        currentPage === item.label ? 'text-gray-900' : 'text-gray-600 group-hover:text-gray-900'
+                        currentPage === item.label ? 'text-gray-900 dark:text-gray-100' : 'text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100'
                       }`} 
                     />
                     {!sidebarCollapsed && (
-                      <span className={`text-sm lg:text-base ${currentPage === item.label ? 'text-gray-900' : 'text-gray-700'} group-hover:text-gray-900`} style={{ fontFamily: "'Jost', sans-serif" }}>
+                      <span className={`text-sm lg:text-base ${currentPage === item.label ? 'text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300'} group-hover:text-gray-900 dark:group-hover:text-gray-100`} style={{ fontFamily: "'Jost', sans-serif" }}>
                         {item.label}
                       </span>
                     )}
@@ -155,62 +155,62 @@ const Sidebar = ({
           </nav>
       
           <div
-            className={`flex flex-col items-center ${sidebarCollapsed ? 'px-2' : 'px-4 lg:px-6'} pb-4 lg:pb-6 gap-2 border-t border-gray-100 pt-4`}
+            className={`flex flex-col items-center ${sidebarCollapsed ? 'px-2' : 'px-4 lg:px-6'} pb-4 lg:pb-6 gap-2 border-t border-gray-100 dark:border-gray-800 pt-4`}
           >
             <button
-              className={`flex items-center w-full transition-all duration-200 active:scale-95 hover:bg-gray-50 rounded-xl ${
+              className={`flex items-center w-full transition-all duration-200 active:scale-95 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl ${
                 sidebarCollapsed ? 'justify-center px-2 py-3 mb-2' : 'gap-3 mb-4 justify-start px-3 py-3'
               } ${
-                currentPage === 'PROFILE' ? 'bg-gray-50 shadow-sm' : ''
+                currentPage === 'PROFILE' ? 'bg-gray-50 dark:bg-gray-700 shadow-sm' : ''
               }`}
               onClick={() => handleNavigation('PROFILE')}
             >
               <img
                 src={avatar || "/profile.jpg"}
                 alt="Profile"
-                className="w-8 h-8 rounded-full bg-gray-300 border-2 border-gray-200 shadow-sm"
+                className="w-8 h-8 rounded-full bg-gray-300 dark:bg-gray-600 border-2 border-gray-200 dark:border-gray-700 shadow-sm"
                 onError={e => { (e.currentTarget as HTMLImageElement).src = "/profile.jpg"; }}
               />
               {!sidebarCollapsed && (
                 <span className={`text-sm font-semibold ${
-                  currentPage === 'PROFILE' ? 'text-gray-900' : 'text-gray-600'
-                } hover:text-gray-900`} style={{ fontFamily: "'Jost', sans-serif" }}>Profile</span>
+                  currentPage === 'PROFILE' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-600 dark:text-gray-400'
+                } hover:text-gray-900 dark:hover:text-gray-100`} style={{ fontFamily: "'Jost', sans-serif" }}>Profile</span>
               )}
             </button>
             <button
-              className={`flex items-center w-full transition-all duration-200 active:scale-95 hover:bg-gray-50 rounded-xl ${
+              className={`flex items-center w-full transition-all duration-200 active:scale-95 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl ${
                 sidebarCollapsed ? 'justify-center px-2 py-3' : 'gap-3 justify-start px-3 py-3'
               } ${
-                currentPage === 'SETTINGS' ? 'bg-gray-50 shadow-sm' : ''
+                currentPage === 'SETTINGS' ? 'bg-gray-50 dark:bg-gray-700 shadow-sm' : ''
               }`}
               onClick={() => handleNavigation('SETTINGS')}
             >
               <Icon
                 icon="mdi:cog-outline"
                 className={`${sidebarCollapsed ? 'w-6 h-6' : 'w-5 h-5'} ${
-                  currentPage === 'SETTINGS' ? 'text-gray-900' : 'text-gray-500'
+                  currentPage === 'SETTINGS' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'
                 }`}
               />
               {!sidebarCollapsed && (
                 <span className={`text-sm font-semibold ${
-                  currentPage === 'SETTINGS' ? 'text-gray-900' : 'text-gray-600'
-                } hover:text-gray-900`} style={{ fontFamily: "'Jost', sans-serif" }}>Settings</span>
+                  currentPage === 'SETTINGS' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-600 dark:text-gray-400'
+                } hover:text-gray-900 dark:hover:text-gray-100`} style={{ fontFamily: "'Jost', sans-serif" }}>Settings</span>
               )}
             </button>
 
             {/* Logout Button */}
             <button
-              className={`flex items-center w-full mt-2 transition-all duration-200 active:scale-95 hover:bg-red-50 rounded-xl ${
+              className={`flex items-center w-full mt-2 transition-all duration-200 active:scale-95 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-xl ${
                 sidebarCollapsed ? 'justify-center px-2 py-3' : 'gap-3 justify-start px-3 py-3'
               }`}
               onClick={handleLogout}
             >
               <Icon
                 icon="mdi:logout"
-                className={`${sidebarCollapsed ? 'w-6 h-6' : 'w-5 h-5'} text-red-500`}
+                className={`${sidebarCollapsed ? 'w-6 h-6' : 'w-5 h-5'} text-red-500 dark:text-red-400`}
               />
               {!sidebarCollapsed && (
-                <span className="text-sm font-semibold text-red-600 hover:text-red-700" style={{ fontFamily: "'Jost', sans-serif" }}>Log Out</span>
+                <span className="text-sm font-semibold text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300" style={{ fontFamily: "'Jost', sans-serif" }}>Log Out</span>
               )}
             </button>
           

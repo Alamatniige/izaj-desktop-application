@@ -10,7 +10,7 @@ export interface Review {
   order_number?: string;
   rating: number;
   comment: string;
-  status: 'pending' | 'published' | 'rejected';
+  status: 'pending' | 'approved' | 'published' | 'rejected';
   admin_reply?: string;
   admin_reply_at?: string;
   helpful_count?: number;
@@ -21,6 +21,7 @@ export interface Review {
 export interface ReviewsSummary {
   total: number;
   published: number;
+  approved: number;
   pending: number;
   average_rating: number;
   five_star: number;
@@ -94,7 +95,7 @@ export class ReviewService {
   static async updateReviewStatus(
     session: Session | null,
     id: string,
-    status: 'published' | 'pending' | 'rejected'
+    status: 'published' | 'approved' | 'pending' | 'rejected'
   ): Promise<{ success: boolean; message?: string }> {
     const response = await fetch(`${API_URL}/api/reviews/${id}/status`, {
       method: 'PUT',

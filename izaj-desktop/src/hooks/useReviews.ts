@@ -8,6 +8,7 @@ export const useReviews = (session: Session | null) => {
   const [summary, setSummary] = useState<ReviewsSummary>({
     total: 0,
     published: 0,
+    approved: 0,
     pending: 0,
     average_rating: 0,
     five_star: 0,
@@ -48,7 +49,7 @@ export const useReviews = (session: Session | null) => {
     }
   }, [session, activeFilter, searchQuery]);
 
-  const updateReviewStatus = useCallback(async (id: string, status: 'published' | 'pending' | 'rejected') => {
+  const updateReviewStatus = useCallback(async (id: string, status: 'published' | 'approved' | 'pending' | 'rejected') => {
     if (!session) return;
 
     try {

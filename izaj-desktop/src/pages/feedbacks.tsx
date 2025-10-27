@@ -1,5 +1,5 @@
 import { Icon } from '@iconify/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { useReviews } from '../hooks/useReviews';
 import { Review } from '../services/reviewService';
@@ -17,34 +17,28 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
     updateReviewStatus,
     addReply,
     deleteReview,
-    markHelpful
+    activeFilter,
+    setActiveFilter,
+    fetchReviews
   } = useReviews(session);
 
-  const [selectedFeedbacks, setSelectedFeedbacks] = useState<string[]>([]);
-  const [allSelected, setAllSelected] = useState(false);
   const [selectedFeedback, setSelectedFeedback] = useState<Review | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   // States for action buttons
   const [isReplying, setIsReplying] = useState(false);
   const [replyText, setReplyText] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setAllSelected(e.target.checked);
-    if (e.target.checked) {
-      setSelectedFeedbacks(reviews.map(item => item.id));
-    } else {
-      setSelectedFeedbacks([]);
+  // Update selected feedback when reviews list changes
+  useEffect(() => {
+    if (selectedFeedback && isModalOpen) {
+      const updatedFeedback = reviews.find(r => r.id === selectedFeedback.id);
+      if (updatedFeedback) {
+        setSelectedFeedback(updatedFeedback);
+      }
     }
-  };
-
-  const handleSelectFeedback = (id: string) => {
-    setSelectedFeedbacks(prev => 
-      prev.includes(id) 
-        ? prev.filter(feedbackId => feedbackId !== id)
-        : [...prev, id]
-    );
-  };
+  }, [reviews, selectedFeedback, isModalOpen]);
 
   const handleViewFeedback = (id: string) => {
     const feedback = reviews.find(item => item.id === id);
@@ -75,42 +69,27 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
       if (success) {
         setReplyText('');
         setIsReplying(false);
-        // Refresh selected feedback
-        const updatedFeedback = reviews.find(r => r.id === selectedFeedback.id);
-        if (updatedFeedback) {
-          setSelectedFeedback(updatedFeedback);
-        }
+        await fetchReviews();
       }
     }
   };
 
-  const handleMarkHelpful = async () => {
+  const handleDeleteReview = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
     if (selectedFeedback) {
-      await markHelpful(selectedFeedback.id);
-      const updatedFeedback = reviews.find(r => r.id === selectedFeedback.id);
-      if (updatedFeedback) {
-        setSelectedFeedback(updatedFeedback);
-      }
+      await deleteReview(selectedFeedback.id);
+      closeModal();
+      setShowDeleteConfirm(false);
     }
   };
 
   const handlePublishReview = async () => {
     if (selectedFeedback) {
       await updateReviewStatus(selectedFeedback.id, 'published');
-      closeModal();
-    }
-  };
-
-  const handleRejectReview = async () => {
-    if (selectedFeedback) {
-      await updateReviewStatus(selectedFeedback.id, 'rejected');
-      closeModal();
-    }
-  };
-
-  const handleDeleteReview = async () => {
-    if (selectedFeedback) {
-      await deleteReview(selectedFeedback.id);
+      await fetchReviews();
       closeModal();
     }
   };
@@ -185,6 +164,43 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
           </div>
         </div>
 
+        {/* Filter Buttons */}
+        <div className="mb-6 flex flex-wrap gap-3">
+          <button
+            onClick={() => setActiveFilter('All Feedbacks')}
+            className={`px-4 py-2 rounded-xl font-semibold transition-all duration-200 ${
+              activeFilter === 'All Feedbacks'
+                ? 'bg-yellow-500 text-white shadow-lg'
+                : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+            }`}
+            style={{ fontFamily: "'Jost', sans-serif" }}
+          >
+            All ({summary.total})
+          </button>
+          <button
+            onClick={() => setActiveFilter('Pending')}
+            className={`px-4 py-2 rounded-xl font-semibold transition-all duration-200 ${
+              activeFilter === 'Pending'
+                ? 'bg-yellow-500 text-white shadow-lg'
+                : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+            }`}
+            style={{ fontFamily: "'Jost', sans-serif" }}
+          >
+            Pending ({summary.pending})
+          </button>
+          <button
+            onClick={() => setActiveFilter('Published')}
+            className={`px-4 py-2 rounded-xl font-semibold transition-all duration-200 ${
+              activeFilter === 'Published'
+                ? 'bg-green-500 text-white shadow-lg'
+                : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+            }`}
+            style={{ fontFamily: "'Jost', sans-serif" }}
+          >
+            Published ({summary.published})
+          </button>
+        </div>
+
         {/* Feedback Table */}
         <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden mx-auto"
           style={{
@@ -192,21 +208,22 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
           }}>
           <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
             <span className="font-semibold text-gray-700 text-lg" style={{ fontFamily: "'Jost', sans-serif" }}>Feedbacks Table</span>
+            <button
+              onClick={() => fetchReviews()}
+              className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition shadow-sm hover:shadow-md flex items-center gap-2"
+              style={{ fontFamily: "'Jost', sans-serif" }}
+            >
+              <Icon icon="mdi:refresh" className="w-4 h-4" />
+              Refresh
+            </button>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full">
               <thead>
                 <tr className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-200">
-                      <th className="px-6 py-4 text-left font-semibold text-gray-700" style={{ fontFamily: "'Jost', sans-serif" }}>
-                        <input 
-                          type="checkbox" 
-                          checked={allSelected}
-                          onChange={handleSelectAll}
-                          className="accent-yellow-400"
-                        />
-                      </th>
                       <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap" style={{ fontFamily: "'Jost', sans-serif" }}>Product ID</th>
                       <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap" style={{ fontFamily: "'Jost', sans-serif" }}>Product Name</th>
+                      <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap" style={{ fontFamily: "'Jost', sans-serif" }}>Status</th>
                       <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap" style={{ fontFamily: "'Jost', sans-serif" }}>Ratings</th>
                       <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap" style={{ fontFamily: "'Jost', sans-serif" }}>Date</th>
                       <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap" style={{ fontFamily: "'Jost', sans-serif" }}>Feedback</th>
@@ -225,18 +242,19 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
                     ) : (
                       reviews.map((review, idx) => (
                         <tr key={idx} className="hover:bg-gray-50 transition-colors duration-200">
-                          <td className="px-6 py-4">
-                            <input 
-                              type="checkbox" 
-                              className="accent-yellow-400"
-                              checked={selectedFeedbacks.includes(review.id)}
-                              onChange={() => handleSelectFeedback(review.id)}
-                            />
-                          </td>
                           <td className="px-6 py-4 font-mono text-yellow-700 whitespace-nowrap text-xs" style={{ fontFamily: "'Jost', sans-serif" }}>
                             {review.id.substring(0, 8)}...
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap" style={{ fontFamily: "'Jost', sans-serif" }}>{review.product_name}</td>
+                          <td className="px-6 py-4">
+                            <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+                              review.status === 'published' ? 'bg-green-100 text-green-700' :
+                              review.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-red-100 text-red-700'
+                            }`} style={{ fontFamily: "'Jost', sans-serif" }}>
+                              {review.status.toUpperCase()}
+                            </span>
+                          </td>
                           <td className="px-6 py-4">
                             <div className="flex items-center space-x-1">
                               {[...Array(5)].map((_, starIdx) => (
@@ -404,49 +422,6 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
                         <p className="text-sm text-gray-700 whitespace-pre-wrap" style={{ fontFamily: "'Jost', sans-serif" }}>{selectedFeedback.comment}</p>
                       </div>
                     </div>
-
-                    <div className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
-                      <div className="bg-gradient-to-r from-gray-50 to-white p-4 border-b border-gray-100">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gradient-to-br from-gray-500 to-gray-600 rounded-xl flex items-center justify-center shadow-lg">
-                            <Icon icon="mdi:cog" className="w-6 h-6 text-white" />
-                          </div>
-                          <h4 className="text-lg font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Actions</h4>
-                        </div>
-                      </div>
-                      <div className="p-4">
-                        <div className="flex flex-wrap items-center gap-2">
-                          {selectedFeedback.status !== 'published' && (
-                            <button 
-                              onClick={handlePublishReview}
-                              className="px-4 py-2 bg-green-500 text-white rounded-xl text-sm font-semibold flex items-center gap-2 hover:bg-green-600 transition shadow-lg hover:shadow-xl"
-                              style={{ fontFamily: "'Jost', sans-serif" }}
-                            >
-                              <Icon icon="mdi:check-circle" className="w-4 h-4" />
-                              <span>Publish</span>
-                            </button>
-                          )}
-                          {selectedFeedback.status !== 'rejected' && (
-                            <button 
-                              onClick={handleRejectReview}
-                              className="px-4 py-2 bg-red-500 text-white rounded-xl text-sm font-semibold flex items-center gap-2 hover:bg-red-600 transition shadow-lg hover:shadow-xl"
-                              style={{ fontFamily: "'Jost', sans-serif" }}
-                            >
-                              <Icon icon="mdi:close-circle" className="w-4 h-4" />
-                              <span>Reject</span>
-                            </button>
-                          )}
-                          <button 
-                            onClick={handleDeleteReview}
-                            className="px-4 py-2 bg-gray-500 text-white rounded-xl text-sm font-semibold flex items-center gap-2 hover:bg-gray-600 transition shadow-lg hover:shadow-xl"
-                            style={{ fontFamily: "'Jost', sans-serif" }}
-                          >
-                            <Icon icon="mdi:delete" className="w-4 h-4" />
-                            <span>Delete</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
                   </div>
 
                   {/* RIGHT: Additional Details */}
@@ -536,141 +511,188 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
                         </div>
                       </div>
                     )}
-
-                    <div>
-                      <span className="block text-xs font-semibold text-yellow-500 uppercase tracking-wider mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Actions</span>
-                      <div className="flex flex-wrap gap-2">
-                        <button 
-                          onClick={handleReply}
-                          className="px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 md:py-2 bg-blue-50 text-blue-600 rounded-lg text-xs sm:text-sm font-medium hover:bg-blue-100 transition flex items-center gap-1"
-                          disabled={isReplying}
-                        >
-                          <Icon icon="mdi:reply" className="w-3 sm:w-4 h-3 sm:h-4" />
-                          <span style={{ fontFamily: "'Jost', sans-serif" }}>{selectedFeedback.admin_reply ? 'Update Reply' : 'Reply'}</span>
-                        </button>
-                        <button 
-                          onClick={handleMarkHelpful}
-                          className="px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 md:py-2 bg-green-50 text-green-600 rounded-lg text-xs sm:text-sm font-medium hover:bg-green-100 transition flex items-center gap-1"
-                        >
-                          <Icon icon="mdi:thumb-up" className="w-3 sm:w-4 h-3 sm:h-4" />
-                          <span style={{ fontFamily: "'Jost', sans-serif" }}>Mark Helpful ({selectedFeedback.helpful_count || 0})</span>
-                        </button>
-                      </div>
-
-                      {/* Reply Form Modal */}
-                      {isReplying && (
-                        <div 
-                          className="fixed inset-0 flex items-center justify-center z-[100] p-2 sm:p-4"
-                          onClick={() => {
-                            setIsReplying(false);
-                            setReplyText('');
-                          }}
-                        >
-                          <div 
-                            className="bg-white rounded-lg sm:rounded-xl md:rounded-2xl w-full max-w-[95%] sm:max-w-[90%] md:max-w-2xl mx-auto shadow-2xl border border-yellow-100"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <div className="p-3 sm:p-4 md:p-6 border-b border-gray-100">
-                              <div className="flex items-center justify-between">
-                                <h4 className="text-base sm:text-lg md:text-xl font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Reply to Feedback</h4>
-                                <button
-                                  className="text-gray-400 hover:text-red-500 rounded-full p-1 hover:bg-gray-50 transition hover:scale-110"
-                                  onClick={() => {
-                                    setIsReplying(false);
-                                    setReplyText('');
-                                  }}
-                                  aria-label="Close reply form"
-                                  type="button"
-                                >
-                                  <Icon icon="mdi:close" className="w-4 sm:w-5 h-4 sm:h-5" />
-                                </button>
-                              </div>
-                            </div>
-
-                            <div className="p-3 sm:p-4 md:p-6">
-                              <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-                                <div className="w-8 sm:w-10 md:w-12 h-8 sm:h-10 md:h-12 bg-blue-50 rounded-lg sm:rounded-xl flex items-center justify-center border border-blue-100">
-                                  <Icon icon="mdi:account-circle" className="w-5 sm:w-6 md:w-8 h-5 sm:h-6 md:h-8 text-blue-400" />
-                                </div>
-                                <div>
-                                  <div className="font-medium text-xs sm:text-sm md:text-base text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Admin Reply</div>
-                                  <div className="text-xs sm:text-sm text-gray-500" style={{ fontFamily: "'Jost', sans-serif" }}>Support Team</div>
-                                </div>
-                              </div>
-
-                              <div className="relative mb-3 sm:mb-4">
-                                <textarea
-                                  value={replyText}
-                                  onChange={(e) => setReplyText(e.target.value)}
-                                  placeholder="Write your reply to the customer..."
-                                  className="w-full p-2 sm:p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-200 resize-none text-xs sm:text-sm md:text-base"
-                                  style={{ fontFamily: "'Jost', sans-serif" }}
-                                  rows={4}
-                                  maxLength={500}
-                                />
-                                <div className="absolute bottom-2 right-2 text-xs text-gray-400" style={{ fontFamily: "'Jost', sans-serif" }}>
-                                  {replyText.length}/500
-                                </div>
-                              </div>
-
-                              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
-                                <div className="flex items-center gap-2">
-                                  <button
-                                    className="p-1 sm:p-1.5 md:p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-50 transition"
-                                    title="Add emoji"
-                                  >
-                                    <Icon icon="mdi:emoticon-outline" className="w-4 sm:w-5 h-4 sm:h-5" />
-                                  </button>
-                                  <button
-                                    className="p-1 sm:p-1.5 md:p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-50 transition"
-                                    title="Add attachment"
-                                  >
-                                    <Icon icon="mdi:paperclip" className="w-4 sm:w-5 h-4 sm:h-5" />
-                                  </button>
-                                </div>
-                                <div className="flex gap-2">
-                                  <button
-                                    onClick={() => {
-                                      setIsReplying(false);
-                                      setReplyText('');
-                                    }}
-                                    className="px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 md:py-2 text-xs sm:text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition"
-                                  >
-                                    <span style={{ fontFamily: "'Jost', sans-serif" }}>Cancel</span>
-                                  </button>
-                                  <button
-                                    onClick={handleSubmitReply}
-                                    className={`px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 md:py-2 text-xs sm:text-sm font-medium rounded-lg transition flex items-center gap-1
-                                      ${replyText.trim() 
-                                        ? 'bg-blue-500 text-white hover:bg-blue-600' 
-                                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
-                                    disabled={!replyText.trim()}
-                                  >
-                                    <Icon icon="mdi:send" className="w-3 sm:w-4 h-3 sm:h-4" />
-                                    <span style={{ fontFamily: "'Jost', sans-serif" }}>Send Reply</span>
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Footer */}
               <div className="bg-gradient-to-r from-gray-50 to-white border-t border-gray-100 p-6 mt-auto">
-                <div className="flex justify-end">
+                <div className="flex justify-between items-center">
                   <button
-                    onClick={closeModal}
-                    className="px-6 py-2.5 bg-gray-500 text-white rounded-xl font-semibold hover:bg-gray-600 transition shadow-lg hover:shadow-xl flex items-center gap-2"
+                    onClick={handleDeleteReview}
+                    className="px-6 py-2.5 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600 transition shadow-lg hover:shadow-xl flex items-center gap-2"
                     style={{ fontFamily: "'Jost', sans-serif" }}
                   >
-                    <Icon icon="mdi:close" className="w-5 h-5" />
-                    Close
+                    <Icon icon="mdi:delete" className="w-5 h-5" />
+                    Delete
+                  </button>
+                  <div className="flex gap-3">
+                    {selectedFeedback.status === 'published' && (
+                      <button 
+                        onClick={handleReply}
+                        className="px-6 py-2.5 bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-600 transition shadow-lg hover:shadow-xl flex items-center gap-2"
+                        style={{ fontFamily: "'Jost', sans-serif" }}
+                        disabled={isReplying}
+                      >
+                        <Icon icon="mdi:reply" className="w-5 h-5" />
+                        {selectedFeedback.admin_reply ? 'Update Reply' : 'Reply'}
+                      </button>
+                    )}
+                    {selectedFeedback.status === 'pending' && (
+                      <button 
+                        onClick={handlePublishReview}
+                        className="px-6 py-2.5 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600 transition shadow-lg hover:shadow-xl flex items-center gap-2"
+                        style={{ fontFamily: "'Jost', sans-serif" }}
+                      >
+                        <Icon icon="mdi:check-circle" className="w-5 h-5" />
+                        Publish
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Reply Form Modal */}
+        {isReplying && (
+          <div 
+            className="fixed inset-0 flex items-center justify-center z-[100] p-2 sm:p-4"
+            onClick={() => {
+              setIsReplying(false);
+              setReplyText('');
+            }}
+          >
+            <div 
+              className="bg-white rounded-lg sm:rounded-xl md:rounded-2xl w-full max-w-[95%] sm:max-w-[90%] md:max-w-2xl mx-auto shadow-2xl border border-yellow-100"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-3 sm:p-4 md:p-6 border-b border-gray-100">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-base sm:text-lg md:text-xl font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Reply to Feedback</h4>
+                  <button
+                    className="text-gray-400 hover:text-red-500 rounded-full p-1 hover:bg-gray-50 transition hover:scale-110"
+                    onClick={() => {
+                      setIsReplying(false);
+                      setReplyText('');
+                    }}
+                    aria-label="Close reply form"
+                    type="button"
+                  >
+                    <Icon icon="mdi:close" className="w-4 sm:w-5 h-4 sm:h-5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-3 sm:p-4 md:p-6">
+                <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                  <div className="w-8 sm:w-10 md:w-12 h-8 sm:h-10 md:h-12 bg-blue-50 rounded-lg sm:rounded-xl flex items-center justify-center border border-blue-100">
+                    <Icon icon="mdi:account-circle" className="w-5 sm:w-6 md:w-8 h-5 sm:h-6 md:h-8 text-blue-400" />
+                  </div>
+                  <div>
+                    <div className="font-medium text-xs sm:text-sm md:text-base text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Admin Reply</div>
+                    <div className="text-xs sm:text-sm text-gray-500" style={{ fontFamily: "'Jost', sans-serif" }}>Support Team</div>
+                  </div>
+                </div>
+
+                <div className="relative mb-3 sm:mb-4">
+                  <textarea
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    placeholder="Write your reply to the customer..."
+                    className="w-full p-2 sm:p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-200 resize-none text-xs sm:text-sm md:text-base"
+                    style={{ fontFamily: "'Jost', sans-serif" }}
+                    rows={4}
+                    maxLength={500}
+                  />
+                  <div className="absolute bottom-2 right-2 text-xs text-gray-400" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    {replyText.length}/500
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      className="p-1 sm:p-1.5 md:p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-50 transition"
+                      title="Add emoji"
+                    >
+                      <Icon icon="mdi:emoticon-outline" className="w-4 sm:w-5 h-4 sm:h-5" />
+                    </button>
+                    <button
+                      className="p-1 sm:p-1.5 md:p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-50 transition"
+                      title="Add attachment"
+                    >
+                      <Icon icon="mdi:paperclip" className="w-4 sm:w-5 h-4 sm:h-5" />
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setIsReplying(false);
+                        setReplyText('');
+                      }}
+                      className="px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 md:py-2 text-xs sm:text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition"
+                    >
+                      <span style={{ fontFamily: "'Jost', sans-serif" }}>Cancel</span>
+                    </button>
+                    <button
+                      onClick={handleSubmitReply}
+                      className={`px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 md:py-2 text-xs sm:text-sm font-medium rounded-lg transition flex items-center gap-1
+                        ${replyText.trim() 
+                          ? 'bg-blue-500 text-white hover:bg-blue-600' 
+                          : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+                      disabled={!replyText.trim()}
+                    >
+                      <Icon icon="mdi:send" className="w-3 sm:w-4 h-3 sm:h-4" />
+                      <span style={{ fontFamily: "'Jost', sans-serif" }}>Send Reply</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div
+            className="fixed inset-0 flex items-center justify-center z-[100] p-4"
+            style={{
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              background: 'rgba(0, 0, 0, 0.5)',
+            }}
+            onClick={() => setShowDeleteConfirm(false)}
+          >
+            <div
+              className="bg-white rounded-2xl shadow-2xl border border-gray-100 max-w-md w-full mx-4 transform transition-all relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6">
+                <div className="flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mx-auto mb-4">
+                  <Icon icon="mdi:alert-circle" className="text-red-600 w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2 text-center" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  Delete Feedback?
+                </h3>
+                <p className="text-gray-600 text-center mb-6" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  Are you sure you want to delete this feedback? This action cannot be undone and the feedback will be permanently removed.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="flex-1 px-4 py-2.5 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition"
+                    style={{ fontFamily: "'Jost', sans-serif" }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmDelete}
+                    className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition shadow-sm"
+                    style={{ fontFamily: "'Jost', sans-serif" }}
+                  >
+                    Delete
                   </button>
                 </div>
               </div>

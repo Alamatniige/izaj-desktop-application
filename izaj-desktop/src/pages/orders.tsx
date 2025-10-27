@@ -12,7 +12,7 @@ interface OrdersProps {
 function Orders({ setIsOverlayOpen, session }: OrdersProps) {
   // Use hooks
   const { orders, isLoading, stats, refetchOrders } = useOrders(session);
-  const { updateStatus, markAsComplete, } = useOrderActions(session, refetchOrders);
+  const { updateStatus } = useOrderActions(session, refetchOrders);
   
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'in_transit' | 'complete' | 'cancelled'>('all');
   const [search, setSearch] = useState('');
@@ -20,6 +20,7 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [adminNotes, setAdminNotes] = useState('');
+  const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
 
   const ordersPerPage = 10;
 
@@ -45,30 +46,6 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
     }
   };
 
-  const handleMarkAsInTransit = async (order: Order) => {
-    const confirmed = window.confirm(`Mark order ${order.order_number} as In Transit?`);
-    if (confirmed) {
-      const result = await updateStatus(order.id, 'in_transit');
-      if (result.success) {
-        alert('Order marked as In Transit!');
-      } else {
-        alert('Failed to update order');
-      }
-    }
-  };
-
-  const handleOrderReceived = async (order: Order) => {
-    const confirmed = window.confirm(`Mark order ${order.order_number} as Complete?`);
-    if (confirmed) {
-      const result = await markAsComplete(order.id);
-      if (result.success) {
-        alert('Order marked as Complete!');
-      } else {
-        alert('Failed to update order');
-      }
-    }
-  };
-
   const closeModal = () => {
     setShowStatusModal(false);
     setIsOverlayOpen(false);
@@ -84,11 +61,106 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
     return matchStatus && matchSearch;
   });
 
+  const handleDownloadOrders = () => {
+    // Function to properly escape CSV values
+    const escapeCsvValue = (value: string | number | null | undefined): string => {
+      if (value === null || value === undefined) return '';
+      
+      const stringValue = String(value);
+      
+      // If the value contains comma, quote, or newline, wrap it in quotes
+      if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n') || stringValue.includes('\r')) {
+        // Escape quotes by doubling them
+        return `"${stringValue.replace(/"/g, '""')}"`;
+      }
+      
+      return stringValue;
+    };
+
+    // Convert orders to CSV format
+    const csvHeaders = [
+      'Order Number',
+      'Customer Name',
+      'Phone',
+      'Total Amount',
+      'Payment Method',
+      'Status',
+      'Shipping Address',
+      'City',
+      'Province',
+      'Items',
+      'Date'
+    ];
+
+    const csvRows = filteredOrders.map((order) => {
+      const items = order.order_items || order.items;
+      const totalItems = items && Array.isArray(items) 
+        ? items.reduce((sum, item) => sum + (item.quantity || 0), 0)
+        : 0;
+      
+      const address = `${order.shipping_address_line1}${order.shipping_address_line2 ? ', ' + order.shipping_address_line2 : ''}`;
+
+      return [
+        escapeCsvValue(order.order_number),
+        escapeCsvValue(order.recipient_name),
+        escapeCsvValue(order.shipping_phone),
+        escapeCsvValue(formatPrice(order.total_amount)),
+        escapeCsvValue(order.payment_method.replace('_', ' ')),
+        escapeCsvValue(order.status.toUpperCase()),
+        escapeCsvValue(address),
+        escapeCsvValue(order.shipping_city),
+        escapeCsvValue(order.shipping_province),
+        escapeCsvValue(totalItems.toString()),
+        escapeCsvValue(formatOrderDate(order.created_at))
+      ];
+    });
+
+    const csvContent = [
+      csvHeaders.join(','),
+      ...csvRows.map(row => row.join(','))
+    ].join('\n');
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `orders_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleSelectOrder = (orderId: string) => {
+    setSelectedOrderIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(orderId)) {
+        newSet.delete(orderId);
+      } else {
+        newSet.add(orderId);
+      }
+      return newSet;
+    });
+  };
+
   const pageCount = Math.ceil(filteredOrders.length / ordersPerPage);
   const paginatedOrders = filteredOrders.slice(
     (currentPage - 1) * ordersPerPage,
     currentPage * ordersPerPage
   );
+
+  const handleSelectAll = () => {
+    if (selectedOrderIds.size === paginatedOrders.length) {
+      setSelectedOrderIds(new Set());
+    } else {
+      setSelectedOrderIds(new Set(paginatedOrders.map(order => order.id)));
+    }
+  };
+
+  const isAllSelected = paginatedOrders.length > 0 && selectedOrderIds.size === paginatedOrders.length;
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
@@ -160,14 +232,9 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
           </div>
 
         {/* Filter Section */}
-        <div className="max-w-7xl mx-auto bg-white rounded-3xl shadow-2xl border border-white p-4 sm:p-8 mb-2 flex flex-col items-center"
-          style={{
-            boxShadow: '0 4px 32px 0 rgba(59, 130, 246, 0.07)',
-          }}>
-
-          {/* Filter and search controls */}
-          <div className="bg-gradient-to-r from-gray-50 to-white rounded-2xl px-4 py-3 mb-1 border border-gray-100 shadow-sm -mt-12 w-full">
-            <div className="flex flex-wrap lg:flex-nowrap items-center justify-between gap-4 mb-2 mt-2">
+        {/* Filter and search controls */}
+        <div className="bg-gradient-to-r from-gray-50 to-white rounded-2xl px-4 py-3 mb-6 border border-gray-100 shadow-sm w-full">
+          <div className="flex flex-wrap lg:flex-nowrap items-center justify-between gap-4 mb-2 mt-2">
               {/* Filter buttons */}
               <div className="flex flex-wrap items-center gap-2 flex-1">
                 {[
@@ -213,6 +280,23 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
               
               {/* Search and refresh controls */}
               <div className="flex items-center gap-2 flex-shrink-0">
+                {/* Download Button */}
+                <button
+                  onClick={handleDownloadOrders}
+                  className="relative px-3 py-2 bg-white border border-gray-200 text-gray-700 font-semibold rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 flex items-center gap-2"
+                  style={{ fontFamily: "'Jost', sans-serif" }}
+                  type="button"
+                  title="Download Orders"
+                >
+                  {selectedOrderIds.size > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                      {selectedOrderIds.size}
+                    </span>
+                  )}
+                  <Icon icon="mdi:download" className="w-5 h-5 text-gray-700" />
+                  <span className="hidden sm:inline">Download</span>
+                </button>
+
                 {/* Search Bar */}
                 <div className="relative">
                   <div className="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
@@ -244,7 +328,6 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
               </div>
             </div>
           </div>
-        </div>
 
         {/* Order Table */}
         {isLoading ? (
@@ -257,6 +340,14 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
           <table className="min-w-full text-sm">
             <thead>
               <tr className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-200">
+                    <th className="px-4 py-4 text-center w-12">
+                      <input
+                        type="checkbox"
+                        checked={isAllSelected}
+                        onChange={handleSelectAll}
+                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                    </th>
                     <th className="px-6 py-4 text-left font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Order #</th>
                     <th className="px-6 py-4 text-left font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Customer</th>
                     <th className="px-6 py-4 text-left font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Items</th>
@@ -270,6 +361,14 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
             <tbody className="divide-y divide-gray-200">
               {paginatedOrders.map((order) => (
                     <tr key={order.id} className="hover:bg-gray-50 transition-colors duration-200">
+                      <td className="px-4 py-4 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedOrderIds.has(order.id)}
+                          onChange={() => handleSelectOrder(order.id)}
+                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                      </td>
                       <td className="px-6 py-4">
                         <div className="font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>{order.order_number}</div>
                         <div className="text-xs text-gray-400">{formatOrderDate(order.created_at)}</div>
@@ -278,9 +377,17 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
                         <div className="font-medium text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>{order.recipient_name}</div>
                         <div className="text-xs text-gray-500">{order.shipping_phone}</div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="text-gray-700" style={{ fontFamily: "'Jost', sans-serif" }}>{order.items?.length || 0} item(s)</div>
-                  </td>
+                       <td className="px-6 py-4">
+                         <div className="text-gray-700" style={{ fontFamily: "'Jost', sans-serif" }}>
+                           {(() => {
+                             const items = order.order_items || order.items;
+                             const totalQty = items && Array.isArray(items) 
+                               ? items.reduce((sum, item) => sum + (item.quantity || 0), 0)
+                               : 0;
+                             return totalQty;
+                           })()} items
+                         </div>
+                       </td>
                       <td className="px-6 py-4 font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>{formatPrice(order.total_amount)}</td>
                       <td className="px-6 py-4">
                         <span className="text-xs text-gray-600 capitalize" style={{ fontFamily: "'Jost', sans-serif" }}>{order.payment_method.replace('_', ' ')}</span>
@@ -312,33 +419,13 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
                           >
                             <Icon icon="mdi:pencil" className="w-4 h-4" />
                           </button>
-                          {order.status === 'approved' && (
-                    <button
-                              onClick={() => handleMarkAsInTransit(order)}
-                              className="p-2 text-gray-600 hover:text-purple-500 hover:bg-purple-50 rounded-xl transition-all"
-                              title="Mark as In Transit"
-                      type="button"
-                    >
-                              <Icon icon="mdi:truck-fast" className="w-4 h-4" />
-                    </button>
-                          )}
-                          {order.status === 'in_transit' && (
-                            <button
-                              onClick={() => handleOrderReceived(order)}
-                              className="p-2 text-gray-600 hover:text-green-500 hover:bg-green-50 rounded-xl transition-all"
-                              title="Mark as Complete"
-                              type="button"
-                            >
-                              <Icon icon="mdi:check-all" className="w-4 h-4" />
-                            </button>
-                          )}
                         </div>
                   </td>
                 </tr>
               ))}
               {paginatedOrders.length === 0 && (
                 <tr>
-                      <td colSpan={8} className="text-center py-12 text-gray-400">
+                      <td colSpan={9} className="text-center py-12 text-gray-400">
                         <Icon icon="mdi:package-variant-closed" className="w-16 h-16 mx-auto mb-3 opacity-50" />
                         <p className="text-lg" style={{ fontFamily: "'Jost', sans-serif" }}>No orders found.</p>
                   </td>

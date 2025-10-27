@@ -36,6 +36,7 @@ export interface Order {
   admin_notes: string | null;
   created_at: string;
   items?: OrderItem[];
+  order_items?: OrderItem[];
 }
 
 export interface OrderFilters {

@@ -122,7 +122,7 @@ function App() {
 
   return (
     <PrivateRoute isLoggedIn={isLoggedIn} onLogin={handleLoginSuccess}>
-      <div className="flex h-screen w-screen overflow-hidden bg-white">
+      <div className="flex h-screen w-screen overflow-hidden bg-white dark:bg-gray-900">
         <Sidebar
           avatar={profile.avatar}
           session={session}
@@ -152,7 +152,7 @@ function App() {
           )}
           
           {/* Main Content */}
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-hidden bg-white dark:bg-gray-900">
             <div className="h-full overflow-y-auto scrollbar-none px-2 sm:px-4 md:px-6">
               <div className="w-full max-w-[2000px] mx-auto">
                 {renderContent()}

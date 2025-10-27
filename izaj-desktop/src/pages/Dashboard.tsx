@@ -65,16 +65,16 @@ const Dashboard = ({ session }: DashboardProps) => {
     <div className="flex-1 overflow-y-auto">
       <main className="flex-1 px-8 py-6">
         {/* Header section */}
-        <div className="bg-gradient-to-r from-white via-gray-50 to-white rounded-2xl p-6 mb-8 border border-gray-100 shadow-sm">
+        <div className="bg-gradient-to-r from-white via-gray-50 to-white dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 rounded-2xl p-6 mb-8 border border-gray-100 dark:border-gray-700 shadow-sm">
           <div className="flex items-center gap-4">
             <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-xl shadow-lg">
               <Icon icon="mdi:view-dashboard" className="text-2xl text-white" />
             </div>
             <div>
-              <h2 className="text-2xl lg:text-3xl font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
+              <h2 className="text-2xl lg:text-3xl font-bold text-gray-800 dark:text-gray-100" style={{ fontFamily: "'Jost', sans-serif" }}>
                 Dashboard
               </h2>
-              <p className="text-gray-600 text-base" style={{ fontFamily: "'Jost', sans-serif" }}>
+              <p className="text-gray-600 dark:text-gray-400 text-base" style={{ fontFamily: "'Jost', sans-serif" }}>
                 Overview of your business performance and analytics
               </p>
             </div>
@@ -90,7 +90,7 @@ const Dashboard = ({ session }: DashboardProps) => {
           ) : (
             <>
               {/* Top Row - Stats Cards */}
-              <div className="bg-white rounded-3xl shadow-2xl border border-white p-4 sm:p-8 mb-8"
+              <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-white dark:border-gray-700 p-4 sm:p-8 mb-8"
                 style={{
                   boxShadow: '0 4px 32px 0 rgba(252, 211, 77, 0.07)',
                 }}>
@@ -118,13 +118,13 @@ const Dashboard = ({ session }: DashboardProps) => {
                                     ref={provided.innerRef}
                                     {...provided.draggableProps}
                                     {...provided.dragHandleProps}
-                                    className={`bg-white rounded-2xl shadow-lg border-l-4 border-yellow-300 p-6 transition-all duration-200 hover:scale-[1.025] hover:shadow-2xl hover:border-yellow-400 cursor-move
+                                    className={`bg-white dark:bg-gray-700 rounded-2xl shadow-lg border-l-4 border-yellow-300 dark:border-yellow-500 p-6 transition-all duration-200 hover:scale-[1.025] hover:shadow-2xl hover:border-yellow-400 dark:hover:border-yellow-400 cursor-move
                                       ${snapshot.isDragging ? 'shadow-2xl scale-105' : ''}`}
                                   >
                                     <div className="flex justify-between items-start mb-4">
                                       <div>
-                                        <h3 className="text-lg font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Customer</h3>
-                                        <p className="text-gray-500 text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>Total registered users</p>
+                                        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100" style={{ fontFamily: "'Jost', sans-serif" }}>Customer</h3>
+                                        <p className="text-gray-500 dark:text-gray-400 text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>Total registered users</p>
                                       </div>
                                     </div>
                                     <div className="flex items-center justify-center mb-6">
@@ -144,14 +144,14 @@ const Dashboard = ({ session }: DashboardProps) => {
                                           />
                                         </svg>
                                         <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                          <span className="text-3xl font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
+                                          <span className="text-3xl font-bold text-gray-800 dark:text-gray-100" style={{ fontFamily: "'Jost', sans-serif" }}>
                                             {stats?.customers.total || 0}
                                           </span>
-                                          <span className="text-gray-500 text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>Total</span>
+                                          <span className="text-gray-500 dark:text-gray-400 text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>Total</span>
                                         </div>
                                       </div>
                                     </div>
-                                    <div className="text-gray-400 text-xs" style={{ fontFamily: "'Jost', sans-serif" }}>
+                                    <div className="text-gray-400 dark:text-gray-500 text-xs" style={{ fontFamily: "'Jost', sans-serif" }}>
                                       Data from website registrations
                                     </div>
                                   </div>
@@ -166,10 +166,10 @@ const Dashboard = ({ session }: DashboardProps) => {
                                     ref={provided.innerRef}
                                     {...provided.draggableProps}
                                     {...provided.dragHandleProps}
-                                    className={`bg-white rounded-2xl shadow-lg border-l-4 border-blue-200 p-6 transition-all duration-200 hover:scale-[1.025] hover:shadow-2xl hover:border-blue-400 cursor-move
+                                    className={`bg-white dark:bg-gray-700 rounded-2xl shadow-lg border-l-4 border-blue-200 dark:border-blue-500 p-6 transition-all duration-200 hover:scale-[1.025] hover:shadow-2xl hover:border-blue-400 dark:hover:border-blue-400 cursor-move
                                       ${snapshot.isDragging ? 'shadow-2xl scale-105' : ''}`}
                                   >
-                                    <h3 className="text-lg font-semibold text-gray-800 mb-6" style={{ fontFamily: "'Jost', sans-serif" }}>Order Status</h3>
+                                    <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-6" style={{ fontFamily: "'Jost', sans-serif" }}>Order Status</h3>
                                     <div className="space-y-4">
                                       {stats && Object.entries(stats.orders).filter(([key]) => key !== 'total').map(([status, count]) => (
                                         <div key={status} className="flex justify-between items-center">
@@ -180,11 +180,11 @@ const Dashboard = ({ session }: DashboardProps) => {
                                                 className={`w-3 h-3 ${getOrderStatusColor(status)}`}
                                               />
                                             </span>
-                                            <span className="text-sm text-gray-600 capitalize" style={{ fontFamily: "'Jost', sans-serif" }}>
+                                            <span className="text-sm text-gray-600 dark:text-gray-300 capitalize" style={{ fontFamily: "'Jost', sans-serif" }}>
                                               {status.replace('_', ' ')}
                                             </span>
                                           </div>
-                                          <span className="font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>{count}</span>
+                                          <span className="font-semibold text-gray-800 dark:text-gray-100" style={{ fontFamily: "'Jost', sans-serif" }}>{count}</span>
                                         </div>
                                       ))}
                                     </div>
@@ -200,13 +200,13 @@ const Dashboard = ({ session }: DashboardProps) => {
                                     ref={provided.innerRef}
                                     {...provided.draggableProps}
                                     {...provided.dragHandleProps}
-                                    className={`bg-white rounded-2xl shadow-lg border-l-4 border-green-200 p-6 transition-all duration-200 hover:scale-[1.025] hover:shadow-2xl hover:border-green-400 cursor-move
+                                    className={`bg-white dark:bg-gray-700 rounded-2xl shadow-lg border-l-4 border-green-200 dark:border-green-500 p-6 transition-all duration-200 hover:scale-[1.025] hover:shadow-2xl hover:border-green-400 dark:hover:border-green-400 cursor-move
                                       ${snapshot.isDragging ? 'shadow-2xl scale-105' : ''}`}
                                   >
                                     <div className="flex justify-between items-start mb-4">
-                                      <h3 className="text-lg font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Total Revenue</h3>
+                                      <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100" style={{ fontFamily: "'Jost', sans-serif" }}>Total Revenue</h3>
                                       <select 
-                                        className="text-sm text-gray-500 bg-transparent border-none outline-none cursor-pointer"
+                                        className="text-sm text-gray-500 dark:text-gray-400 bg-transparent border-none outline-none cursor-pointer"
                                         style={{ fontFamily: "'Jost', sans-serif" }}
                                         value={selectedYear}
                                         onChange={(e) => setSelectedYear(Number(e.target.value))}

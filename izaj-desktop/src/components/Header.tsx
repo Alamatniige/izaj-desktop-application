@@ -1,6 +1,7 @@
 import { Icon } from '@iconify/react';
 import { Session } from '@supabase/supabase-js';
 import { useNotifications } from '../utils/notificationsProvider';
+import { useDarkMode } from '../utils/darkModeProvider';
 
 interface HeaderProps {
   session: Session | null;
@@ -39,10 +40,11 @@ HeaderProps) => {
     markAllAsRead,
   } = useNotifications();
 
+  const { isDarkMode, toggleDarkMode } = useDarkMode();
   const unreadCount = notifications.filter(n => !n.read).length;
   return (
     <header
-      className={`border-b border-gray-100 shadow-lg bg-gradient-to-r from-white via-gray-50 to-white
+      className={`border-b border-gray-100 dark:border-gray-800 shadow-lg bg-gradient-to-r from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900
         px-6 lg:px-8 py-4 shrink-0 transition-all duration-300
       `}
       style={{
@@ -56,32 +58,50 @@ HeaderProps) => {
         {/* Menu */}
         <div className="flex items-center gap-4 flex-1">
           <button
-            className="p-2.5 rounded-xl bg-white hover:bg-gray-100 border border-gray-200 shadow-md hover:shadow-lg transition-all duration-200 active:scale-95 lg:hidden"
+            className="p-2.5 rounded-xl bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-lg transition-all duration-200 active:scale-95 lg:hidden"
             onClick={() => setMobileMenuOpen(true)}
           >
-            <Icon icon="mdi:menu" className="w-6 h-6 text-gray-700" />
+            <Icon icon="mdi:menu" className="w-6 h-6 text-gray-700 dark:text-gray-200" />
           </button>
           <button
-            className="p-3 rounded-xl bg-white hover:bg-gray-100 border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300 hidden lg:block group"
+            className="p-3 rounded-xl bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-lg transition-all duration-300 hidden lg:block group"
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
           >
             <Icon 
               icon="mdi:menu" 
-              className={`w-6 h-6 text-gray-700 group-hover:text-gray-900 transition-all duration-300 ${
+              className={`w-6 h-6 text-gray-700 dark:text-gray-200 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-all duration-300 ${
                 sidebarCollapsed ? 'rotate-180' : 'rotate-0'
               }`} 
             />
           </button>
 
         </div>
-        {/* Notification */}
+        {/* Dark Mode Toggle & Notification */}
         <div className="flex items-center gap-4">
+          {/* Dark Mode Toggle */}
+          <button 
+            className="p-3 rounded-xl bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-lg transition-all duration-300 relative group"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('Button clicked, current state:', isDarkMode);
+              toggleDarkMode();
+            }}
+            title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            <Icon 
+              icon={isDarkMode ? "mdi:weather-sunny" : "mdi:weather-night"} 
+              className="w-6 h-6 text-gray-700 dark:text-gray-200 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors duration-300" 
+            />
+          </button>
+
+          {/* Notification */}
           <div className="relative notification-container" style={{ overflow: 'visible' }}>
             <button 
-              className="p-3 rounded-xl bg-white hover:bg-gray-100 border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300 relative group"
+              className="p-3 rounded-xl bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-lg transition-all duration-300 relative group"
               onClick={toggleNotifications}
             >
-              <Icon icon="mdi:bell-outline" className="w-6 h-6 text-gray-700 group-hover:text-gray-900 transition-colors duration-300" />
+              <Icon icon="mdi:bell-outline" className="w-6 h-6 text-gray-700 dark:text-gray-200 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors duration-300" />
               {unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center text-xs font-semibold shadow-lg animate-pulse">
                   {unreadCount > 9 ? '9+' : unreadCount}
@@ -91,7 +111,7 @@ HeaderProps) => {
             
             {notificationsOpen && (
               <div 
-                className="absolute right-0 mt-4 w-96 bg-white rounded-3xl shadow-2xl border border-gray-100 backdrop-blur-sm"
+                className="absolute right-0 mt-4 w-96 bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700 backdrop-blur-sm"
                 style={{
                   position: 'absolute',
                   top: 'calc(100% + 16px)',
@@ -100,16 +120,16 @@ HeaderProps) => {
                   boxShadow: '0 20px 60px 0 rgba(0, 0, 0, 0.15)',
                 }}
               >
-                <div className="p-5 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white rounded-t-3xl">
+                <div className="p-5 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-700 rounded-t-3xl">
                   <div className="flex justify-between items-center">
-                    <h3 className="font-bold text-gray-900 text-lg" style={{ fontFamily: "'Jost', sans-serif" }}>Notifications</h3>
+                    <h3 className="font-bold text-gray-900 dark:text-gray-100 text-lg" style={{ fontFamily: "'Jost', sans-serif" }}>Notifications</h3>
                     {unreadCount > 0 && (
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
                           markAllAsRead();
                         }}
-                        className="text-sm text-gray-600 hover:text-gray-900 font-semibold transition-colors hover:underline"
+                        className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 font-semibold transition-colors hover:underline"
                         style={{ fontFamily: "'Jost', sans-serif" }}
                       >
                         Mark all as read
@@ -117,13 +137,13 @@ HeaderProps) => {
                     )}
                   </div>
                 </div>
-                <div className="max-h-[75vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                <div className="max-h-[75vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800">
                   {notifications.length > 0 ? (
                     notifications.map((notification) => (
                       <div
                         key={notification.id}
-                        className={`p-5 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-all duration-300 group ${
-                          !notification.read ? 'bg-gray-50 border-l-4 border-l-gray-900' : ''
+                        className={`p-5 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-all duration-300 group ${
+                          !notification.read ? 'bg-gray-50 dark:bg-gray-800 border-l-4 border-l-gray-900 dark:border-l-gray-500' : ''
                         }`}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -150,21 +170,21 @@ HeaderProps) => {
                             />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-gray-900 text-base truncate group-hover:text-gray-900 transition-colors" style={{ fontFamily: "'Jost', sans-serif" }}>{notification.title}</p>
-                            <p className="text-sm text-gray-600 truncate mt-1 group-hover:text-gray-700 transition-colors" style={{ fontFamily: "'Jost', sans-serif" }}>{notification.message}</p>
-                            <p className="text-xs text-gray-400 mt-2" style={{ fontFamily: "'Jost', sans-serif" }}>{notification.time}</p>
+                            <p className="font-semibold text-gray-900 dark:text-gray-100 text-base truncate group-hover:text-gray-900 dark:group-hover:text-gray-50 transition-colors" style={{ fontFamily: "'Jost', sans-serif" }}>{notification.title}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 truncate mt-1 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors" style={{ fontFamily: "'Jost', sans-serif" }}>{notification.message}</p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-2" style={{ fontFamily: "'Jost', sans-serif" }}>{notification.time}</p>
                           </div>
                           {!notification.read && (
-                            <div className="w-2.5 h-2.5 rounded-full bg-gray-900 flex-shrink-0 mt-1 animate-pulse"></div>
+                            <div className="w-2.5 h-2.5 rounded-full bg-gray-900 dark:bg-gray-500 flex-shrink-0 mt-1 animate-pulse"></div>
                           )}
                         </div>
                       </div>
                     ))
                   ) : (
-                    <div className="p-8 text-center text-gray-500 text-base">
-                      <Icon icon="mdi:bell-off-outline" className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                    <div className="p-8 text-center text-gray-500 dark:text-gray-400 text-base">
+                      <Icon icon="mdi:bell-off-outline" className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
                       <p className="text-lg" style={{ fontFamily: "'Jost', sans-serif" }}>No notifications</p>
-                      <p className="text-sm text-gray-400 mt-1" style={{ fontFamily: "'Jost', sans-serif" }}>You're all caught up!</p>
+                      <p className="text-sm text-gray-400 dark:text-gray-500 mt-1" style={{ fontFamily: "'Jost', sans-serif" }}>You're all caught up!</p>
                     </div>
                   )}
                 </div>

@@ -39,14 +39,16 @@ router.get('/reviews', authenticate, async (req, res) => {
       });
     }
 
-    // Get summary statistics
+    // Get summary statistics - fetch ALL reviews without filter
     const { data: summaryData, error: summaryError } = await supabase
       .from('product_reviews')
-      .select('rating, status');
+      .select('id, rating, status, created_at')
+      .order('created_at', { ascending: false });
 
     let summary = {
       total: 0,
       published: 0,
+      approved: 0,
       pending: 0,
       average_rating: 0,
       five_star: 0,
@@ -59,6 +61,7 @@ router.get('/reviews', authenticate, async (req, res) => {
     if (!summaryError && summaryData) {
       summary.total = summaryData.length;
       summary.published = summaryData.filter(r => r.status === 'published').length;
+      summary.approved = summaryData.filter(r => r.status === 'approved').length;
       summary.pending = summaryData.filter(r => r.status === 'pending').length;
       
       const publishedReviews = summaryData.filter(r => r.status === 'published');
@@ -131,14 +134,16 @@ router.put('/reviews/:id/status', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
+    
 
-    if (!['published', 'pending', 'rejected'].includes(status)) {
+    if (!['published', 'approved', 'pending', 'rejected'].includes(status)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid status. Must be published, pending, or rejected'
+        error: 'Invalid status. Must be published, approved, pending, or rejected'
       });
     }
 
+    // Allow direct publishing from pending
     const { data, error } = await supabase
       .from('product_reviews')
       .update({ 
@@ -148,7 +153,7 @@ router.put('/reviews/:id/status', authenticate, async (req, res) => {
       .eq('id', id)
       .select()
       .single();
-
+    
     if (error) {
       console.error('Error updating review status:', error);
       return res.status(500).json({
@@ -164,6 +169,7 @@ router.put('/reviews/:id/status', authenticate, async (req, res) => {
       message: `Review ${status} successfully`,
       timestamp: new Date().toISOString()
     });
+
 
   } catch (error) {
     console.error('Server error:', error);

@@ -21,6 +21,7 @@ const authenticate = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('❌ [Auth] No authorization header');
       return res.status(401).json({ error: 'Authorization token required' });
     }
 
@@ -30,13 +31,15 @@ const authenticate = async (req, res, next) => {
     const { data: { user }, error } = await authClient.auth.getUser(token);
 
     if (error || !user) {
+      console.log('❌ [Auth] Invalid token:', error?.message);
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
 
+    console.log('✅ [Auth] User authenticated:', user.id);
     req.user = user;
     next();
   } catch (error) {
-    console.error('Authentication error:', error);
+    console.error('❌ [Auth] Authentication error:', error);
     res.status(500).json({ error: 'Authentication failed' });
   }
 };
