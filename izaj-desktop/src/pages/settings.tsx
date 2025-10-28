@@ -3,7 +3,6 @@ import { Icon } from "@iconify/react";
 import { Session } from "@supabase/supabase-js";
 import API_URL from "../../config/api";
 import { AdminUser,  SettingsState, Users } from "../types/index";
-import * as XLSX from 'xlsx';
 
 interface SettingsProps {
   handleNavigation?: (page: string) => void;
@@ -11,7 +10,7 @@ interface SettingsProps {
 }
 
 const Settings: React.FC<SettingsProps> = ({ session }) => {
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = useState('userManagement');
   const [isAddAdminModalOpen, setIsAddAdminModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterAction, setFilterAction] = useState('');
@@ -95,7 +94,6 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
   }, [fetchAdminUsers, session]);
 
   const tabs = [
-    { id: 'general', label: 'General', icon: 'mdi:cog' },
     { id: 'userManagement', label: 'User Management', icon: 'mdi:account-group' },
     { id: 'auditLogs', label: 'Audit Logs', icon: 'mdi:history' },
   ];
@@ -215,25 +213,55 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
       return;
     }
 
-    const data = result.logs.map((log: Users) => ({
-      Time: new Date(log.created_at).toLocaleString(),
-      User: log.user_name,
-      UserID: log.user_id ,
-      Action: log.action,
-      IP: log.ip_address || "",
-    }));
+    // Function to properly escape CSV values
+    const escapeCsvValue = (value: string | number | null | undefined): string => {
+      if (value === null || value === undefined) return '';
+      
+      const stringValue = String(value);
+      
+      // If the value contains comma, quote, or newline, wrap it in quotes
+      if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n') || stringValue.includes('\r')) {
+        // Escape quotes by doubling them
+        return `"${stringValue.replace(/"/g, '""')}"`;
+      }
+      
+      return stringValue;
+    };
 
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Audit Logs");
+    // Convert logs to CSV format
+    const csvHeaders = ['Time', 'User', 'User ID', 'Action', 'IP Address'];
 
+    const csvRows = result.logs.map((log: Users) => [
+      escapeCsvValue(new Date(log.created_at).toLocaleString()),
+      escapeCsvValue(log.user_name),
+      escapeCsvValue(log.user_id),
+      escapeCsvValue(log.action),
+      escapeCsvValue(log.ip_address || ""),
+    ]);
+
+    const csvContent = [
+      csvHeaders.join(','),
+      ...csvRows.map((row: string[]) => row.join(','))
+    ].join('\n');
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
     const fromStr = formatDateForFileName(from);
     const toStr = formatDateForFileName(to);
     const fileName = fromStr && toStr
-      ? `Audit-Logs(${fromStr} - ${toStr}).xlsx`
-      : "Audit-Logs.xlsx";
-
-    XLSX.writeFile(workbook, fileName);
+      ? `Audit-Logs(${fromStr} - ${toStr}).csv`
+      : "Audit-Logs.csv";
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', fileName);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   // Wrap fetchAuditLogs in useCallback
@@ -373,101 +401,6 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
             {/* Tab Content */}
             <div className="p-4 sm:p-6">
               <form onSubmit={handleSave} className="space-y-6 sm:space-y-8">
-                
-                {/* General Settings */}
-                {activeTab === 'general' && (
-                  <div className="space-y-4 sm:space-y-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700" style={{ fontFamily: "'Jost', sans-serif" }}>Website Name</label>
-                        <input
-                          type="text"
-                          value={settings.general.websiteName}
-                          onChange={(e) => setSettings({
-                            ...settings,
-                            general: { ...settings.general, websiteName: e.target.value }
-                          })}
-                          className="w-full px-3 sm:px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-500 transition-all duration-200"
-                          style={{ fontFamily: "'Jost', sans-serif" }}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700" style={{ fontFamily: "'Jost', sans-serif" }}>Timezone</label>
-                        <select
-                          value={settings.general.timezone}
-                          onChange={(e) => setSettings({
-                            ...settings,
-                            general: { ...settings.general, timezone: e.target.value }
-                          })}
-                          className="w-full px-3 sm:px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-500 transition-all duration-200"
-                          style={{ fontFamily: "'Jost', sans-serif" }}
-                        >
-                          <option value="Asia/Manila">Asia/Manila</option>
-                          <option value="UTC">UTC</option>
-                        </select>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700" style={{ fontFamily: "'Jost', sans-serif" }}>Language</label>
-                        <select
-                          value={settings.general.language}
-                          onChange={(e) => setSettings({
-                            ...settings,
-                            general: { ...settings.general, language: e.target.value }
-                          })}
-                          className="w-full px-3 sm:px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-500 transition-all duration-200"
-                          style={{ fontFamily: "'Jost', sans-serif" }}
-                        >
-                          <option value="English">English</option>
-                          <option value="Filipino">Filipino</option>
-                        </select>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700" style={{ fontFamily: "'Jost', sans-serif" }}>Currency</label>
-                        <select
-                          value={settings.general.currency}
-                          onChange={(e) => setSettings({
-                            ...settings,
-                            general: { ...settings.general, currency: e.target.value }
-                          })}
-                          className="w-full px-3 sm:px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-500 transition-all duration-200"
-                          style={{ fontFamily: "'Jost', sans-serif" }}
-                        >
-                          <option value="PHP">PHP (₱)</option>
-                          <option value="USD">USD ($)</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700" style={{ fontFamily: "'Jost', sans-serif" }}>Store Address</label>
-                      <textarea
-                        value={settings.general.storeAddress}
-                        onChange={(e) => setSettings({
-                          ...settings,
-                          general: { ...settings.general, storeAddress: e.target.value }
-                        })}
-                        rows={3}
-                        className="w-full px-3 sm:px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-yellow-200 focus:border-yellow-400"
-                        style={{ fontFamily: "'Jost', sans-serif" }}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700" style={{ fontFamily: "'Jost', sans-serif" }}>Logo</label>
-                      <div className="mt-1 flex justify-center px-4 sm:px-6 pt-4 sm:pt-5 pb-4 sm:pb-6 border-2 border-gray-300 border-dashed rounded-lg">
-                        <div className="space-y-1 text-center">
-                          <Icon icon="mdi:upload" className="mx-auto h-8 w-8 sm:h-12 sm:w-12 text-gray-400" />
-                          <div className="flex flex-col sm:flex-row text-sm text-gray-600 items-center gap-1 sm:gap-0">
-                            <label className="relative cursor-pointer bg-white rounded-md font-medium text-yellow-600 hover:text-yellow-500 focus-within:outline-none">
-                              <span>Upload a file</span>
-                              <input type="file" className="sr-only" />
-                            </label>
-                            <p className="sm:pl-1">or drag and drop</p>
-                          </div>
-                          <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
 
                 {/* User Management Settings */}
                 {activeTab === 'userManagement' && (
@@ -714,10 +647,10 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                         <button
                           onClick={() => setIsDownloadModalOpen(true)}
                           className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-2"
-                          title="Download as Excel"
+                          title="Download as CSV"
                         >
                           <Icon icon="mdi:file-excel" />
-                          Download Excel
+                          Download CSV
                         </button>
                         <button 
                           onClick={() => setIsFilterModalOpen(true)}

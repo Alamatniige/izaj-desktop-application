@@ -19,9 +19,7 @@ const navigationItems = [
   { icon: 'mdi:shopping-outline', label: 'PRODUCTS' },
   { icon: 'mdi:clipboard-list-outline', label: 'ORDERS' },
   { icon: 'mdi:credit-card-outline', label: 'PAYMENTS' },
-  { icon: 'mdi:chart-bar', label: 'REPORTS' },
   { icon: 'mdi:star-outline', label: 'FEEDBACKS' },
-  // { icon: 'mdi:account-group', label: 'CUSTOMERS' }, // Removed - customer data shown in Dashboard stats only
 ];
 
 const Sidebar = ({
