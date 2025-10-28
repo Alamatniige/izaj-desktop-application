@@ -121,6 +121,7 @@ router.get('/products', authenticate, async (req, res) => {
       is_published: true,  // Auto-publish synced products
       publish_status: true, // Auto-publish synced products
       on_sale: false,
+      pickup_available: true, // Default to available for pickup
     }));
 
     // Debug: Log the service role configuration
@@ -252,6 +253,7 @@ router.get('/client-products', async (req, res) => {
         image_url,
         publish_status,
         is_published,
+        pickup_available,
         product_stock (
           display_quantity,
           last_sync_at
@@ -525,6 +527,81 @@ router.put('/client-products/:id/configure', async (req, res) => {
   }
 });
 
+// GET /api/products/admin-products - Get ALL products for admin (including unpublished)
+router.get('/products/admin-products', authenticate, async (req, res) => {
+  try {
+    console.log('🔍 Fetching ALL products for admin...');
+    
+    const { data: products, error: prodError } = await supabase
+      .from('products')
+      .select(`
+        id,
+        product_id,
+        product_name,
+        price,
+        status,
+        category,
+        branch,
+        description,
+        image_url,
+        is_published,
+        publish_status,
+        pickup_available
+      `)
+      .order('inserted_at', { ascending: false })
+      .limit(100);
+
+    if (prodError) {
+      console.error('Error fetching admin products:', prodError);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch admin products',
+        details: prodError.message
+      });
+    }
+
+    // Fetch stock
+    const { data: stocks, error: stockError } = await supabase
+      .from('product_stock')
+      .select('product_id, display_quantity, current_quantity, last_sync_at');
+
+    if (stockError) {
+      console.error('Error fetching stock:', stockError);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch stock',
+        details: stockError.message
+      });
+    }
+
+    // Merge stock into products
+    const stockMap = {};
+    (stocks || []).forEach(s => { stockMap[String(s.product_id).trim()] = s; });
+
+    const productsWithStock = (products || []).map(product => {
+      const stock = stockMap[String(product.product_id).trim()] || {};
+      return {
+        ...product,
+        quantity: stock.display_quantity ?? 0,
+        display_quantity: stock.display_quantity,
+        current_quantity: stock.current_quantity,
+        last_sync_at: stock.last_sync_at,
+      };
+    });
+
+    res.json({
+      success: true,
+      products: productsWithStock
+    });
+  } catch (error) {
+    console.error('Error fetching admin products:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch admin products'
+    });
+  }
+});
+
 // GET /api/products/existing - Get existing published products with stock information
 router.get('/products/existing', authenticate, async (req, res) => {
   try {
@@ -540,7 +617,7 @@ router.get('/products/existing', authenticate, async (req, res) => {
     console.log('📊 Products with is_published=true:', allProducts?.filter(p => p.is_published));
     console.log('📊 Products with publish_status=true:', allProducts?.filter(p => p.publish_status));
     
-    // Fetch products
+    // Fetch only PUBLISHED products for admin (publish_status = true)
     const { data: products, error: prodError } = await supabase
       .from('products')
       .select(`
@@ -554,7 +631,8 @@ router.get('/products/existing', authenticate, async (req, res) => {
         description,
         image_url,
         is_published,
-        publish_status
+        publish_status,
+        pickup_available
       `)
       .eq('publish_status', true)
       .order('inserted_at', { ascending: false })
@@ -657,17 +735,212 @@ router.post('/products/publish', authenticate, async (req, res) => {
 //PUT - Update Publish Status of a Product (Make it visible to client app)
 router.put('/products/:id/status', authenticate, async (req, res) => {
   const { id } = req.params;
+  const { publish_status } = req.body;
 
   try {
+    console.log(`📢 Updating publish status for product ID: ${id}, new value: ${publish_status}`);
+    console.log(`📦 Full request body:`, req.body);
+    
+    // Validate that publish_status is provided
+    if (publish_status === undefined) {
+      console.error('❌ publish_status is undefined in request body');
+      return res.status(400).json({ 
+        error: 'publish_status is required in request body' 
+      });
+    }
+    
+    // First, check the current state
+    const { data: currentProduct, error: fetchError } = await supabase
+      .from('products')
+      .select('id, product_id, product_name, publish_status')
+      .eq('id', id)
+      .single();
+    
+    if (fetchError) {
+      console.error('❌ Error fetching current product:', fetchError);
+      console.error('❌ Error details:', JSON.stringify(fetchError, null, 2));
+      
+      // Try with product_id if id doesn't work
+      const { data: productById, error: productByIdError } = await supabase
+        .from('products')
+        .select('id, product_id, product_name, publish_status')
+        .eq('product_id', id)
+        .single();
+      
+      if (productByIdError || !productById) {
+        console.error('❌ Also failed to find by product_id:', productByIdError);
+        return res.status(404).json({ error: 'Product not found' });
+      }
+      
+      console.log(`📊 Found product by product_id:`, productById);
+      const finalId = productById.id;
+      
+      // Update using the found id
+      const { data, error } = await supabase
+        .from('products')
+        .update({ publish_status })
+        .eq('id', finalId)
+        .select()
+        .single();
+        
+      if (error) {
+        console.error('❌ Error updating publish status:', error);
+        return res.status(500).json({ error: error.message });
+      }
+      
+      console.log('✅ Publish status updated successfully:', data);
+      return res.json({ success: true, product: data });
+    }
+    
+    console.log(`📊 Current publish_status: ${currentProduct.publish_status}, Updating to: ${publish_status}`);
+    console.log(`📊 Product being updated:`, { id: currentProduct.id, product_id: currentProduct.product_id, name: currentProduct.product_name });
+    console.log(`📊 ID being used for update:`, id);
+    console.log(`📊 Value being set in update:`, { publish_status, type: typeof publish_status });
+    
+    // Update the product using the actual id from the database
+    const updatePayload = { publish_status };
+    console.log(`📊 Update payload:`, updatePayload);
+    
+    // Update by id - use RPC call to bypass triggers if they cause issues
+    try {
+      const { error: updateError } = await supabase
+        .from('products')
+        .update(updatePayload)
+        .eq('id', currentProduct.id);
+        
+      if (updateError) {
+        console.error('❌ Error updating publish status:', updateError);
+        console.error('❌ Error details:', JSON.stringify(updateError, null, 2));
+        
+        // If it's a trigger-related error, return success anyway
+        // The update might have actually succeeded despite the trigger error
+        if (updateError.message.includes('notification_queue')) {
+          console.log('⚠️ Trigger error detected but continuing - update may have succeeded');
+          console.log('⚠️ You need to fix the notification_queue trigger in Supabase');
+          // Don't return error - proceed to fetch the product to see if update worked
+        } else {
+          return res.status(500).json({ error: updateError.message });
+        }
+      }
+    } catch (err) {
+      console.error('❌ Exception during update:', err);
+      // Don't return error immediately - check if update actually succeeded
+    }
+    
+    console.log('✅ Update query executed successfully (proceeding to verify)');
+    
+    // Then fetch the updated product separately
+    const { data, error: fetchUpdatedError } = await supabase
+      .from('products')
+      .select('*')
+      .eq('id', currentProduct.id)
+      .single();
+      
+    if (fetchUpdatedError) {
+      console.error('❌ Error fetching updated product:', fetchUpdatedError);
+      return res.status(500).json({ error: fetchUpdatedError.message });
+    }
+    
+    if (!data) {
+      console.error('❌ No data returned from fetch');
+      return res.status(404).json({ error: 'Product not found after update' });
+    }
+    
+    console.log('✅ Publish status updated successfully:', data);
+    console.log(`✅ New publish_status: ${data.publish_status}`);
+    console.log(`✅ Updated product details:`, { id: data.id, product_id: data.product_id, name: data.product_name });
+    
+    // Verify the update actually changed the value
+    if (data.publish_status !== publish_status) {
+      console.error(`⚠️ WARNING: Expected publish_status ${publish_status} but got ${data.publish_status}`);
+      console.error(`⚠️ WARNING: The returned product ID is ${data.id}, expected ${currentProduct.id}`);
+      
+      // Return error if values don't match
+      return res.status(500).json({ 
+        error: 'Update failed - returned value does not match expected value',
+        expected: publish_status,
+        got: data.publish_status
+      });
+    }
+    
+    res.json({ success: true, product: data });
+  } catch (err) {
+    console.error('❌ Error in publish status update:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT - Update Pickup Availability Status of a Product
+router.put('/products/:id/pickup-status', authenticate, async (req, res) => {
+  const { id } = req.params;
+  const { pickup_available } = req.body;
+
+  try {
+    console.log(`📦 Updating pickup availability for product ID: ${id}, new value: ${pickup_available}`);
+    console.log(`📦 Request body:`, req.body);
+    
+    // First, let's check if the product exists
+    const { data: existingProduct, error: fetchError } = await supabase
+      .from('products')
+      .select('id, product_id, product_name, pickup_available')
+      .eq('id', id)
+      .single();
+    
+    if (fetchError || !existingProduct) {
+      console.error('❌ Product not found or fetch error:', fetchError);
+      // Try with product_id instead
+      const { data: productById, error: productByIdError } = await supabase
+        .from('products')
+        .select('id, product_id, product_name, pickup_available')
+        .eq('product_id', id)
+        .single();
+      
+      if (productByIdError || !productById) {
+        return res.status(404).json({ 
+          error: 'Product not found', 
+          details: fetchError?.message,
+          attemptedIds: { id, product_id: id }
+        });
+      }
+      
+      console.log(`📦 Found product by product_id:`, productById);
+      
+      // Update using the found id
+      const { data, error } = await supabase
+        .from('products')
+        .update({ pickup_available })
+        .eq('id', productById.id)
+        .select()
+        .single();
+        
+      if (error) {
+        console.error('❌ Error updating pickup status:', error);
+        return res.status(500).json({ error: error.message, code: error.code });
+      }
+      
+      console.log('✅ Pickup status updated successfully:', data);
+      return res.json({ success: true, product: data });
+    }
+    
+    console.log(`📦 Existing product found:`, existingProduct);
+    console.log(`📦 Updating pickup_available from ${existingProduct.pickup_available} to ${pickup_available}`);
+    
     const { data, error } = await supabase
       .from('products')
-      .update({ publish_status: true })
+      .update({ pickup_available })
       .eq('id', id)
       .select()
       .single();
-    if (error) return res.status(500).json({ error: error.message });
+      
+    if (error) {
+      console.error('❌ Error updating pickup status:', error);
+      return res.status(500).json({ error: error.message, code: error.code });
+    }
+    
+    console.log('✅ Pickup status updated successfully:', data);
     res.json({ success: true, product: data });
   } catch (err) {
+    console.error('❌ Error in pickup status update:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -1010,6 +1283,7 @@ router.get('/products/:id', authenticate, async (req, res) => {
         is_published,
         publish_status,
         on_sale,
+        pickup_available,
         media_urls,
         inserted_at,
         updated_at,

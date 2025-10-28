@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Session } from '@supabase/supabase-js';
-import { toast } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import { ProductService } from '../services/productService';
 import { FetchedProduct, FilterType, StockStatus, SyncStats } from '../types/product';
 import { filterProducts, mergeStockIntoProducts, generateSyncMessage } from '../utils/productUtils';
@@ -77,12 +77,13 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
     
     setIsFetching(true);
     try {
-      const products = await ProductService.fetchClientProducts(session);
+      // Use fetchAdminProducts to get ALL products (including unpublished ones)
+      const products = await ProductService.fetchAdminProducts(session);
       const merged = await mergeStockData(products);
       setPublishedProducts(merged);
       setHasLoadedFromDB(true);
     } catch (error) {
-      console.error('Error loading client products:', error);
+      console.error('Error loading admin products:', error);
     } finally {
       setIsFetching(false);
     }
@@ -182,10 +183,37 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
       if (!session?.user?.id) return;
 
       try {
-        await ProductService.updateProductStatus(session, productId);
-        setPublishStatus(status); // ✅ update state after API call
+        await ProductService.updateProductStatus(session, productId, status);
+        
+        // Update local state to persist changes
+        setPublishedProducts(prev => prev.map(p => 
+          p.id === productId ? { ...p, publish_status: status } : p
+        ));
+        
+        console.log('✅ Publish status updated in publishedProducts for product:', productId);
       } catch (error) {
         console.error('Error updating publish status:', error);
+        throw error; // Re-throw so modal can handle it
+      }
+    },
+    [session]
+  );
+
+  const updatePickupAvailability = useCallback(
+    async (productId: string, pickupAvailable: boolean) => {
+      if (!session?.user?.id) return;
+
+      try {
+        await ProductService.updatePickupAvailability(session, productId, pickupAvailable);
+        // Update local state to persist changes
+        setPublishedProducts(prev => prev.map(p => 
+          p.id === productId ? { ...p, pickup_available: pickupAvailable } : p
+        ));
+        
+        console.log('✅ Pickup availability updated in publishedProducts for product:', productId);
+      } catch (error) {
+        console.error('Error updating pickup availability:', error);
+        throw error; // Re-throw so modal can handle it
       }
     },
     [session]
@@ -273,6 +301,7 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
     setDeleteProduct,
     publishStatus,
     updatePublishStatus,
+    updatePickupAvailability,
     pendingProducts,
     pendingCount,
     isFetching,

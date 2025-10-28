@@ -30,6 +30,24 @@ export class ProductService {
     return data.products;
   }
 
+  static async fetchAdminProducts(session: Session | null): Promise<FetchedProduct[]> {
+    const response = await fetch(`${API_URL}/api/products/admin-products`, {
+      method: 'GET',
+      headers: this.getHeaders(session)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    if (!data.success || !data.products) {
+      throw new Error('Failed to fetch admin products');
+    }
+
+    return data.products;
+  }
+
   static async fetchPendingCount(session: Session | null): Promise<number> {
     const response = await fetch(`${API_URL}/api/products/pending-count`, {
       method: 'GET',
@@ -138,14 +156,46 @@ export class ProductService {
     return data.mediaUrls; // this is an array
   }
 
-  static async updateProductStatus(session: Session | null, productId: string): Promise<void> {
-    return fetch(`${API_URL}/api/products/${productId}/status`, {
+  static async updateProductStatus(session: Session | null, productId: string, publishStatus: boolean): Promise<void> {
+    console.log('🔄 Updating product publish status:', { productId, publishStatus });
+    console.log('🔄 API URL:', `${API_URL}/api/products/${productId}/status`);
+    
+    const response = await fetch(`${API_URL}/api/products/${productId}/status`, {
       method: 'PUT',
       headers: this.getHeaders(session),
-    }).then((response) => {
+      body: JSON.stringify({ publish_status: publishStatus })
+    });
+    
+    console.log('🔄 Response status:', response.status);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Failed to update publish status:', errorText);
+      console.error('❌ Response status:', response.status);
+      throw new Error(`Failed to update status for product ${productId}: ${errorText}`);
+    }
+    
+    const data = await response.json();
+    console.log('✅ Publish status updated successfully:', data);
+    console.log('✅ Returned product publish_status:', data.product?.publish_status);
+    return data;
+  }
+
+  static async updatePickupAvailability(session: Session | null, productId: string, pickupAvailable: boolean): Promise<void> {
+
+    console.log('🔄 Updating pickup availability:', { productId, pickupAvailable });
+    
+    return fetch(`${API_URL}/api/products/${productId}/pickup-status`, {
+      method: 'PUT',
+      headers: this.getHeaders(session),
+      body: JSON.stringify({ pickup_available: pickupAvailable })
+    }).then(async (response) => {
       if (!response.ok) {
-        throw new Error(`Failed to update status for product ${productId}`);
+        const errorText = await response.text();
+        console.error('❌ Failed to update pickup status:', errorText);
+        throw new Error(`Failed to update pickup status for product ${productId}`);
       }
+      console.log('✅ Pickup status updated successfully');
     });
   }
 

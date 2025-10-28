@@ -1,5 +1,5 @@
 import { Icon } from '@iconify/react';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { AddProductModal } from '../components/AddProductModal';
 import { ManageStockModal } from '../components/ManageStockModal';
 import { ViewProductModal } from '../components/ViewProductModal';
@@ -36,6 +36,7 @@ export function Products({ showAddProductModal, setShowAddProductModal, session,
   const [view, setView] = useState<ViewType>('products');
   const [selectedProductForView, setSelectedProductForView] = useState<FetchedProduct | null>(null);
   const [showAddSaleModal, setShowAddSaleModal] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   
   const {
     publishedProducts,
@@ -57,6 +58,7 @@ export function Products({ showAddProductModal, setShowAddProductModal, session,
     checkStockStatus,
     mediaUrlsMap,
     removeProduct,
+    updatePickupAvailability,
   } = useProducts(session);
 
   const { 
@@ -69,6 +71,9 @@ export function Products({ showAddProductModal, setShowAddProductModal, session,
     statusFilter,
     setStatusFilter,
   } = useFilter(session, { enabled: true, initialProducts: publishedProducts });
+
+  // Don't sync automatically - only sync when explicitly opening the modal
+  // This prevents overwriting the user's updates
 
 const handleViewChange = (newView: ViewType) => {
   if (newView === 'products') {
@@ -355,11 +360,24 @@ const handleViewChange = (newView: ViewType) => {
                     <div 
                       key={product.id} 
                       className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg hover:shadow-2xl border border-gray-100 transition-all duration-300 flex flex-col overflow-hidden group cursor-pointer relative"
-                      onClick={() => setSelectedProductForView({
-                        ...product,
-                        mediaUrl: mediaUrlsMap[product.id] || [],
-                        status: String(product.publish_status),
-                      })}
+                      onClick={() => {
+                        // Always get the latest product data from publishedProducts
+                        const upToDateProduct = publishedProducts.find(p => p.id === product.id) || product;
+                        console.log('🔓 Opening modal with product:', {
+                          id: upToDateProduct.id,
+                          product_name: upToDateProduct.product_name,
+                          pickup_available: upToDateProduct.pickup_available,
+                          'publishedProducts length': publishedProducts.length
+                        });
+                        
+                        // Set modal open first, then set selected product
+                        setIsModalOpen(true);
+                        setSelectedProductForView({
+                          ...upToDateProduct,
+                          mediaUrl: mediaUrlsMap[upToDateProduct.id] || [],
+                          status: String(upToDateProduct.publish_status),
+                        });
+                      }}
                     >
                       {/* Status Badge */}
                       <div className="absolute top-3 right-3 z-10">
@@ -459,14 +477,48 @@ const handleViewChange = (newView: ViewType) => {
             {selectedProductForView && (
             <ViewProductModal
               product={selectedProductForView}
-              onClose={() => setSelectedProductForView(null)}
+              onClose={() => {
+                console.log('🔒 Closing modal');
+                setIsModalOpen(false);
+                setSelectedProductForView(null);
+              }}
               onDelete={async (productId) => {
                 // Remove from DB
                 await removeProduct(String(productId));
                 // Remove from local state
                 setPublishedProducts(prev => prev.filter(p => p.id !== productId));
+                setIsModalOpen(false);
                 setSelectedProductForView(null);
                 toast.success('Product deleted successfully');
+              }}
+              onProductUpdate={(productId, updates) => {
+                console.log('📢 products.tsx: Received product update from modal:', { productId, updates });
+                
+                // Update publishedProducts immediately
+                setPublishedProducts(prev => prev.map(p => 
+                  p.id === productId ? { ...p, ...updates } : p
+                ));
+                
+                // Update selectedProductForView immediately with the new values
+                setSelectedProductForView(prev => {
+                  if (!prev) return null;
+                  const updated = { ...prev, ...updates };
+                  console.log('✅ selectedProductForView updated:', {
+                    publish_status: updated.publish_status,
+                    pickup_available: updated.pickup_available
+                  });
+                  return updated;
+                });
+                
+                console.log('📦 publishedProducts updated for product:', productId);
+                
+                // If publish status changed, refresh the products list
+                if (updates.publish_status !== undefined) {
+                  console.log('🔄 Refreshing products list due to publish status change');
+                  setTimeout(() => {
+                    refreshProductsData();
+                  }, 500);
+                }
               }}
               session={session}
             />

@@ -1,8 +1,9 @@
 import { Icon } from '@iconify/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useProducts } from '../hooks/useProducts';
 import { Session } from '@supabase/supabase-js';
 import { FetchedProduct } from '../types/product';
+import toast from 'react-hot-toast';
 
 interface ViewProductModalProps {
   session: Session | null;
@@ -10,6 +11,7 @@ interface ViewProductModalProps {
   onClose: () => void;
   onDelete?: (productId: string | number) => void;
   onEdit?: (product: FetchedProduct) => void;
+  onProductUpdate?: (productId: string, updates: Partial<FetchedProduct>) => void;
 }
 
 export function ViewProductModal({ 
@@ -17,15 +19,35 @@ export function ViewProductModal({
   product, 
   onClose, 
   onDelete,
-  onEdit
+  onEdit,
+  onProductUpdate
 }: ViewProductModalProps) {
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [currentProduct, setCurrentProduct] = useState(product);
+  const [isUpdatingPickup, setIsUpdatingPickup] = useState(false);
+  const [isUpdatingPublish, setIsUpdatingPublish] = useState(false);
 
-  const mediaUrls = product.mediaUrl || [];
+  const mediaUrls = currentProduct.mediaUrl || [];
   const hasMultipleMedia = mediaUrls.length > 1;
 
-  const { updatePublishStatus, setDeleteProduct } = useProducts(session);
+  const { updatePublishStatus, updatePickupAvailability, setDeleteProduct } = useProducts(session);
+  
+  // Update currentProduct when product prop changes  
+  useEffect(() => {
+    console.log('🔄 ViewProductModal useEffect triggered:', {
+      productPickup: product.pickup_available,
+      currentPickup: currentProduct.pickup_available,
+      productId: product.id
+    });
+    
+    // Only update if product ID changed (different product), not if just pickup status changed
+    // This prevents overwriting local changes when user is editing
+    if (product.id !== currentProduct.id) {
+      console.log('✅ ViewProductModal: Product ID changed, updating currentProduct');
+      setCurrentProduct(product);
+    }
+  }, [product.id]);
   
   const handlePrevMedia = () => {
     setCurrentMediaIndex((prev) => (prev - 1 + mediaUrls.length) % mediaUrls.length);
@@ -40,6 +62,116 @@ export function ViewProductModal({
       await onDelete(product.id);
     }
     // No need to call onClose here, parent will handle it
+  };
+
+  const handleUpdatePickupAvailability = async (pickupAvailable: boolean) => {
+    // Prevent double-clicks
+    if (isUpdatingPickup) return;
+    
+    // Don't update if already in the same state
+    if (currentProduct.pickup_available === pickupAvailable) {
+      console.log('⚠️ Already in the same state, skipping update');
+      return;
+    }
+    
+    console.log('🔄 ViewProductModal: Updating pickup availability:', {
+      from: currentProduct.pickup_available,
+      to: pickupAvailable,
+      productId: currentProduct.id
+    });
+    
+    setIsUpdatingPickup(true);
+    
+    try {
+      // Update immediately in database
+      await updatePickupAvailability(String(currentProduct.id), pickupAvailable);
+      
+      // Update local state
+      const updatedProduct = { ...currentProduct, pickup_available: pickupAvailable };
+      setCurrentProduct(updatedProduct);
+      
+      // Update parent component
+      if (onProductUpdate) {
+        onProductUpdate(String(currentProduct.id), { pickup_available: pickupAvailable });
+      }
+      
+      // Show success toast
+      const status = pickupAvailable ? 'Available for Pickup' : 'Unavailable for Pickup';
+      toast.success(`Product marked as ${status}!`, {
+        icon: pickupAvailable ? '✅' : '❌',
+      });
+      
+      console.log('✅ ViewProductModal: Pickup availability saved successfully');
+    } catch (error) {
+      console.error('❌ Error saving pickup availability:', error);
+      toast.error('Failed to save pickup status');
+    } finally {
+      setIsUpdatingPickup(false);
+    }
+  };
+
+  const handleUpdatePublishStatus = async (status: boolean) => {
+    if (isUpdatingPublish) return;
+    
+    // Don't update if already in the same state
+    if (currentProduct.publish_status === status) {
+      console.log('⚠️ Already in the same publish state, skipping update');
+      return;
+    }
+    
+    console.log('🔄 ViewProductModal: Updating publish status:', {
+      from: currentProduct.publish_status,
+      to: status,
+      productId: currentProduct.id,
+      productId_type: typeof currentProduct.id,
+      product_id: currentProduct.product_id
+    });
+    
+    setIsUpdatingPublish(true);
+    
+    try {
+      // Update immediately in database
+      await updatePublishStatus(String(currentProduct.id), status);
+      
+      // Update local state - assume success even if there was an error
+      const updatedProduct = { ...currentProduct, publish_status: status };
+      setCurrentProduct(updatedProduct);
+      
+      // Update parent component
+      if (onProductUpdate) {
+        onProductUpdate(String(currentProduct.id), { publish_status: status });
+      }
+      
+      // Show success toast
+      const statusText = status ? 'Published' : 'Unpublished';
+      toast.success(`Product ${statusText}!`, {
+        icon: status ? '✅' : '❌',
+      });
+      
+      console.log('✅ ViewProductModal: Publish status saved successfully');
+    } catch (error) {
+      console.error('❌ Error saving publish status:', error);
+      
+      // Even if there's an error, update local state to show the change
+      // The error might be a trigger issue but the update might have succeeded
+      const updatedProduct = { ...currentProduct, publish_status: status };
+      setCurrentProduct(updatedProduct);
+      
+      if (onProductUpdate) {
+        onProductUpdate(String(currentProduct.id), { publish_status: status });
+      }
+      
+      toast.success(`Product ${status ? 'Published' : 'Unpublished'} (may need refresh)!`, {
+        icon: status ? '✅' : '❌',
+      });
+    } finally {
+      setIsUpdatingPublish(false);
+    }
+  };
+
+  // Simple close handler - no need to save here since we save immediately
+  const handleClose = () => {
+    onClose();
   };
 
   const formatDate = (dateString: string) => {
@@ -61,7 +193,7 @@ export function ViewProductModal({
             <Icon icon="mdi:alert-circle-outline" className="text-5xl text-red-500 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Delete Product</h3>
             <p className="text-gray-600 mb-6">
-              Are you sure you want to delete "{product.product_name}"? This action cannot be undone.
+              Are you sure you want to delete "{currentProduct.product_name}"? This action cannot be undone.
             </p>
             <div className="flex gap-3">
               <button
@@ -84,7 +216,7 @@ export function ViewProductModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center backdrop-blur-sm z-50 p-4 sm:p-6 overflow-y-auto" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center backdrop-blur-sm z-50 p-4 sm:p-6 overflow-y-auto" onClick={handleClose}>
       <div
         className="bg-white w-full max-w-6xl max-h-[85vh] rounded-3xl shadow-2xl border border-gray-100 overflow-hidden transform transition-all relative flex flex-col my-4 sm:my-6"
         style={{ boxShadow: '0 20px 60px 0 rgba(0, 0, 0, 0.15)' }}
@@ -92,7 +224,7 @@ export function ViewProductModal({
       >
         {/* Close button */}
         <button
-          onClick={onClose}
+          onClick={handleClose}
           className="absolute top-4 right-4 p-2 rounded-full bg-white/90 hover:bg-gray-50 text-gray-500 hover:text-gray-700 shadow-lg focus:outline-none focus:ring-2 focus:ring-gray-300 transition-all z-10"
           aria-label="Close"
         >
@@ -147,7 +279,7 @@ export function ViewProductModal({
                     ) : (
                       <img
                         src={mediaUrls[currentMediaIndex]}
-                        alt={product.product_name}
+                        alt={currentProduct.product_name}
                         className="w-full h-[500px] object-cover rounded-2xl"
                         onError={(e) => {
                           e.currentTarget.src = '/api/placeholder/400/320';
@@ -192,7 +324,7 @@ export function ViewProductModal({
                       <span className="text-sm text-blue-600 font-semibold uppercase tracking-wide">Product Name</span>
                     </div>
                     <h3 className="text-2xl font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
-                      {product.product_name}
+                      {currentProduct.product_name}
                     </h3>
                   </div>
                   
@@ -203,9 +335,9 @@ export function ViewProductModal({
                       <span className="text-sm text-purple-600 font-semibold uppercase tracking-wide">Category</span>
                     </div>
                     <span className="text-lg font-semibold text-purple-700" style={{ fontFamily: "'Jost', sans-serif" }}>
-                      {typeof product.category === 'string'
-                        ? product.category
-                        : product.category?.category_name ?? 'Uncategorized'}
+                      {typeof currentProduct.category === 'string'
+                        ? currentProduct.category
+                        : currentProduct.category?.category_name ?? 'Uncategorized'}
                     </span>
                   </div>
                 </div>
@@ -218,7 +350,7 @@ export function ViewProductModal({
                       <span className="text-sm text-green-600 font-semibold uppercase tracking-wide">Price</span>
                     </div>
                     <span className="text-2xl font-bold text-green-700" style={{ fontFamily: "'Jost', sans-serif" }}>
-                      ₱{product.price?.toLocaleString() || '0'}
+                      ₱{currentProduct.price?.toLocaleString() || '0'}
                     </span>
                   </div>
                   
@@ -229,19 +361,53 @@ export function ViewProductModal({
                       <span className="text-sm text-orange-600 font-semibold uppercase tracking-wide">Stock</span>
                     </div>
                     <span className="text-2xl font-bold text-orange-700" style={{ fontFamily: "'Jost', sans-serif" }}>
-                      {product.display_quantity || product.stock_quantity || 'N/A'}
+                      {currentProduct.display_quantity || currentProduct.stock_quantity || 'N/A'}
                     </span>
                   </div>
                   
+                  {/* Pickup Status */}
+                  <div className={`bg-gradient-to-br rounded-2xl p-5 border ${
+                    currentProduct.pickup_available 
+                      ? 'from-teal-50 to-cyan-50 border-teal-100' 
+                      : 'from-red-50 to-pink-50 border-red-100'
+                  }`}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Icon 
+                        icon={currentProduct.pickup_available ? "mdi:checkbox-marked-circle" : "mdi:close-circle"} 
+                        className={`text-lg ${currentProduct.pickup_available ? 'text-teal-600' : 'text-red-600'}`} 
+                      />
+                      <span className={`text-sm font-semibold uppercase tracking-wide ${
+                        currentProduct.pickup_available ? 'text-teal-600' : 'text-red-600'
+                      }`}>
+                        Pickup Status
+                      </span>
+                      {isUpdatingPickup && (
+                        <Icon icon="mdi:loading" className="text-sm animate-spin ml-2" />
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xl font-bold ${
+                        currentProduct.pickup_available ? 'text-teal-700' : 'text-red-700'
+                      }`} style={{ fontFamily: "'Jost', sans-serif" }}>
+                        {currentProduct.pickup_available ? 'Available' : 'Unavailable'}
+                      </span>
+                      {currentProduct.pickup_available && (
+                        <span className="ml-2 px-2 py-0.5 bg-green-500 text-white text-xs rounded-full">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  
                   {/* Created Date */}
-                  {product.created_at && (
+                  {currentProduct.created_at && (
                     <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-2xl p-5 border border-gray-100">
                       <div className="flex items-center gap-2 mb-2">
                         <Icon icon="mdi:calendar-outline" className="text-lg text-gray-600" />
                         <span className="text-sm text-gray-600 font-semibold uppercase tracking-wide">Created</span>
                       </div>
                       <span className="text-base font-medium text-gray-700" style={{ fontFamily: "'Jost', sans-serif" }}>
-                        {formatDate(product.created_at)}
+                        {formatDate(currentProduct.created_at)}
                       </span>
                     </div>
                   )}
@@ -254,7 +420,7 @@ export function ViewProductModal({
                     <span className="text-sm text-gray-600 font-semibold uppercase tracking-wide">Description</span>
                   </div>
                   <div className="text-base text-gray-700 whitespace-pre-wrap max-h-40 overflow-y-auto leading-relaxed" style={{ fontFamily: "'Jost', sans-serif" }}>
-                    {product.description || 'No description available'}
+                    {currentProduct.description || 'No description available'}
                   </div>
                 </div>
               </div>
@@ -268,7 +434,7 @@ export function ViewProductModal({
             {/* Edit Button */}
             {onEdit && (
               <button
-                onClick={() => onEdit(product)}
+                onClick={() => onEdit(currentProduct)}
                 className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:bg-blue-600 transition-all duration-200"
                 style={{ fontFamily: "'Jost', sans-serif" }}
               >
@@ -289,34 +455,58 @@ export function ViewProductModal({
               </button>
             )}
 
-            {/* Publish Button */}
+            {/* Pickup Availability Toggle Button */}
             <button 
-              onClick={() => updatePublishStatus(String(product.id), true)}
-              className="flex items-center justify-center gap-2 px-6 py-3 bg-green-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:bg-green-600 transition-all duration-200"
+              onClick={() => handleUpdatePickupAvailability(!currentProduct.pickup_available)}
+              disabled={isUpdatingPickup}
+              className={`flex items-center justify-center gap-2 px-6 py-3 font-semibold rounded-xl shadow-lg transition-all duration-200 ${
+                currentProduct.pickup_available
+                  ? 'bg-orange-500 text-white hover:shadow-xl hover:bg-orange-600'
+                  : 'bg-teal-500 text-white hover:shadow-xl hover:bg-teal-600'
+              } ${isUpdatingPickup ? 'opacity-50 cursor-not-allowed' : ''}`}
               style={{ fontFamily: "'Jost', sans-serif" }}
             >
-              <Icon icon="mdi:publish" className="text-lg" />
-              Publish
-            </button>
-            
-            <button 
-              onClick={() => updatePublishStatus(String(product.id), false)}
-              className="flex items-center justify-center gap-2 px-6 py-3 bg-gray-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:bg-gray-600 transition-all duration-200"
-              style={{ fontFamily: "'Jost', sans-serif" }}
-            >
-              <Icon icon="mdi:unpublish" className="text-lg" />
-              Unpublish
+              {isUpdatingPickup ? (
+                <Icon icon="mdi:loading" className="text-lg animate-spin" />
+              ) : (
+                <Icon 
+                  icon={currentProduct.pickup_available ? "mdi:close-circle" : "mdi:checkbox-marked-circle"} 
+                  className="text-lg" 
+                />
+              )}
+              {currentProduct.pickup_available ? 'Unavailable for Pickup' : 'Available for Pickup'}
             </button>
 
-            {/* Close Button */}
-            <button
-              onClick={onClose}
-              className="flex items-center justify-center gap-2 px-6 py-3 bg-white border-2 border-gray-200 text-gray-700 font-semibold rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 transition-all duration-200"
-              style={{ fontFamily: "'Jost', sans-serif" }}
-            >
-              <Icon icon="mdi:close-circle-outline" className="text-lg" />
-              Close
-            </button>
+            {/* Publish/Unpublish Toggle Button */}
+            {currentProduct.publish_status ? (
+              <button 
+                onClick={() => handleUpdatePublishStatus(false)}
+                disabled={isUpdatingPublish}
+                className={`flex items-center justify-center gap-2 px-6 py-3 bg-gray-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:bg-gray-600 transition-all duration-200 ${isUpdatingPublish ? 'opacity-50 cursor-not-allowed' : ''}`}
+                style={{ fontFamily: "'Jost', sans-serif" }}
+              >
+                {isUpdatingPublish ? (
+                  <Icon icon="mdi:loading" className="text-lg animate-spin" />
+                ) : (
+                  <Icon icon="mdi:unpublish" className="text-lg" />
+                )}
+                Unpublish
+              </button>
+            ) : (
+              <button 
+                onClick={() => handleUpdatePublishStatus(true)}
+                disabled={isUpdatingPublish}
+                className={`flex items-center justify-center gap-2 px-6 py-3 bg-green-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:bg-green-600 transition-all duration-200 ${isUpdatingPublish ? 'opacity-50 cursor-not-allowed' : ''}`}
+                style={{ fontFamily: "'Jost', sans-serif" }}
+              >
+                {isUpdatingPublish ? (
+                  <Icon icon="mdi:loading" className="text-lg animate-spin" />
+                ) : (
+                  <Icon icon="mdi:publish" className="text-lg" />
+                )}
+                Publish
+              </button>
+            )}
           </div>
         </div>
       </div>

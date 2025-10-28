@@ -16,16 +16,42 @@ export const useFilter = (session: Session | null, options: UseFilterOptions = {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
-  const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Inactive'>('All');
+  const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Inactive'>('Active'); // Default to Published
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>(''); 
   const normalizedStatus = statusFilter.toLowerCase();
   const { enabled = true, initialProducts } = options;
 
+  // Apply filters to products
+  const applyFilters = useCallback((products: FetchedProduct[]) => {
+    let filtered = [...products];
+    
+    // Apply status filter
+    if (statusFilter === 'All') {
+      // Show only products that have been added via admin (is_published = true)
+      filtered = filtered.filter(p => p.is_published === true);
+    } else if (statusFilter === 'Active') {
+      // Published products: both is_published AND publish_status must be true
+      filtered = filtered.filter(p => p.is_published === true && p.publish_status === true);
+    } else if (statusFilter === 'Inactive') {
+      // Unpublished products: must have been published before (is_published = true) but now unpublished (publish_status = false)
+      filtered = filtered.filter(p => p.is_published === true && p.publish_status === false);
+    }
+    
+    // Apply category filter
+    if (selectedCategory !== 'All') {
+      filtered = filtered.filter(p => {
+        const categoryName = typeof p.category === 'string' ? p.category : p.category?.category_name;
+        return categoryName === selectedCategory;
+      });
+    }
+    
+    setFilteredProducts(filtered);
+  }, [statusFilter, selectedCategory]);
+  
   // Seed with provided products when present
   useEffect(() => {
-    if (initialProducts && initialProducts.length > 0) {
-      setFilteredProducts(initialProducts);
+    if (initialProducts) {
       // Extract categories from initial products (normalize to string)
       const productCategories = Array.from(
         new Set(
@@ -35,8 +61,15 @@ export const useFilter = (session: Session | null, options: UseFilterOptions = {
         )
       );
       setCategories(['All', ...productCategories]);
+      
+      // Filter products based on status filter
+      if (initialProducts.length > 0) {
+        applyFilters(initialProducts);
+      } else {
+        setFilteredProducts([]);
+      }
     }
-  }, [initialProducts]);
+  }, [initialProducts, statusFilter, selectedCategory, applyFilters]);
 
     const fetchCategories = useCallback(async () => {
     if (!enabled || !session?.access_token) return;
@@ -127,11 +160,19 @@ export const useFilter = (session: Session | null, options: UseFilterOptions = {
     }, [filteredProducts, searchTerm]);
 
     useEffect(() => {
-        if (enabled) fetchCategories();
-    }, [fetchCategories, enabled]);
+        if (enabled && initialProducts && initialProducts.length === 0) {
+          // Only fetch from API if we don't have initial products
+          fetchCategories();
+        }
+    }, [fetchCategories, enabled, initialProducts]);
+    
     useEffect(() => {
-        if (enabled) fetchFilteredProducts();
-    }, [fetchFilteredProducts, selectedCategory, statusFilter, enabled]);
+        if (enabled && initialProducts && initialProducts.length === 0) {
+          // Only fetch from API if we don't have initial products
+          fetchFilteredProducts();
+        }
+    }, [fetchFilteredProducts, selectedCategory, statusFilter, enabled, initialProducts]);
+    
     useEffect(() => {
       if (enabled) fetchOnSaleProducts();
     }, [fetchOnSaleProducts, enabled])

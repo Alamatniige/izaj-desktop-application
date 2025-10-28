@@ -30,6 +30,7 @@ export interface FetchedProduct {
   on_sale: boolean;
   stock_quantity: number;
   mediaUrl?: string[];
+  pickup_available?: boolean;
 }
 
 export interface ApiResponse {
