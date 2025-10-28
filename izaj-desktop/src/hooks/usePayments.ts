@@ -17,22 +17,28 @@ export const usePayments = (session: Session | null) => {
 
   const fetchPayments = useCallback(async () => {
     if (!session) {
+      console.log('⚠️ No session available, skipping payments fetch');
       setIsLoading(false);
       return;
     }
 
     try {
+      console.log('🚀 Fetching payments...');
       setIsLoading(true);
       const response = await PaymentService.getAllPayments(session, currentPage, 10, filters);
       
+      console.log('📦 Payments response:', response);
+      
       if (response.success) {
+        console.log('✅ Payments fetched successfully:', response.payments?.length || 0, 'payments');
         setPayments(response.payments || []);
         setPagination(response.pagination);
       } else {
+        console.error('❌ Failed to load payments:', response.error);
         toast.error('Failed to load payments');
       }
     } catch (error) {
-      console.error('Error fetching payments:', error);
+      console.error('❌ Error fetching payments:', error);
       toast.error('Failed to load payments');
     } finally {
       setIsLoading(false);
@@ -40,15 +46,24 @@ export const usePayments = (session: Session | null) => {
   }, [session, currentPage, filters]);
 
   const fetchStats = useCallback(async () => {
-    if (!session) return;
+    if (!session) {
+      console.log('⚠️ No session available, skipping stats fetch');
+      return;
+    }
 
     try {
+      console.log('🚀 Fetching payment stats...');
       const response = await PaymentService.getPaymentStats(session);
+      console.log('📦 Stats response:', response);
+      
       if (response.success) {
+        console.log('✅ Stats fetched successfully:', response.stats);
         setStats(response.stats);
+      } else {
+        console.error('❌ Failed to load stats:', response.error);
       }
     } catch (error) {
-      console.error('Error fetching payment stats:', error);
+      console.error('❌ Error fetching payment stats:', error);
     }
   }, [session]);
 

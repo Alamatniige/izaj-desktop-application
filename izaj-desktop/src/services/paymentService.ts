@@ -70,16 +70,26 @@ export class PaymentService {
       if (filters.status) params.append('status', filters.status);
       if (filters.payment_method) params.append('payment_method', filters.payment_method);
 
-      const response = await fetch(`${API_URL}/api/payments?${params.toString()}`, {
+      const url = `${API_URL}/api/payments?${params.toString()}`;
+      console.log('🔍 Fetching payments from:', url);
+      console.log('📝 Headers:', this.getHeaders(session));
+
+      const response = await fetch(url, {
         method: 'GET',
         headers: this.getHeaders(session)
       });
 
+      console.log('📊 Response status:', response.status);
+
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ API Error:', errorText);
         throw new Error('Failed to fetch payments');
       }
 
-      return await response.json();
+      const data = await response.json();
+      console.log('✅ Payments data:', data);
+      return data;
     } catch (error: any) {
       console.error('Error fetching payments:', error);
       return {
@@ -96,16 +106,25 @@ export class PaymentService {
    */
   static async getPaymentStats(session: Session | null) {
     try {
-      const response = await fetch(`${API_URL}/api/payments/stats`, {
+      const url = `${API_URL}/api/payments/stats`;
+      console.log('🔍 Fetching payment stats from:', url);
+      
+      const response = await fetch(url, {
         method: 'GET',
         headers: this.getHeaders(session)
       });
 
+      console.log('📊 Stats response status:', response.status);
+
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Stats API Error:', errorText);
         throw new Error('Failed to fetch payment statistics');
       }
 
-      return await response.json();
+      const data = await response.json();
+      console.log('✅ Stats data:', data);
+      return data;
     } catch (error: any) {
       console.error('Error fetching payment stats:', error);
       return {

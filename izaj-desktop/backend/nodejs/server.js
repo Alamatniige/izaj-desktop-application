@@ -27,6 +27,7 @@ import reviews from './reviews/server.js'
 import dashboard from './dashboard/server.js'
 import customers from './customers/server.js'
 import orders from './orders/server.js'
+import payments from './payments/server.js'
 
 const app = express();
 
@@ -122,6 +123,7 @@ app.use('/api/dashboard', async (req, res) => {
 
 app.use('/api', customers);
 app.use('/api', orders);
+app.use('/api', payments);
 
 // =============================================================================
 // ERROR HANDLING MIDDLEWARE
