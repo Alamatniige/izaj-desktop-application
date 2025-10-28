@@ -27,6 +27,8 @@
     "cors": "^2.8.5",
     "crypto-js": "^4.2.0",
     "dotenv": "^17.2.0",
+    "echarts": "^5.6.0",
+    "echarts-for-react": "^3.0.2",
     "express": "^5.1.0",
     "lucide-react": "^0.544.0",
     "multer": "^2.0.1",

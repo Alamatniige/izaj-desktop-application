@@ -3,6 +3,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautif
 import { useState } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { useDashboard } from '../hooks/useDashboard';
+import ReactECharts from 'echarts-for-react';
 
 interface DashboardProps {
   session: Session | null;
@@ -34,8 +35,16 @@ const Dashboard = ({ session }: DashboardProps) => {
     setCardOrder(items);
   };
 
-  const formatCurrency = (amount: number) => {
-    return `₱${amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const formatCurrency = (amount: number | string) => {
+    // If it's a string, try to parse it
+    const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+    
+    // Check if it's a valid number
+    if (isNaN(numAmount)) {
+      return '₱0.00';
+    }
+    
+    return `₱${numAmount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   const getOrderStatusColor = (status: string) => {
@@ -215,9 +224,9 @@ const Dashboard = ({ session }: DashboardProps) => {
                                         <option value={new Date().getFullYear() - 1}>{new Date().getFullYear() - 1}</option>
                                       </select>
                                     </div>
-                                    <div className="flex items-center gap-2 mb-6">
-                                      <span className="text-2xl font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
-                                        {stats?.earnings.total || '₱0.00'}
+                                    <div className="flex flex-col items-center gap-2 mb-6">
+                                      <span className="text-4xl font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
+                                        {stats?.earnings.total ? formatCurrency(stats.earnings.total) : '₱0.00'}
                                       </span>
                                       {stats && stats.earnings.growth && parseFloat(stats.earnings.growth) !== 0 && (
                                         <span className={`text-sm font-medium px-2 py-1 rounded-full ${
@@ -229,25 +238,8 @@ const Dashboard = ({ session }: DashboardProps) => {
                                         </span>
                                       )}
                                     </div>
-                                    <div className="h-20 bg-gray-50 rounded-lg flex items-end justify-center gap-1 p-3">
-                                      {monthlyEarnings.map((amount, i) => {
-                                        const maxEarning = Math.max(...monthlyEarnings, 1);
-                                        const heightPercent = (amount / maxEarning) * 100;
-                                        const currentMonth = new Date().getMonth();
-                                        
-                                        return (
-                                          <div 
-                                            key={i} 
-                                            className={`w-2 rounded-sm transition-all duration-300 ${
-                                              i === currentMonth ? 'bg-blue-500' : 
-                                              i === currentMonth - 1 ? 'bg-blue-400' : 
-                                              i === currentMonth - 2 ? 'bg-blue-300' : 'bg-blue-200'
-                                            }`}
-                                            style={{ height: `${Math.max(heightPercent, 5)}%` }}
-                                            title={`Month ${i + 1}: ${formatCurrency(amount)}`}
-                                          ></div>
-                                        );
-                                      })}
+                                    <div className="text-gray-400 dark:text-gray-500 text-xs" style={{ fontFamily: "'Jost', sans-serif" }}>
+                                      Revenue from completed orders
                                     </div>
                                   </div>
                                 )}
@@ -299,59 +291,123 @@ const Dashboard = ({ session }: DashboardProps) => {
                   </span>
                 </div>
                 <div className="h-72 relative">
-                  <svg className="w-full h-full" viewBox="0 0 500 240">
-                    <defs>
-                      <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.3"/>
-                        <stop offset="100%" stopColor="#3b82f6" stopOpacity="0"/>
-                      </linearGradient>
-                    </defs>
-                    {/* Generate chart based on monthly earnings */}
-                    {(() => {
-                      const maxValue = Math.max(...monthlyEarnings, 1);
-                      const points = monthlyEarnings.map((value, index) => {
-                        const x = (index / 11) * 500;
-                        const y = 200 - ((value / maxValue) * 180);
-                        return `${x},${y}`;
-                      }).join(' ');
-                      
-                      return (
-                        <>
-                          <polyline
-                            fill="none"
-                            stroke="#3b82f6"
-                            strokeWidth="3"
-                            points={points}
-                          />
-                          <polygon
-                            fill="url(#gradient)"
-                            points={`${points} 500,240 0,240`}
-                          />
-                        </>
-                      );
-                    })()}
-                  </svg>
-                  <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs text-gray-400 px-4" style={{ fontFamily: "'Jost', sans-serif" }}>
-                    <span>Jan</span>
-                    <span>Mar</span>
-                    <span>May</span>
-                    <span>Jul</span>
-                    <span>Sep</span>
-                    <span>Nov</span>
-                  </div>
-                  <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-xs text-gray-400 py-4" style={{ fontFamily: "'Jost', sans-serif" }}>
-                    {(() => {
-                      const maxValue = Math.max(...monthlyEarnings, 1);
-                      return (
-                        <>
-                          <span>{formatCurrency(maxValue)}</span>
-                          <span>{formatCurrency(maxValue * 0.66)}</span>
-                          <span>{formatCurrency(maxValue * 0.33)}</span>
-                          <span>₱0</span>
-                        </>
-                      );
-                    })()}
-                  </div>
+                  <ReactECharts
+                    option={{
+                      grid: {
+                        left: '10%',
+                        right: '10%',
+                        top: '10%',
+                        bottom: '20%',
+                        containLabel: true
+                      },
+                      xAxis: {
+                        type: 'category',
+                        data: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                        axisLine: {
+                          show: false
+                        },
+                        axisTick: {
+                          show: false
+                        },
+                        axisLabel: {
+                          color: '#9CA3AF',
+                          fontSize: 12,
+                          fontFamily: "'Jost', sans-serif"
+                        }
+                      },
+                      yAxis: {
+                        type: 'value',
+                        axisLine: {
+                          show: false
+                        },
+                        axisTick: {
+                          show: false
+                        },
+                        axisLabel: {
+                          color: '#9CA3AF',
+                          fontSize: 12,
+                          fontFamily: "'Jost', sans-serif",
+                          formatter: (value: number) => formatCurrency(value)
+                        },
+                        splitLine: {
+                          lineStyle: {
+                            color: '#E5E7EB',
+                            type: 'dashed'
+                          }
+                        }
+                      },
+                      tooltip: {
+                        trigger: 'axis',
+                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                        borderColor: '#E5E7EB',
+                        borderWidth: 1,
+                        borderRadius: 8,
+                        textStyle: {
+                          color: '#374151',
+                          fontFamily: "'Jost', sans-serif",
+                          fontSize: 12
+                        },
+                        formatter: (params: Array<{name: string, value: number}>) => {
+                          const data = params[0];
+                          return `
+                            <div style="padding: 8px;">
+                              <div style="font-weight: 600; margin-bottom: 4px;">${data.name}</div>
+                              <div style="display: flex; align-items: center;">
+                                <span style="display: inline-block; width: 8px; height: 8px; background-color: #3B82F6; border-radius: 50%; margin-right: 8px;"></span>
+                                <span>Sales: ${formatCurrency(data.value)}</span>
+                              </div>
+                            </div>
+                          `;
+                        }
+                      },
+                      series: [{
+                        data: monthlyEarnings,
+                        type: 'line',
+                        smooth: true,
+                        symbol: 'circle',
+                        symbolSize: 6,
+                        lineStyle: {
+                          color: '#3B82F6',
+                          width: 3
+                        },
+                        itemStyle: {
+                          color: '#3B82F6',
+                          borderColor: '#FFFFFF',
+                          borderWidth: 2
+                        },
+                        areaStyle: {
+                          color: {
+                            type: 'linear',
+                            x: 0,
+                            y: 0,
+                            x2: 0,
+                            y2: 1,
+                            colorStops: [{
+                              offset: 0,
+                              color: 'rgba(59, 130, 246, 0.3)'
+                            }, {
+                              offset: 1,
+                              color: 'rgba(59, 130, 246, 0)'
+                            }]
+                          }
+                        },
+                        emphasis: {
+                          itemStyle: {
+                            color: '#3B82F6',
+                            borderColor: '#FFFFFF',
+                            borderWidth: 3,
+                            shadowBlur: 10,
+                            shadowColor: 'rgba(59, 130, 246, 0.5)'
+                          }
+                        }
+                      }],
+                      animation: true,
+                      animationDuration: 1000,
+                      animationEasing: 'cubicOut'
+                    }}
+                    style={{ height: '100%', width: '100%' }}
+                    opts={{ renderer: 'svg' }}
+                  />
                 </div>
                 {/* Expanded content */}
                 {salesExpanded && salesReport && (
@@ -359,7 +415,7 @@ const Dashboard = ({ session }: DashboardProps) => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       <div className="bg-indigo-50 rounded-xl p-4 flex flex-col items-center">
                         <span className="text-2xl font-bold text-indigo-600" style={{ fontFamily: "'Jost', sans-serif" }}>
-                          {salesReport.summary.totalSales}
+                          {formatCurrency(salesReport.summary.totalSales)}
                         </span>
                         <span className="text-xs text-gray-500 mt-1" style={{ fontFamily: "'Jost', sans-serif" }}>Total Sales</span>
                       </div>

@@ -21,6 +21,9 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [adminNotes, setAdminNotes] = useState('');
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
+  const [showDateRangeModal, setShowDateRangeModal] = useState(false);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const ordersPerPage = 10;
 
@@ -61,6 +64,11 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
     return matchStatus && matchSearch;
   });
 
+  const handleDownloadClick = () => {
+    setShowDateRangeModal(true);
+    setIsOverlayOpen(true);
+  };
+
   const handleDownloadOrders = () => {
     // Function to properly escape CSV values
     const escapeCsvValue = (value: string | number | null | undefined): string => {
@@ -77,6 +85,33 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
       return stringValue;
     };
 
+    // Filter orders by date range if dates are provided
+    let ordersToExport = filteredOrders;
+    
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999); // Include the entire end date
+      
+      ordersToExport = filteredOrders.filter(order => {
+        const orderDate = new Date(order.created_at);
+        return orderDate >= start && orderDate <= end;
+      });
+    } else if (startDate) {
+      const start = new Date(startDate);
+      ordersToExport = filteredOrders.filter(order => {
+        const orderDate = new Date(order.created_at);
+        return orderDate >= start;
+      });
+    } else if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      ordersToExport = filteredOrders.filter(order => {
+        const orderDate = new Date(order.created_at);
+        return orderDate <= end;
+      });
+    }
+
     // Convert orders to CSV format
     const csvHeaders = [
       'Order Number',
@@ -92,7 +127,7 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
       'Date'
     ];
 
-    const csvRows = filteredOrders.map((order) => {
+    const csvRows = ordersToExport.map((order) => {
       const items = order.order_items || order.items;
       const totalItems = items && Array.isArray(items) 
         ? items.reduce((sum, item) => sum + (item.quantity || 0), 0)
@@ -125,13 +160,28 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     
+    const filename = startDate || endDate 
+      ? `orders_${startDate || 'all'}_${endDate || 'all'}.csv`
+      : `orders_${new Date().toISOString().split('T')[0]}.csv`;
+    
     link.setAttribute('href', url);
-    link.setAttribute('download', `orders_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', filename);
     link.style.visibility = 'hidden';
     
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
+    // Close modal and reset
+    setShowDateRangeModal(false);
+    setIsOverlayOpen(false);
+    setStartDate('');
+    setEndDate('');
+  };
+
+  const closeDateRangeModal = () => {
+    setShowDateRangeModal(false);
+    setIsOverlayOpen(false);
   };
 
   const handleSelectOrder = (orderId: string) => {
@@ -282,17 +332,12 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
               <div className="flex items-center gap-2 flex-shrink-0">
                 {/* Download Button */}
                 <button
-                  onClick={handleDownloadOrders}
+                  onClick={handleDownloadClick}
                   className="relative px-3 py-2 bg-white border border-gray-200 text-gray-700 font-semibold rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 flex items-center gap-2"
                   style={{ fontFamily: "'Jost', sans-serif" }}
                   type="button"
                   title="Download Orders"
                 >
-                  {selectedOrderIds.size > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                      {selectedOrderIds.size}
-                    </span>
-                  )}
                   <Icon icon="mdi:download" className="w-5 h-5 text-gray-700" />
                   <span className="hidden sm:inline">Download</span>
                 </button>
@@ -584,6 +629,111 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
                 rows={3}
                 placeholder="Add notes about this status change..."
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Date Range Modal */}
+      {showDateRangeModal && (
+        <div
+          className="fixed z-50 inset-0 flex items-center justify-center p-4"
+          style={{
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            background: 'rgba(59, 130, 246, 0.09)',
+          }}
+          onClick={closeDateRangeModal}
+        >
+          <div
+            className="relative bg-white rounded-3xl shadow-2xl border border-gray-100 max-w-md w-full overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-50 to-white p-6 border-b border-gray-100">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-500 rounded-xl shadow-lg">
+                    <Icon icon="mdi:download" className="text-lg text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
+                      Export Orders
+                    </h3>
+                    <p className="text-sm text-gray-600" style={{ fontFamily: "'Jost', sans-serif" }}>
+                      Select date range (optional)
+                    </p>
+                  </div>
+                </div>
+                <button
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  onClick={closeDateRangeModal}
+                  type="button"
+                >
+                  <Icon icon="mdi:close" className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-4">
+              {/* Start Date */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  Start Date (Optional)
+                </label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-200"
+                  style={{ fontFamily: "'Jost', sans-serif" }}
+                />
+              </div>
+
+              {/* End Date */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  End Date (Optional)
+                </label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  min={startDate}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-200"
+                  style={{ fontFamily: "'Jost', sans-serif" }}
+                />
+              </div>
+
+              {/* Info */}
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
+                <p className="text-sm text-blue-800" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  <Icon icon="mdi:information" className="inline w-4 h-4 mr-1" />
+                  Leave both fields empty to download all orders
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 pb-6 flex gap-3">
+              <button
+                onClick={closeDateRangeModal}
+                className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl shadow-sm hover:shadow-md hover:bg-gray-200 transition-all font-semibold"
+                style={{ fontFamily: "'Jost', sans-serif" }}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDownloadOrders}
+                className="flex-1 px-4 py-3 bg-blue-500 text-white rounded-xl shadow-lg hover:shadow-xl hover:bg-blue-600 transition-all font-semibold flex items-center justify-center gap-2"
+                style={{ fontFamily: "'Jost', sans-serif" }}
+                type="button"
+              >
+                <Icon icon="mdi:download" className="w-5 h-5" />
+                Download CSV
+              </button>
             </div>
           </div>
         </div>

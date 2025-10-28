@@ -13,8 +13,8 @@
     "windows": [
       {
         "title": "Izaj Lighting Centre",
-        "width": 800,
-        "height": 600,
+        "width": 1024,
+        "height": 768,
         "resizable": true,
         "fullscreen": false
       }
@@ -32,11 +32,10 @@
     "active": true,
     "targets": "all",
     "icon": [
-      "icons/32x32.png",
-      "icons/128x128.png",
-      "icons/128x128@2x.png",
-      "icons/icon.icns",
-      "icons/icon.ico"
+      "icons/favicon.ico",
+      "icons/web-app-manifest-192x192.png",
+      "icons/web-app-manifest-512x512.png",
+      "icons/apple-touch-icon.png"
     ]
   },
   "plugins": {

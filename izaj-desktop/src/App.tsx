@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Products } from './pages/products';
 import Orders from './pages/orders';
-import Reports from './pages/reports';
 import Payments from './pages/payments';
 import Feedbacks from './pages/feedbacks';
 import Profile from './pages/profile';
@@ -10,7 +9,6 @@ import Settings from './pages/settings';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
-// import Customers from './pages/Customers'; // Removed - customer stats now shown in Dashboard only
 import { Session } from '@supabase/supabase-js';
 import { ProfileData } from './pages/profile';
 import PrivateRoute from './route/PrivateRoute';
@@ -99,10 +97,6 @@ function App() {
         return <Feedbacks session={session} setIsFeedbackModalOpen={setIsFeedbackModalOpen} />;
       case 'PAYMENTS':
         return <Payments session={session} setIsOverlayOpen={setIsOverlayOpen} />;
-      case 'REPORTS':
-        return <Reports session={session} />;
-      // case 'CUSTOMERS': // Removed - customer data now shown in Dashboard stats card only
-      //   return <Customers session={session} />;
       case 'PROFILE':
         return <Profile session={session} setProfile={setProfile} profile={profile} handleNavigation={handleNavigation} />;
       case 'SETTINGS':
