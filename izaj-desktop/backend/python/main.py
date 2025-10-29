@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
 from datetime import datetime
-
+import os
 from routers.dashboard import router as dashboard_router
 
 # Configure logging
@@ -31,7 +31,8 @@ app.add_middleware(
         "http://127.0.0.1:3002",
         "tauri://localhost",
         "http://tauri.localhost",
-        "https://tauri.localhost"
+        "https://tauri.localhost",
+        "https://izaj-desktop-application.onrender.com"
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -75,4 +76,5 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8002, reload=True)
+    port = int(os.getenv("PORT", 8002))
+    uvicorn.run(app, host="0.0.0.0", port=port, reload=True)
