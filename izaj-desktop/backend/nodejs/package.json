@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "start:python": "cd ../python && py -m uvicorn main:app --reload --port 8002",
+    "start:python": "cd ../python && python -m uvicorn main:app --reload --port 8002",
     "dev": "concurrently \"npm start\" \"npm run start:python\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
