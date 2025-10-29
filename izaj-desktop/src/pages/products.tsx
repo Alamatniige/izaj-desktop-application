@@ -1,5 +1,5 @@
 import { Icon } from '@iconify/react';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { AddProductModal } from '../components/AddProductModal';
 import { ManageStockModal } from '../components/ManageStockModal';
 import { ViewProductModal } from '../components/ViewProductModal';
@@ -36,7 +36,7 @@ export function Products({ showAddProductModal, setShowAddProductModal, session,
   const [view, setView] = useState<ViewType>('products');
   const [selectedProductForView, setSelectedProductForView] = useState<FetchedProduct | null>(null);
   const [showAddSaleModal, setShowAddSaleModal] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [, setIsModalOpen] = useState(false);
   
   const {
     publishedProducts,
@@ -58,7 +58,6 @@ export function Products({ showAddProductModal, setShowAddProductModal, session,
     checkStockStatus,
     mediaUrlsMap,
     removeProduct,
-    updatePickupAvailability,
   } = useProducts(session);
 
   const { 
@@ -366,7 +365,6 @@ const handleViewChange = (newView: ViewType) => {
                         console.log('🔓 Opening modal with product:', {
                           id: upToDateProduct.id,
                           product_name: upToDateProduct.product_name,
-                          pickup_available: upToDateProduct.pickup_available,
                           'publishedProducts length': publishedProducts.length
                         });
                         

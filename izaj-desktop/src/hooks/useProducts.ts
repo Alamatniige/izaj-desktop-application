@@ -24,7 +24,7 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
   const [isLoadingStock, setIsLoadingStock] = useState(true);
   const [activeStatuses, setActiveStatuses] = useState<boolean[]>([]);
   const [mediaUrlsMap, setMediaUrlsMap] = useState<Record<string, string[]>>({});
-  const [publishStatus, setPublishStatus] = useState<boolean>(true);
+  const [publishStatus] = useState<boolean>(true);
   const [deleteProduct, setDeleteProduct] = useState(false);
   
   const fetchingRef = useRef(false);

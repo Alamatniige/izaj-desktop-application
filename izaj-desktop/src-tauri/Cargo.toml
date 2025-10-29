@@ -1,8 +1,8 @@
 [package]
-name = "Izaj"
-version = "0.1.0"
+name = "IZAJ LIGHTING CENTRE"
+version = "1.0.0"
 description = "Izaj Lighting Centre admin application"
-authors = ["you"]
+authors = ["Bug Bounty Scattman's"]
 license = ""
 repository = ""
 edition = "2021"
