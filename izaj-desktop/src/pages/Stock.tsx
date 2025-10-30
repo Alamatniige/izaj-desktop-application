@@ -19,7 +19,6 @@ interface StockProps {
 
 function Stock({ onViewChange, session }: StockProps) {  
   const [showDropdown, setShowDropdown] = useState(false);
-  const [currentView] = useState<'stock' | 'restock'>('stock');
 
   const {
     isLoading,

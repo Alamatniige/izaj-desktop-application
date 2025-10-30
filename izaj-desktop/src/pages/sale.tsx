@@ -34,7 +34,6 @@ export default function Sale({
     pendingProducts: pendingSales,
     fetchPendingProducts,
     refreshProductsData,
-    mediaUrlsMap,
   } = useProducts(session, { enabled: false });
 
   const {
@@ -344,7 +343,6 @@ export default function Sale({
         {/* View Sale Modal */}
         {showViewSaleModal && (
           <ViewSaleModal
-            session={session}
             sale={selectedSaleForView}
             onClose={() => {
               setShowViewSaleModal(false);

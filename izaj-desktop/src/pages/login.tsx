@@ -80,7 +80,7 @@ export default function Login({ onLogin, handleNavigation }: LoginProps) {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 autoFocus
-                placeholder="admin@izaj.com"
+                placeholder="Enter your email address"
               />
             </div>
           </div>

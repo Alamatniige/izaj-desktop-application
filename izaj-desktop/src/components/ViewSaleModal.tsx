@@ -1,6 +1,5 @@
 import { Icon } from '@iconify/react';
 import { useState } from 'react';
-import { Session } from '@supabase/supabase-js';
 
 interface SaleData {
   id: string;
@@ -24,13 +23,11 @@ interface SaleData {
 }
 
 interface ViewSaleModalProps {
-  session: Session | null;
   sale: SaleData | null;
   onClose: () => void;
 }
 
 export function ViewSaleModal({ 
-  session,
   sale, 
   onClose
 }: ViewSaleModalProps) {

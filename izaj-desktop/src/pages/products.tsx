@@ -1,5 +1,5 @@
 import { Icon } from '@iconify/react';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { AddProductModal } from '../components/AddProductModal';
 import { ManageStockModal } from '../components/ManageStockModal';
 import { ViewProductModal } from '../components/ViewProductModal';
@@ -36,7 +36,6 @@ export function Products({ showAddProductModal, setShowAddProductModal, session,
   const [view, setView] = useState<ViewType>('products');
   const [selectedProductForView, setSelectedProductForView] = useState<FetchedProduct | null>(null);
   const [showAddSaleModal, setShowAddSaleModal] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   
   const {
     publishedProducts,
@@ -58,7 +57,6 @@ export function Products({ showAddProductModal, setShowAddProductModal, session,
     checkStockStatus,
     mediaUrlsMap,
     removeProduct,
-    updatePickupAvailability,
   } = useProducts(session);
 
   const { 
@@ -370,8 +368,7 @@ const handleViewChange = (newView: ViewType) => {
                           'publishedProducts length': publishedProducts.length
                         });
                         
-                        // Set modal open first, then set selected product
-                        setIsModalOpen(true);
+                        // Set selected product for view
                         setSelectedProductForView({
                           ...upToDateProduct,
                           mediaUrl: mediaUrlsMap[upToDateProduct.id] || [],
@@ -479,7 +476,6 @@ const handleViewChange = (newView: ViewType) => {
               product={selectedProductForView}
               onClose={() => {
                 console.log('🔒 Closing modal');
-                setIsModalOpen(false);
                 setSelectedProductForView(null);
               }}
               onDelete={async (productId) => {
@@ -487,7 +483,6 @@ const handleViewChange = (newView: ViewType) => {
                 await removeProduct(String(productId));
                 // Remove from local state
                 setPublishedProducts(prev => prev.filter(p => p.id !== productId));
-                setIsModalOpen(false);
                 setSelectedProductForView(null);
                 toast.success('Product deleted successfully');
               }}
