@@ -359,7 +359,6 @@ export default function Sale({
         {/* View Sale Modal */}
         {showViewSaleModal && (
           <ViewSaleModal
-            session={session}
             sale={selectedSaleForView}
             onClose={() => {
               setShowViewSaleModal(false);

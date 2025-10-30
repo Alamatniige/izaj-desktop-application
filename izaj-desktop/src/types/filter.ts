@@ -29,7 +29,9 @@ export interface FetchedProduct {
   sold?: number;
   on_sale: boolean;
   stock_quantity: number;
-  mediaUrl?: string[];
+  mediaUrl?: string[]; // existing usage in products view
+  media_urls?: string[]; // usage in sale view
+  pickup_available?: boolean; // usage in products view logs/updates
   sale?: Array<{
     id: number;
     product_id: string;
