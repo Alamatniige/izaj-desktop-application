@@ -364,7 +364,6 @@ const handleViewChange = (newView: ViewType) => {
                         console.log('🔓 Opening modal with product:', {
                           id: upToDateProduct.id,
                           product_name: upToDateProduct.product_name,
-                          pickup_available: upToDateProduct.pickup_available,
                           'publishedProducts length': publishedProducts.length
                         });
                         

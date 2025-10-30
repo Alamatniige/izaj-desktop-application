@@ -1,7 +1,7 @@
 import { Icon } from "@iconify/react";
 import { useState, useCallback } from "react";
 import { AddProductModal } from "../components/AddProductModal";
-import { ViewSaleModal } from "../components/ViewSaleModal";
+import { ViewSaleModal, type SaleData } from "../components/ViewSaleModal";
 import { Session } from "@supabase/supabase-js";
 import { toast } from "react-hot-toast";
 import { useProducts } from "../hooks/useProducts";
@@ -28,8 +28,8 @@ export default function Sale({
 }: SaleProps) {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showViewSaleModal, setShowViewSaleModal] = useState(false);
-  const [selectedSaleForView, setSelectedSaleForView] = useState<any | null>(null);
-
+  const [selectedSaleForView, setSelectedSaleForView] = useState<SaleData | null>(null);
+  const { mediaUrlsMap } = useProducts(session);
   const {
     pendingProducts: pendingSales,
     fetchPendingProducts,
@@ -67,7 +67,7 @@ export default function Sale({
   console.log('Sale page - onSaleProducts:', onSaleProducts);
   console.log('Sale page - onSaleProducts length:', onSaleProducts.length);
   onSaleProducts.forEach((product, index) => {
-    console.log(`Product ${index}:`, product.product_name, 'media_urls:', product.media_urls);
+    console.log(`Product ${index}:`, product.product_name, 'media_urls:', product.mediaUrl);
   });
 
   const saleCategories = [
@@ -227,7 +227,23 @@ export default function Sale({
                     background: 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)'
                   }}
                   onClick={() => {
-                    setSelectedSaleForView(sale);
+                    const mediaUrls = sale.mediaUrl ?? mediaUrlsMap[sale.product_id] ?? [];
+                    const categoryName = typeof sale.category === 'string' ? sale.category : (sale.category?.category_name ?? '');
+                    const branchName = typeof sale.branch === 'string' ? sale.branch : (sale.branch?.location ?? '');
+                    const selected: SaleData = {
+                      id: sale.id,
+                      product_id: sale.product_id,
+                      product_name: sale.product_name,
+                      price: sale.price,
+                      category: categoryName,
+                      branch: branchName,
+                      status: sale.status,
+                      description: sale.description ?? '',
+                      mediaUrl: mediaUrls,
+                      on_sale: sale.on_sale,
+                      sale: sale.sale ?? [],
+                    };
+                    setSelectedSaleForView(selected);
                     setShowViewSaleModal(true);
                   }}
                 >
@@ -242,7 +258,7 @@ export default function Sale({
                   <div className="relative overflow-hidden">
                     <div className="aspect-[4/3] bg-gradient-to-br from-gray-50 to-gray-100">
                       <img
-                        src={sale.media_urls?.[0] || '/placeholder.png'}
+                        src={mediaUrlsMap[sale.product_id]?.[0] || '/placeholder.png'}
                         alt={sale.product_name}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out"
                       />

@@ -1,7 +1,7 @@
 import { Icon } from '@iconify/react';
 import { useState } from 'react';
 
-interface SaleData {
+export interface SaleData {
   id: string;
   product_id: string;
   product_name: string;
@@ -10,7 +10,7 @@ interface SaleData {
   branch: string;
   status: string;
   description: string;
-  media_urls: string[];
+  mediaUrl: string[];
   on_sale: boolean;
   sale: Array<{
     id: number;
@@ -35,7 +35,7 @@ export function ViewSaleModal({
 
   if (!sale) return null;
 
-  const mediaUrls = sale.media_urls || [];
+  const mediaUrls = sale.mediaUrl || [];
   const hasMultipleMedia = mediaUrls.length > 1;
   const saleDetails = sale.sale?.[0];
 
