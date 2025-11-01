@@ -218,5 +218,30 @@ export class OrderService {
       };
     }
   }
+
+  /**
+   * Process stock updates for existing approved orders
+   */
+  static async processStockForOrders(session: Session | null, orderIds?: string[]) {
+    try {
+      const response = await fetch(`${API_URL}/api/orders/process-stock`, {
+        method: 'POST',
+        headers: this.getHeaders(session),
+        body: JSON.stringify({ orderIds })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to process stock for orders');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error processing stock for orders:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
 }
 

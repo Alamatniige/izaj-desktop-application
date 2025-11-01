@@ -42,6 +42,7 @@ export default function Sale({
     searchTerm,
     setSelectedCategory,
     onSaleProducts,
+    onSaleMediaMap,
     fetchOnSaleProducts,
   } = useFilter(session);
 
@@ -63,26 +64,33 @@ export default function Sale({
     [refreshProductsData, fetchOnSaleProducts, setShowAddSaleModal]
   );
 
-  // Debug logging
-  console.log('Sale page - onSaleProducts:', onSaleProducts);
-  console.log('Sale page - onSaleProducts length:', onSaleProducts.length);
-  onSaleProducts.forEach((product, index) => {
-    console.log(`Product ${index}:`, product.product_name, 'media_urls:', product.mediaUrl);
-  });
-
-  const saleCategories = [
+  const saleCategories: string[] = [
     'All',
-    ...Array.from(new Set(onSaleProducts.map((p) => p.category))),
+    ...Array.from(
+      new Set(
+        onSaleProducts
+          .map((p) => {
+            const categoryName = typeof p.category === 'string' 
+              ? p.category 
+              : p.category?.category_name ?? '';
+            return categoryName;
+          })
+          .filter(Boolean) as string[]
+      )
+    ),
   ];
 
   const filteredSales = onSaleProducts.filter(
-    sale =>
-      (selectedCategory === 'All' || sale.category === selectedCategory) &&
-      sale.product_name.toLowerCase().includes(searchTerm.toLowerCase())
+    sale => {
+      const categoryName = typeof sale.category === 'string' 
+        ? sale.category 
+        : sale.category?.category_name ?? '';
+      return (
+        (selectedCategory === 'All' || categoryName === selectedCategory) &&
+        sale.product_name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
   );
-
-  console.log('Sale page - filteredSales:', filteredSales);
-  console.log('Sale page - filteredSales length:', filteredSales.length);
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -200,10 +208,10 @@ export default function Sale({
                   >
                     {saleCategories.map((cat) => (
                       <option
-                        key={typeof cat === "string" ? cat : cat?.category_name ?? ""}
-                        value={typeof cat === "string" ? cat : cat?.category_name ?? ""}
+                        key={cat}
+                        value={cat}
                       >
-                        {typeof cat === "string" ? cat : cat?.category_name ?? ""}
+                        {cat}
                       </option>
                     ))}
                   </select>
@@ -227,7 +235,13 @@ export default function Sale({
                     background: 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)'
                   }}
                   onClick={() => {
-                    const mediaUrls = sale.mediaUrl ?? mediaUrlsMap[sale.product_id] ?? [];
+                    // Try multiple sources for media URLs with priority order
+                    const mediaUrls = sale.mediaUrl ?? 
+                                     onSaleMediaMap[sale.id] ?? 
+                                     onSaleMediaMap[sale.product_id] ?? 
+                                     mediaUrlsMap[sale.id] ?? 
+                                     mediaUrlsMap[sale.product_id] ?? 
+                                     [];
                     const categoryName = typeof sale.category === 'string' ? sale.category : (sale.category?.category_name ?? '');
                     const branchName = typeof sale.branch === 'string' ? sale.branch : (sale.branch?.location ?? '');
                     const selected: SaleData = {
@@ -258,9 +272,19 @@ export default function Sale({
                   <div className="relative overflow-hidden">
                     <div className="aspect-[4/3] bg-gradient-to-br from-gray-50 to-gray-100">
                       <img
-                        src={mediaUrlsMap[sale.product_id]?.[0] || '/placeholder.png'}
+                        src={
+                          sale.mediaUrl?.[0] ?? 
+                          onSaleMediaMap[sale.id]?.[0] ?? 
+                          onSaleMediaMap[sale.product_id]?.[0] ?? 
+                          mediaUrlsMap[sale.id]?.[0] ?? 
+                          mediaUrlsMap[sale.product_id]?.[0] ?? 
+                          '/placeholder.png'
+                        }
                         alt={sale.product_name}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out"
+                        onError={(e) => {
+                          e.currentTarget.src = '/placeholder.png';
+                        }}
                       />
                     </div>
                     {/* Overlay gradient */}
@@ -297,9 +321,7 @@ export default function Sale({
                         <div className="text-right">
                           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Discount</p>
                           <p className="text-xl font-bold text-green-600" style={{ fontFamily: "'Jost', sans-serif" }}>
-                            {sale.sale?.[0]?.percentage ? `${sale.sale[0].percentage}%` : 
-                             sale.sale?.[0]?.fixed_amount ? `₱${sale.sale[0].fixed_amount}` : 
-                             'No discount'}
+                            {sale.sale?.[0]?.percentage ? `${sale.sale[0].percentage}%` : 'No discount'}
                           </p>
                         </div>
                       </div>
@@ -311,9 +333,7 @@ export default function Sale({
                           <span className="text-lg font-bold text-green-600" style={{ fontFamily: "'Jost', sans-serif" }}>
                             ₱{sale.sale?.[0]?.percentage 
                               ? (sale.price - (sale.price * sale.sale[0].percentage / 100)).toLocaleString()
-                              : sale.sale?.[0]?.fixed_amount 
-                                ? Math.max(0, sale.price - sale.sale[0].fixed_amount).toLocaleString()
-                                : sale.price?.toLocaleString() || '0'}
+                              : sale.price?.toLocaleString() || '0'}
                           </span>
                         </div>
                       </div>

@@ -16,6 +16,7 @@ export interface FetchedProduct {
   id: string;
   product_name: string;
   display_quantity: number;
+  reserved_quantity?: number;
   product_id: string; 
   price: number;
   status: string;

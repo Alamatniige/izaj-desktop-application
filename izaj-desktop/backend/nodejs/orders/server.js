@@ -2,6 +2,7 @@ import express from 'express';
 import { supabase } from '../supabaseClient.js';
 import authenticate from '../util/middlerware.js';
 import { logAuditEvent, AuditActions } from '../util/auditLogger.js';
+import { updateStockFromOrder, reverseStockFromOrder, syncStockFromAllOrders } from '../util/stockUpdater.js';
 
 const router = express.Router();
 
@@ -154,6 +155,37 @@ router.put('/orders/:id/status', authenticate, async (req, res) => {
       });
     }
 
+    // Update stock when order is approved
+    if (status === 'approved' && currentOrder.status !== 'approved') {
+      console.log('📦 [Orders] Order approved, updating stock...');
+      try {
+        const stockResult = await updateStockFromOrder(id);
+        if (!stockResult.success) {
+          console.error('⚠️ [Orders] Stock update had errors:', stockResult.errors);
+          // Don't fail the request, but log it
+        } else {
+          console.log(`✅ [Orders] Stock updated successfully: ${stockResult.updated} products`);
+        }
+      } catch (stockError) {
+        console.error('⚠️ [Orders] Error updating stock (non-critical):', stockError);
+      }
+    }
+
+    // Reverse stock when order is cancelled
+    if (status === 'cancelled' && currentOrder.status !== 'cancelled' && currentOrder.status === 'approved') {
+      console.log('🔄 [Orders] Order cancelled, reversing stock...');
+      try {
+        const stockResult = await reverseStockFromOrder(id);
+        if (!stockResult.success) {
+          console.error('⚠️ [Orders] Stock reversal had errors:', stockResult.errors);
+        } else {
+          console.log(`✅ [Orders] Stock reversed successfully: ${stockResult.updated} products`);
+        }
+      } catch (stockError) {
+        console.error('⚠️ [Orders] Error reversing stock (non-critical):', stockError);
+      }
+    }
+
     // Log audit event (don't let this fail the request)
     try {
       await logAuditEvent(req.user.id, AuditActions.UPDATE_ORDER_STATUS, {
@@ -193,6 +225,13 @@ router.put('/orders/:id/cancel', authenticate, async (req, res) => {
     const { id } = req.params;
     const { reason } = req.body;
 
+    // Get current order status
+    const { data: currentOrder } = await supabase
+      .from('orders')
+      .select('status, order_number')
+      .eq('id', id)
+      .single();
+
     const { data, error } = await supabase
       .from('orders')
       .update({
@@ -212,6 +251,21 @@ router.put('/orders/:id/cancel', authenticate, async (req, res) => {
       });
     }
 
+    // Reverse stock if order was previously approved
+    if (currentOrder?.status === 'approved') {
+      console.log('🔄 [Orders] Cancelling approved order, reversing stock...');
+      try {
+        const stockResult = await reverseStockFromOrder(id);
+        if (!stockResult.success) {
+          console.error('⚠️ [Orders] Stock reversal had errors:', stockResult.errors);
+        } else {
+          console.log(`✅ [Orders] Stock reversed successfully: ${stockResult.updated} products`);
+        }
+      } catch (stockError) {
+        console.error('⚠️ [Orders] Error reversing stock (non-critical):', stockError);
+      }
+    }
+
     // Log audit event
     await logAuditEvent(req.user.id, AuditActions.CANCEL_ORDER, {
       order_id: id,
@@ -227,6 +281,50 @@ router.put('/orders/:id/cancel', authenticate, async (req, res) => {
 
   } catch (error) {
     console.error('Error cancelling order:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// POST /api/orders/process-stock - Sync stock based on all approved orders (idempotent)
+router.post('/orders/process-stock', authenticate, async (req, res) => {
+  try {
+    console.log('📦 [Orders] Syncing stock from all approved orders...');
+
+    // Use the sync function which calculates expected values and updates to match
+    // This is idempotent - safe to run multiple times
+    const stockResult = await syncStockFromAllOrders();
+
+    if (!stockResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: stockResult.error || 'Failed to sync stock',
+        details: stockResult.errors
+      });
+    }
+
+    console.log(`✅ [Orders] Stock sync completed: ${stockResult.updated} products updated`);
+
+    await logAuditEvent(req.user.id, 'PROCESS_ORDER_STOCK', {
+      action: 'Synced stock from all approved orders',
+      products_updated: stockResult.updated,
+      errors: stockResult.errors.length
+    }, req);
+
+    res.json({
+      success: true,
+      message: stockResult.updated > 0 
+        ? `Stock synced successfully! Updated ${stockResult.updated} product(s)`
+        : 'Stock is already up to date',
+      updated: stockResult.updated,
+      errors: stockResult.errors,
+      results: stockResult.results
+    });
+
+  } catch (error) {
+    console.error('Error syncing order stock:', error);
     res.status(500).json({
       success: false,
       error: error.message

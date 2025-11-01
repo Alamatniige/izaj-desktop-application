@@ -22,7 +22,7 @@ export const getInitialFormData = (): ProductFormData => ({
 });
 
 export const getInitialSaleData = () => ({
-  selectedProductId: '',
+  selectedProductIds: [],
   discountType: 'percentage',
   discountValue: '',
   startDate: '',

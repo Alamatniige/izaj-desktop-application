@@ -256,6 +256,7 @@ router.get('/client-products', async (req, res) => {
         pickup_available,
         product_stock (
           display_quantity,
+          reserved_quantity,
           last_sync_at
         )
       `)
@@ -292,6 +293,7 @@ router.get('/client-products', async (req, res) => {
     return {
       ...product,
       display_quantity: stock.display_quantity ?? 0,
+      reserved_quantity: stock.reserved_quantity ?? 0,
       last_sync_at: stock.last_sync_at,
       product_stock: undefined
     };

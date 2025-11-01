@@ -75,14 +75,27 @@ export const mergeStockIntoProducts = (
 ): FetchedProduct[] => {
   const stockMap = new Map<string, number>();
   
+  // Create map of product_id -> display_quantity
   stockData.forEach(item => {
-    stockMap.set(String(item.product_id).trim(), item.display_quantity ?? 0);
+    const productId = String(item.product_id).trim();
+    const displayQty = item.display_quantity ?? 0;
+    stockMap.set(productId, displayQty);
+    console.log(`📦 [mergeStock] Product ${productId}: display_quantity = ${displayQty}`);
   });
 
-  return products.map(product => ({
-    ...product,
-    display_quantity: stockMap.get(String(product.product_id).trim()) || 0,
-  }));
+  // Merge stock data into products
+  const merged = products.map(product => {
+    const productId = String(product.product_id).trim();
+    const stockQty = stockMap.get(productId) ?? product.display_quantity ?? 0;
+    
+    return {
+      ...product,
+      display_quantity: stockQty,
+    };
+  });
+
+  console.log(`✅ [mergeStock] Merged stock data for ${merged.length} products`);
+  return merged;
 };
 
 export const generateSyncMessage = (

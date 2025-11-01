@@ -19,7 +19,7 @@ export interface ProductFormData {
 }
 
 export interface SaleFormData {
-  selectedProductId: string;
+  selectedProductIds: string[];
   discountType: string;
   discountValue: string;
   startDate: string;

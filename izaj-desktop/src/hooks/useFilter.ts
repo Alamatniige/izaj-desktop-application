@@ -3,6 +3,7 @@ import { toast } from 'react-hot-toast';
 import { Session } from '@supabase/supabase-js';
 import { FetchedProduct } from '../types/filter';
 import { FilterService } from '../services/filterService';
+import { ProductService } from '../services/productService';
 
 
 type UseFilterOptions = {
@@ -13,6 +14,7 @@ type UseFilterOptions = {
 export const useFilter = (session: Session | null, options: UseFilterOptions = {}) => {
   const [filteredProducts, setFilteredProducts] = useState<FetchedProduct[]>([]);
   const [onSaleProducts, setOnSaleProducts] = useState<FetchedProduct[]>([]);
+  const [onSaleMediaMap, setOnSaleMediaMap] = useState<Record<string, string[]>>({});
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
@@ -144,6 +146,24 @@ export const useFilter = (session: Session | null, options: UseFilterOptions = {
       try {
         const onsale_products = await FilterService.fetchOnsale(session);
         setOnSaleProducts(onsale_products);
+        
+        // Fetch media URLs for on-sale products
+        const mediaMap: Record<string, string[]> = {};
+        await Promise.all(
+          onsale_products.map(async (product) => {
+            try {
+              const urls = await ProductService.fetchMediaUrl(session, product.id);
+              // Index by both id and product_id for compatibility
+              mediaMap[product.id] = urls;
+              if (product.product_id) {
+                mediaMap[product.product_id] = urls;
+              }
+            } catch (err) {
+              console.error(`❌ Failed to fetch media for on-sale product ${product.id}`, err);
+            }
+          })
+        );
+        setOnSaleMediaMap(mediaMap);
       } catch (error) {
         console.error('Error fetching active products:', error);
         setError('Failed to fetch active products');
@@ -180,6 +200,7 @@ export const useFilter = (session: Session | null, options: UseFilterOptions = {
   return {
     filteredProducts: visibleProducts, initialProducts,
     onSaleProducts,
+    onSaleMediaMap,
     isLoading,
     categories,
     selectedCategory,

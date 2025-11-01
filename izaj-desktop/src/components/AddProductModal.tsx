@@ -1,9 +1,13 @@
 import { Icon } from '@iconify/react';
+import { useState, useEffect, useCallback } from 'react';
 import { FetchedProductSlide } from './FetchedProductSlide';
 import { MediaDropzone } from './MediaDropzone';
 import { useModal } from '../hooks/useModal';
 import { AddProductModalProps } from '../types/modal';
 import { useSale } from '../hooks/useSale';
+import { FilterService } from '../services/filterService';
+import { ProductService } from '../services/productService';
+import { FetchedProduct } from '../types/product';
 
 export function AddProductModal({ 
   onClose,
@@ -52,6 +56,120 @@ export function AddProductModal({
     createSale
   } = useSale(session);
 
+  // Category and product selection states
+  const [categories, setCategories] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [categoryProducts, setCategoryProducts] = useState<FetchedProduct[]>([]);
+  const [categoryProductsLoading, setCategoryProductsLoading] = useState(false);
+  const [productMediaMap, setProductMediaMap] = useState<Record<string, string[]>>({});
+
+  // Fetch published categories (categories that have published products)
+  const fetchPublishedCategories = useCallback(async () => {
+    if (!session?.access_token) return;
+    
+    try {
+      // Fetch active/published products to get their categories
+      const activeProducts = await FilterService.fetchActiveProducts(session);
+      
+      // Extract unique categories from published products
+      const publishedCategories = Array.from(
+        new Set(
+          activeProducts
+            .map(p => {
+              const categoryName = typeof p.category === 'string' 
+                ? p.category 
+                : p.category?.category_name ?? '';
+              return categoryName;
+            })
+            .filter(Boolean)
+        )
+      ).sort();
+      
+      setCategories(publishedCategories);
+    } catch (error) {
+      console.error('Error fetching published categories:', error);
+    }
+  }, [session]);
+
+  // Fetch products by category
+  const fetchProductsByCategory = useCallback(async (category: string) => {
+    if (!session?.access_token || !category) return;
+    
+    setCategoryProductsLoading(true);
+    try {
+      const products = await FilterService.fetchByCategory(session, category);
+      // Filter only published products
+      const publishedProducts = products.filter(p => p.publish_status === true);
+      setCategoryProducts(publishedProducts);
+      
+      // Fetch media URLs for all products
+      const mediaMap: Record<string, string[]> = {};
+      await Promise.all(
+        publishedProducts.map(async (product) => {
+          try {
+            const urls = await ProductService.fetchMediaUrl(session, product.id);
+            mediaMap[product.id] = urls;
+            if (product.product_id) {
+              mediaMap[product.product_id] = urls;
+            }
+          } catch (err) {
+            console.error(`Failed to fetch media for product ${product.id}`, err);
+          }
+        })
+      );
+      setProductMediaMap(mediaMap);
+    } catch (error) {
+      console.error('Error fetching products by category:', error);
+      setCategoryProducts([]);
+    } finally {
+      setCategoryProductsLoading(false);
+    }
+  }, [session]);
+
+  // Fetch categories on mount
+  useEffect(() => {
+    if (mode === 'sale') {
+      fetchPublishedCategories();
+    }
+  }, [mode, fetchPublishedCategories]);
+
+  // Fetch products when category changes
+  useEffect(() => {
+    if (selectedCategory) {
+      fetchProductsByCategory(selectedCategory);
+      // Reset selected products when category changes
+      setSaleData(prev => ({ ...prev, selectedProductIds: [] }));
+    } else {
+      setCategoryProducts([]);
+      setSaleData(prev => ({ ...prev, selectedProductIds: [] }));
+    }
+  }, [selectedCategory, fetchProductsByCategory]);
+
+  // Toggle product selection
+  const toggleProductSelection = (productId: string) => {
+    setSaleData(prev => {
+      const currentIds = prev.selectedProductIds;
+      if (currentIds.includes(productId)) {
+        // Deselect
+        return { ...prev, selectedProductIds: currentIds.filter(id => id !== productId) };
+      } else {
+        // Select
+        return { ...prev, selectedProductIds: [...currentIds, productId] };
+      }
+    });
+  };
+
+  // Select all products in category
+  const selectAllProducts = () => {
+    const allProductIds = categoryProducts.map(p => p.product_id);
+    setSaleData(prev => ({ ...prev, selectedProductIds: allProductIds }));
+  };
+
+  // Clear all selections
+  const clearSelection = () => {
+    setSaleData(prev => ({ ...prev, selectedProductIds: [] }));
+  };
+
   // Debug logging
   console.log('AddProductModal - products:', products);
   console.log('AddProductModal - isLoading:', isLoading);
@@ -60,26 +178,39 @@ export function AddProductModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!saleData.selectedProductId) {
-      alert("Please select a product");
+    if (saleData.selectedProductIds.length === 0) {
+      alert("Please select at least one product");
       return;
     }
 
-    const payload = {
-      product_id: saleData.selectedProductId,
-      percentage: saleData.discountType === "percentage" ? Number(saleData.discountValue) : undefined,
-      fixed_amount: saleData.discountType === "fixed" ? Number(saleData.discountValue) : undefined,
-      start_date: saleData.startDate,
-      end_date: saleData.endDate,
-    };
+    if (!saleData.startDate || !saleData.endDate) {
+      alert("Please select start and end dates");
+      return;
+    }
+
+    if (!saleData.discountValue) {
+      alert("Please enter a discount value");
+      return;
+    }
 
     try {
-      const result = await createSale(payload);
-      console.log("✅ Sale created:", result);
-      alert("Sale created successfully!");
+      // Create sales for all selected products
+      const salePromises = saleData.selectedProductIds.map(productId => {
+        const payload = {
+          product_id: productId,
+          percentage: saleData.discountType === "percentage" ? Number(saleData.discountValue) : undefined,
+          start_date: saleData.startDate,
+          end_date: saleData.endDate,
+        };
+        return createSale(payload);
+      });
+
+      await Promise.all(salePromises);
+      console.log(`✅ Created ${saleData.selectedProductIds.length} sale(s) successfully`);
+      onSuccess();
     } catch (err) {
-      console.error("❌ Failed to create sale:", err);
-      alert("Failed to create sale");
+      console.error("❌ Failed to create sales:", err);
+      alert("Failed to create sales. Please try again.");
     }
   };
 
@@ -87,30 +218,147 @@ export function AddProductModal({
   const renderSaleForm = () => (
     <div className="space-y-6">
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Product Selection */}
+        {/* Category Selection */}
         <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
           <div className="flex items-center gap-3 mb-4">
-            <Icon icon="mdi:package-variant" className="text-2xl text-blue-600" />
-            <span className="text-sm text-blue-600 font-semibold uppercase tracking-wide">Product Selection</span>
+            <Icon icon="mdi:tag-outline" className="text-2xl text-blue-600" />
+            <span className="text-sm text-blue-600 font-semibold uppercase tracking-wide">Category Selection</span>
           </div>
           <select
-            value={saleData.selectedProductId}
-            onChange={(e) => setSaleData({ ...saleData, selectedProductId: e.target.value })}
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
             className="w-full px-4 py-3 rounded-xl border border-blue-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white"
             style={{ fontFamily: "'Jost', sans-serif" }}
           >
-            <option value="">Select Product</option>
-            {isLoading ? (
-              <option disabled>Loading products...</option>
-            ) : (
-              products.map((product) => (
-                <option key={product.id} value={product.product_id}>
-                  {product.product_name}
-                </option>
-              ))
-            )}
+            <option value="">Select Category</option>
+            {categories.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
           </select>
         </div>
+
+        {/* Product Cards */}
+        {selectedCategory && (
+          <div className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-2xl p-6 border border-purple-100">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <Icon icon="mdi:package-variant" className="text-2xl text-purple-600" />
+                <span className="text-sm text-purple-600 font-semibold uppercase tracking-wide">
+                  Products in {selectedCategory}
+                </span>
+                {saleData.selectedProductIds.length > 0 && (
+                  <span className="px-3 py-1 bg-purple-500 text-white text-xs font-semibold rounded-full">
+                    {saleData.selectedProductIds.length} selected
+                  </span>
+                )}
+              </div>
+              {categoryProducts.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={selectAllProducts}
+                    className="px-3 py-1.5 text-xs font-semibold bg-white border border-purple-300 text-purple-600 rounded-lg hover:bg-purple-50 transition-all duration-200 flex items-center gap-1"
+                    style={{ fontFamily: "'Jost', sans-serif" }}
+                  >
+                    <Icon icon="mdi:select-all" className="text-sm" />
+                    Select All
+                  </button>
+                  {saleData.selectedProductIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={clearSelection}
+                      className="px-3 py-1.5 text-xs font-semibold bg-white border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-all duration-200 flex items-center gap-1"
+                      style={{ fontFamily: "'Jost', sans-serif" }}
+                    >
+                      <Icon icon="mdi:close-circle" className="text-sm" />
+                      Clear
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            {categoryProductsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="flex items-center gap-3">
+                  <Icon icon="mdi:loading" className="text-2xl animate-spin text-purple-600" />
+                  <span className="text-purple-600" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    Loading products...
+                  </span>
+                </div>
+              </div>
+            ) : categoryProducts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Icon icon="mdi:package-variant-closed" className="text-6xl text-gray-300 mb-4" />
+                <p className="text-gray-500" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  No published products found in this category
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[400px] overflow-y-auto">
+                {categoryProducts.map((product) => {
+                  const isSelected = saleData.selectedProductIds.includes(product.product_id);
+                  const productImage = productMediaMap[product.id]?.[0] || productMediaMap[product.product_id]?.[0] || '/placeholder.png';
+                  
+                  return (
+                    <div
+                      key={product.id}
+                      onClick={() => toggleProductSelection(product.product_id)}
+                      className={`group relative bg-white rounded-2xl shadow-lg hover:shadow-2xl border-2 transition-all duration-300 cursor-pointer overflow-hidden ${
+                        isSelected 
+                          ? 'border-purple-500 ring-4 ring-purple-200' 
+                          : 'border-gray-100 hover:border-purple-300'
+                      }`}
+                    >
+                      {/* Selected indicator */}
+                      {isSelected && (
+                        <div className="absolute top-2 right-2 z-10 bg-purple-500 text-white rounded-full p-1.5 shadow-lg">
+                          <Icon icon="mdi:check-circle" className="text-lg" />
+                        </div>
+                      )}
+
+                      {/* Product Image */}
+                      <div className="relative w-full aspect-[4/3] overflow-hidden bg-gray-100">
+                        <img
+                          src={productImage}
+                          alt={product.product_name}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                          onError={(e) => {
+                            e.currentTarget.src = '/placeholder.png';
+                          }}
+                        />
+                        {/* Overlay on hover */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
+                          <span className="text-white font-semibold text-sm flex items-center gap-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                            <Icon icon="mdi:tag" className="w-5 h-5" />
+                            {isSelected ? 'Selected' : 'Click to Select'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Product Info */}
+                      <div className="p-4">
+                        <h3 className="font-bold text-base text-gray-900 mb-2 line-clamp-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                          {product.product_name}
+                        </h3>
+                        <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Price</p>
+                            <p className="text-xl font-bold text-gray-900" style={{ fontFamily: "'Jost', sans-serif" }}>
+                              ₱{product.price?.toLocaleString() || '0'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Discount Configuration */}
         <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-100">
@@ -128,7 +376,6 @@ export function AddProductModal({
                 style={{ fontFamily: "'Jost', sans-serif" }}
               >
                 <option value="percentage">Percentage</option>
-                <option value="fixed">Fixed Amount</option>
               </select>
             </div>
 
@@ -414,12 +661,16 @@ export function AddProductModal({
               {mode === 'sale' && (
                 <button 
                   onClick={handleSubmit}
-                  disabled={isCreating}
-                  className="flex items-center justify-center gap-2 px-6 py-3 bg-purple-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:bg-purple-600 transition-all duration-200"
+                  disabled={isCreating || saleData.selectedProductIds.length === 0}
+                  className="flex items-center justify-center gap-2 px-6 py-3 bg-purple-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:bg-purple-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ fontFamily: "'Jost', sans-serif" }}
                 >
                   {isCreating && <Icon icon="mdi:loading" className="animate-spin" />}
-                  {isCreating ? 'Creating...' : 'Create Sale'}
+                  {isCreating 
+                    ? `Creating ${saleData.selectedProductIds.length} sale(s)...` 
+                    : saleData.selectedProductIds.length > 0
+                      ? `Create ${saleData.selectedProductIds.length} Sale(s)`
+                      : 'Create Sale'}
                 </button>
               )}
             </div>

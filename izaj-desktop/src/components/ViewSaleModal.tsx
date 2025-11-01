@@ -67,8 +67,6 @@ export function ViewSaleModal({
   const getDiscountText = () => {
     if (saleDetails?.percentage) {
       return `${saleDetails.percentage}% OFF`;
-    } else if (saleDetails?.fixed_amount) {
-      return `₱${saleDetails.fixed_amount} OFF`;
     }
     return 'No discount';
   };
@@ -77,8 +75,6 @@ export function ViewSaleModal({
     if (saleDetails?.percentage) {
       const discount = (saleDetails.percentage / 100) * sale.price;
       return sale.price - discount;
-    } else if (saleDetails?.fixed_amount) {
-      return Math.max(0, sale.price - saleDetails.fixed_amount);
     }
     return sale.price;
   };

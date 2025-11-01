@@ -39,12 +39,20 @@ function Stock({ onViewChange, session }: StockProps) {
         allProducts: 0,
         activeProducts: 0,
         productsSold: 0,
+        totalSold: 0,
       };
     }
+    
+    // Calculate total sold quantity from reserved_quantity
+    const totalSold = filteredProducts.reduce((sum, p) => {
+      return sum + (p.reserved_quantity || 0);
+    }, 0);
+    
     return {
       allProducts: filteredProducts.length,
       activeProducts: filteredProducts.filter(p => p.publish_status).length,
-      productsSold: filteredProducts.filter(p => p.sold).length,
+      productsSold: filteredProducts.filter(p => (p.reserved_quantity || 0) > 0).length,
+      totalSold: totalSold,
     };
   }, [filteredProducts]);
 
@@ -166,8 +174,8 @@ function Stock({ onViewChange, session }: StockProps) {
                     <Icon icon="mdi:shopping" className="text-xl text-yellow-500" />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500" style={{ fontFamily: "'Jost', sans-serif" }}>Product Sold</p>
-                    <p className="text-lg font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>{stats.productsSold.toLocaleString()}</p>
+                    <p className="text-xs text-gray-500" style={{ fontFamily: "'Jost', sans-serif" }}>Total Reserved</p>
+                    <p className="text-lg font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>{stats.totalSold.toLocaleString()}</p>
                   </div>
                 </div>
               </div>
@@ -320,7 +328,7 @@ function Stock({ onViewChange, session }: StockProps) {
                         {formatPrice(product.price)}
                       </td>
                       <td className="py-4 px-4 text-base" style={{ fontFamily: "'Jost', sans-serif" }}>
-                        {product.sold || 0}
+                        {product.reserved_quantity || 0}
                       </td>
                       <td className="py-4 px-4">
                         <span className={`font-medium text-base ${getStockStatusColor(product.display_quantity)}`} style={{ fontFamily: "'Jost', sans-serif" }}>

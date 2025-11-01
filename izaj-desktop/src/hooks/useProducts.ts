@@ -269,7 +269,11 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
         filteredProducts.map(async (product) => {
           try {
             const urls = await ProductService.fetchMediaUrl(session, product.id);
+            // Index by both id and product_id for compatibility
             map[product.id] = urls;
+            if (product.product_id) {
+              map[product.product_id] = urls;
+            }
           } catch (err) {
             console.error(`❌ Failed to fetch media for product ${product.id}`, err);
           }

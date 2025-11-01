@@ -19,6 +19,12 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
   const [isAddingAdmin, setIsAddingAdmin] = useState(false);
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
   const [downloadRange, setDownloadRange] = useState({ from: '', to: '' });
+  const [subscriptionMessage, setSubscriptionMessage] = useState('');
+  const [isSavingMessage, setIsSavingMessage] = useState(false);
+  const [messageSaveStatus, setMessageSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [isSendingToAll, setIsSendingToAll] = useState(false);
+  const [sendToAllStatus, setSendToAllStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [subscriberCount, setSubscriberCount] = useState<number | null>(null);
 
   const [newAdmin, setNewAdmin] = useState({
     email: '',
@@ -59,6 +65,10 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
     newStatus?: boolean;
   }>({ open: false, action: null, user: null });
 
+  const [sendConfirmModal, setSendConfirmModal] = useState<{
+    open: boolean;
+  }>({ open: false });
+
   // Wrap fetchAdminUsers in useCallback
   const fetchAdminUsers = useCallback(async () => {
     try {
@@ -96,11 +106,10 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
   const tabs = [
     { id: 'userManagement', label: 'User Management', icon: 'mdi:account-group' },
     { id: 'auditLogs', label: 'Audit Logs', icon: 'mdi:history' },
+    { id: 'subscriptionMessage', label: 'Subscription Message', icon: 'mdi:email-newsletter' },
   ];
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-  };
+  // Removed handleSave - no longer needed since we removed outer form
 
   const handleAddAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -297,13 +306,149 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
   }
   }, [session?.access_token]);
 
+  const fetchSubscriptionMessage = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/admin/subscription-message`, {
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+      });
+      const result = await response.json();
+      if (result.success && result.message) {
+        setSubscriptionMessage(result.message);
+      }
+    } catch (error) {
+      console.error('Failed to fetch subscription message:', error);
+    }
+  }, [session?.access_token]);
+
+  const fetchSubscriberCount = useCallback(async () => {
+    try {
+      console.log('Fetching subscriber count from:', `${API_URL}/api/admin/subscription-message/subscriber-count`);
+      const response = await fetch(`${API_URL}/api/admin/subscription-message/subscriber-count`, {
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+      });
+      
+      console.log('Subscriber count response status:', response.status);
+      const result = await response.json();
+      console.log('Subscriber count result:', result);
+      
+      if (result.success && result.count !== undefined) {
+        console.log('Setting subscriber count to:', result.count);
+        setSubscriberCount(result.count);
+      } else {
+        console.warn('Invalid response format:', result);
+      }
+    } catch (error) {
+      console.error('Failed to fetch subscriber count:', error);
+    }
+  }, [session?.access_token]);
+
+  const handleSendToAllSubscribers = async () => {
+    if (!subscriptionMessage.trim()) {
+      alert('Please save a message first before sending to all subscribers.');
+      return;
+    }
+
+    // Open confirmation modal
+    setSendConfirmModal({ open: true });
+  };
+
+  const confirmSendToAll = async () => {
+    setSendConfirmModal({ open: false });
+    setIsSendingToAll(true);
+    setSendToAllStatus('idle');
+
+    try {
+      const response = await fetch(`${API_URL}/api/admin/subscription-message/send-to-all`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setSendToAllStatus('success');
+        setTimeout(() => setSendToAllStatus('idle'), 5000);
+      } else {
+        setSendToAllStatus('error');
+        setTimeout(() => setSendToAllStatus('idle'), 5000);
+        alert(result.error || 'Failed to send messages');
+      }
+    } catch (error) {
+      console.error('Error sending to all subscribers:', error);
+      setSendToAllStatus('error');
+      setTimeout(() => setSendToAllStatus('idle'), 5000);
+      alert('Failed to send messages. Please try again.');
+    } finally {
+      setIsSendingToAll(false);
+    }
+  };
+
+  const handleSaveSubscriptionMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    e.stopPropagation(); // Prevent event bubbling
+    setIsSavingMessage(true);
+    setMessageSaveStatus('idle');
+
+    try {
+      const response = await fetch(`${API_URL}/api/admin/subscription-message`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ message: subscriptionMessage }),
+      });
+
+      // Check if response is ok before parsing JSON
+      if (!response.ok) {
+        // If unauthorized, don't redirect - just show error
+        if (response.status === 401 || response.status === 403) {
+          setMessageSaveStatus('error');
+          setTimeout(() => setMessageSaveStatus('idle'), 3000);
+          alert('Session expired. Please refresh the page and try again.');
+          return;
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        setMessageSaveStatus('success');
+        setTimeout(() => setMessageSaveStatus('idle'), 3000);
+      } else {
+        setMessageSaveStatus('error');
+        setTimeout(() => setMessageSaveStatus('idle'), 3000);
+        alert(result.error || 'Failed to save message');
+      }
+    } catch (error) {
+      console.error('Error saving subscription message:', error);
+      setMessageSaveStatus('error');
+      setTimeout(() => setMessageSaveStatus('idle'), 3000);
+      // Don't show alert for network errors, status message is enough
+    } finally {
+      setIsSavingMessage(false);
+    }
+  };
+
   useEffect(() => {
   if (!session?.access_token) return;
   fetchAdminUsers();
   if (activeTab === 'auditLogs') {
     fetchAuditLogs();
   }
-  }, [session, activeTab, fetchAdminUsers, fetchAuditLogs]);
+  if (activeTab === 'subscriptionMessage') {
+    fetchSubscriptionMessage();
+    fetchSubscriberCount();
+  }
+  }, [session, activeTab, fetchAdminUsers, fetchAuditLogs, fetchSubscriptionMessage, fetchSubscriberCount]);
 
   const getActionColor = (action: string) => {
   switch (action) {
@@ -400,7 +545,7 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
 
             {/* Tab Content */}
             <div className="p-4 sm:p-6">
-              <form onSubmit={handleSave} className="space-y-6 sm:space-y-8">
+              <div className="space-y-6 sm:space-y-8">
 
                 {/* User Management Settings */}
                 {activeTab === 'userManagement' && (
@@ -852,7 +997,118 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                     </div>
                   </div>
                 )}
-              </form>
+
+                {/* Subscription Message Section */}
+                {activeTab === 'subscriptionMessage' && (
+                  <div className="space-y-6 sm:space-y-8">
+                    <div className="bg-white rounded-3xl border border-gray-100 p-4 sm:p-6 shadow-lg">
+                      <div className="mb-6">
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2 mb-2">
+                          <Icon icon="mdi:email-newsletter" className="text-yellow-400" />
+                          Subscription Welcome Message
+                        </h3>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                          <p className="text-sm text-gray-600">
+                            Set a custom message that will be automatically sent to all users who subscribe to your newsletter.
+                            This message will be included in the subscription confirmation email.
+                          </p>
+                          {subscriberCount !== null && (
+                            <div className="text-sm text-gray-700 bg-gray-50 px-4 py-2 rounded-lg">
+                              <span className="font-semibold">{subscriberCount}</span> active subscribers
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <form onSubmit={handleSaveSubscriptionMessage} className="space-y-6">
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-700">
+                            Message Content
+                          </label>
+                          <textarea
+                            value={subscriptionMessage}
+                            onChange={(e) => setSubscriptionMessage(e.target.value)}
+                            rows={12}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-yellow-200 focus:border-yellow-400 transition-colors duration-200 resize-none"
+                            placeholder="Enter your subscription welcome message here. This message will be sent to all new subscribers..."
+                          />
+                          <p className="text-xs text-gray-500">
+                            This message will be sent to all subscribers when you use the "Send to All" button.
+                          </p>
+                        </div>
+
+                        <div className="flex flex-col gap-4 pt-4 border-t border-gray-200">
+                          <div className="flex items-center gap-3">
+                            {messageSaveStatus === 'success' && (
+                              <div className="flex items-center gap-2 text-green-600">
+                                <Icon icon="mdi:check-circle" className="w-5 h-5" />
+                                <span className="text-sm font-medium">Message saved successfully!</span>
+                              </div>
+                            )}
+                            {messageSaveStatus === 'error' && (
+                              <div className="flex items-center gap-2 text-red-600">
+                                <Icon icon="mdi:alert-circle" className="w-5 h-5" />
+                                <span className="text-sm font-medium">Failed to save message. Please try again.</span>
+                              </div>
+                            )}
+                            {sendToAllStatus === 'success' && (
+                              <div className="flex items-center gap-2 text-green-600">
+                                <Icon icon="mdi:check-circle" className="w-5 h-5" />
+                                <span className="text-sm font-medium">Message sent to all subscribers!</span>
+                              </div>
+                            )}
+                            {sendToAllStatus === 'error' && (
+                              <div className="flex items-center gap-2 text-red-600">
+                                <Icon icon="mdi:alert-circle" className="w-5 h-5" />
+                                <span className="text-sm font-medium">Failed to send messages. Please try again.</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex gap-3">
+                            <button
+                              type="submit"
+                              disabled={isSavingMessage}
+                              className="px-6 py-3 bg-yellow-500 text-white rounded-xl hover:bg-yellow-600 transition shadow-lg hover:shadow-xl flex items-center gap-2 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                              style={{ fontFamily: "'Jost', sans-serif" }}
+                            >
+                              {isSavingMessage ? (
+                                <>
+                                  <Icon icon="mdi:loading" className="w-5 h-5 animate-spin" />
+                                  Saving...
+                                </>
+                              ) : (
+                                <>
+                                  <Icon icon="mdi:content-save" className="w-5 h-5" />
+                                  Save Message
+                                </>
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleSendToAllSubscribers}
+                              disabled={isSendingToAll || !subscriptionMessage.trim()}
+                              className="px-6 py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition shadow-lg hover:shadow-xl flex items-center gap-2 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                              style={{ fontFamily: "'Jost', sans-serif" }}
+                            >
+                              {isSendingToAll ? (
+                                <>
+                                  <Icon icon="mdi:loading" className="w-5 h-5 animate-spin" />
+                                  Sending...
+                                </>
+                              ) : (
+                                <>
+                                  <Icon icon="mdi:email-send" className="w-5 h-5" />
+                                  Send to All 
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -905,6 +1161,68 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                   {confirmModal.newStatus ? 'Activate' : 'Deactivate'}
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Send to All Subscribers Confirmation Modal */}
+      {sendConfirmModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
+            <div className="mb-6 flex items-center gap-3">
+              <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-xl">
+                <Icon icon="mdi:email-send" className="w-7 h-7 text-blue-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">
+                Send to All
+              </h3>
+            </div>
+            
+            <div className="mb-6">
+              <p className="text-gray-700 mb-4">
+                Are you sure you want to send this message to <span className="font-semibold text-blue-600">{subscriberCount || 0} active subscriber{subscriberCount !== 1 ? 's' : ''}</span>?
+              </p>
+              
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                <div className="flex items-start gap-3">
+                  <Icon icon="mdi:alert-circle" className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-yellow-800 mb-1">Important</p>
+                    <p className="text-sm text-yellow-700">
+                      This action cannot be undone. All active subscribers will receive an email with your custom message.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {subscriptionMessage.trim() && (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Message Preview:</p>
+                  <div 
+                    className="text-sm text-gray-700 line-clamp-3"
+                    dangerouslySetInnerHTML={{ __html: subscriptionMessage.substring(0, 200) + (subscriptionMessage.length > 200 ? '...' : '') }}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => setSendConfirmModal({ open: false })}
+                className="px-6 py-3 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 font-medium transition-colors"
+                style={{ fontFamily: "'Jost', sans-serif" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmSendToAll}
+                className="px-6 py-3 rounded-xl bg-blue-500 text-white hover:bg-blue-600 font-semibold transition-colors flex items-center gap-2 shadow-lg hover:shadow-xl"
+                style={{ fontFamily: "'Jost', sans-serif" }}
+              >
+                <Icon icon="mdi:email-send" className="w-5 h-5" />
+                Send to All
+              </button>
             </div>
           </div>
         </div>
