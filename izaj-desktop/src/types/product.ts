@@ -42,9 +42,16 @@ export interface ApiResponse {
   timestamp: string;
 }
 
+export interface StockItem {
+  product_id: string;
+  display_quantity: number;
+  reserved_quantity?: number;
+}
+
 export interface StockStatus {
   needsSync: number;
   total: number;
+  products?: StockItem[];
 }
 
 export interface SyncStats {

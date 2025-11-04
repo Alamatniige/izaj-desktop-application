@@ -132,7 +132,7 @@ const handleViewChange = (newView: ViewType) => {
     }
     const pidStr = String(p.product_id).trim();
     const pidNum = Number(pidStr);
-    const match = stockStatus.products.find(s => {
+    const match = stockStatus.products.find((s: { product_id: string; display_quantity: number }) => {
       const sidStr = String(s.product_id).trim();
       if (sidStr === pidStr) return true;
       const sidNum = Number(sidStr);

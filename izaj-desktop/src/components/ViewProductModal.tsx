@@ -85,9 +85,9 @@ export function ViewProductModal({
         if (single && typeof single.display_quantity === 'number') {
           setCurrentProduct(prev => {
             const prevQty = prev.display_quantity ?? 0;
-            const nextQty = single.display_quantity;
+            const nextQty = single.display_quantity ?? 0;
             const finalQty = nextQty === 0 && prevQty > 0 ? prevQty : nextQty;
-            return { ...prev, display_quantity: finalQty };
+            return { ...prev, display_quantity: finalQty } as FetchedProduct;
           });
         }
       } catch (_e) {
