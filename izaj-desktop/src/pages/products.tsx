@@ -22,6 +22,7 @@ import {
 } from '../utils/productUtils';
 import { useFilter } from '../hooks/useFilter';
 import { FetchedProduct } from '../types/product';
+import { ProductService } from '../services/productService';
 
 interface ProductsProps {
   showAddProductModal: boolean;
@@ -36,6 +37,7 @@ export function Products({ showAddProductModal, setShowAddProductModal, session,
   const [view, setView] = useState<ViewType>('products');
   const [selectedProductForView, setSelectedProductForView] = useState<FetchedProduct | null>(null);
   const [showAddSaleModal, setShowAddSaleModal] = useState(false);
+  const [isBulkPublishing, setIsBulkPublishing] = useState(false);
   
   const {
     publishedProducts,
@@ -114,6 +116,31 @@ const handleViewChange = (newView: ViewType) => {
       toast.success('Products updated successfully!');
     }
   }, [refreshProductsData, checkStockStatus, updatePublishedProducts]);
+
+  // Count products ready to publish to website (is_published = true, publish_status = false)
+  const productsReadyToPublish = publishedProducts.filter(
+    p => p.is_published === true && p.publish_status === false
+  ).length;
+
+  const handleBulkPublishToWebsite = useCallback(async () => {
+    if (productsReadyToPublish === 0) {
+      toast.error('No products ready to publish');
+      return;
+    }
+
+    setIsBulkPublishing(true);
+    try {
+      const result = await ProductService.bulkPublishToWebsite(session);
+      toast.success(result.message || `Successfully published ${result.count} products to website`);
+      await refreshProductsData();
+      await updatePublishedProducts();
+    } catch (error) {
+      console.error('Error bulk publishing products:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to publish products to website');
+    } finally {
+      setIsBulkPublishing(false);
+    }
+  }, [session, productsReadyToPublish, refreshProductsData, updatePublishedProducts]);
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -211,6 +238,7 @@ const handleViewChange = (newView: ViewType) => {
                         : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
                     }`}
                     style={{ fontFamily: "'Jost', sans-serif" }}
+                    title="Sync new products (incremental)"
                   >
                     <Icon 
                       icon={isFetching ? "mdi:loading" : fetchSuccess ? "mdi:check" : "mdi:refresh"} 
@@ -218,6 +246,26 @@ const handleViewChange = (newView: ViewType) => {
                     />
                     <span className="text-sm">{isFetching ? 'Syncing...' : fetchSuccess ? 'Synced' : 'Sync Products'}</span>
                   </button>
+
+                  
+
+                  {/* Bulk Publish to Website Button */}
+                  {productsReadyToPublish > 0 && (
+                    <button
+                      onClick={handleBulkPublishToWebsite}
+                      disabled={isBulkPublishing}
+                      className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:bg-blue-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ fontFamily: "'Jost', sans-serif" }}
+                    >
+                      <Icon 
+                        icon={isBulkPublishing ? "mdi:loading" : "mdi:web"} 
+                        className={`text-lg ${isBulkPublishing ? 'animate-spin' : ''}`} 
+                      />
+                      <span className="text-sm">
+                        {isBulkPublishing ? 'Publishing...' : `Publish to Website (${productsReadyToPublish})`}
+                      </span>
+                    </button>
+                  )}
 
                   {/* Manage Stock Button */}
                   {!isLoadingStock && stockStatus.needsSync > 0 && (
@@ -361,12 +409,7 @@ const handleViewChange = (newView: ViewType) => {
                       onClick={() => {
                         // Always get the latest product data from publishedProducts
                         const upToDateProduct = publishedProducts.find(p => p.id === product.id) || product;
-                        console.log('🔓 Opening modal with product:', {
-                          id: upToDateProduct.id,
-                          product_name: upToDateProduct.product_name,
-                          'publishedProducts length': publishedProducts.length
-                        });
-                        
+                          
                         // Set selected product for view
                         setSelectedProductForView({
                           ...upToDateProduct,
@@ -474,7 +517,6 @@ const handleViewChange = (newView: ViewType) => {
             <ViewProductModal
               product={selectedProductForView}
               onClose={() => {
-                console.log('🔒 Closing modal');
                 setSelectedProductForView(null);
               }}
               onDelete={async (productId) => {
@@ -486,7 +528,6 @@ const handleViewChange = (newView: ViewType) => {
                 toast.success('Product deleted successfully');
               }}
               onProductUpdate={(productId, updates) => {
-                console.log('📢 products.tsx: Received product update from modal:', { productId, updates });
                 
                 // Update publishedProducts immediately
                 setPublishedProducts(prev => prev.map(p => 
@@ -497,18 +538,12 @@ const handleViewChange = (newView: ViewType) => {
                 setSelectedProductForView(prev => {
                   if (!prev) return null;
                   const updated = { ...prev, ...updates };
-                  console.log('✅ selectedProductForView updated:', {
-                    publish_status: updated.publish_status,
-                    pickup_available: updated.pickup_available
-                  });
                   return updated;
                 });
                 
-                console.log('📦 publishedProducts updated for product:', productId);
                 
                 // If publish status changed, refresh the products list
                 if (updates.publish_status !== undefined) {
-                  console.log('🔄 Refreshing products list due to publish status change');
                   setTimeout(() => {
                     refreshProductsData();
                   }, 500);

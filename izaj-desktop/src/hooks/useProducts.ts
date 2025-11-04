@@ -105,23 +105,46 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
 
   const handleFetchProducts = useCallback(async (isManualSync: boolean = true) => {
   if (!session?.access_token || fetchingRef.current) {
-    if (fetchingRef.current) { /* empty */ }
-    return;
+    if (fetchingRef.current) return;
   }
+
+  // Incremental sync: use lastFetchTime when available
+  const syncTime = lastFetchTime;
 
   fetchingRef.current = true;
   setIsFetching(true);
   setFetchSuccess(false);
 
   try {
-    const data = await ProductService.syncProducts(session, lastFetchTime, 100);
+    const data = await ProductService.syncProducts(session, syncTime, 100);
+    
     const newProducts = data.products || [];
     
-    if (newProducts.length === 0 && lastFetchTime) {
-      toast('No new products to fetch');
-      setFetchSuccess(true);
-      setSyncStats({ synced: 0, skipped: 0 });
-      return;
+    // Handle case when no products are returned
+    if (newProducts.length === 0) {
+      if (lastFetchTime) {
+        setFetchSuccess(true);
+        setSyncStats({ synced: data.synced || 0, skipped: data.skipped || 0 });
+        
+        if (isManualSync) {
+          toast.success(`Sync completed. No new products to fetch. (${data.synced || 0} synced, ${data.skipped || 0} skipped)`);
+        }
+        return;
+      } else {
+        // First sync returned 0 products - this is valid
+        setPublishedProducts([]);
+        setLastFetchTime(data.timestamp);
+        localStorage.setItem('lastFetchTime', data.timestamp);
+        setFetchSuccess(true);
+        setSyncStats({ synced: data.synced || 0, skipped: data.skipped || 0 });
+        
+        await fetchPendingCount();
+        
+        if (isManualSync) {
+          toast.success('Sync completed successfully. No products found in centralized database.');
+        }
+        return;
+      }
     }
 
     if (lastFetchTime) {
@@ -136,6 +159,7 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
       setPublishedProducts(merged);
     }
 
+    // Update lastFetchTime to the server timestamp for next incremental sync
     setLastFetchTime(data.timestamp);
     localStorage.setItem('lastFetchTime', data.timestamp);
     setFetchSuccess(true);
@@ -150,7 +174,6 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
 
     await checkStockStatus();
   } catch (error) {
-    console.error('Error syncing products:', error);
     const errorMessage = error instanceof Error 
       ? error.message 
       : 'An unknown error occurred while syncing products';
@@ -189,8 +212,6 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
         setPublishedProducts(prev => prev.map(p => 
           p.id === productId ? { ...p, publish_status: status } : p
         ));
-        
-        console.log('✅ Publish status updated in publishedProducts for product:', productId);
       } catch (error) {
         console.error('Error updating publish status:', error);
         throw error; // Re-throw so modal can handle it
@@ -210,7 +231,6 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
           p.id === productId ? { ...p, pickup_available: pickupAvailable } : p
         ));
         
-        console.log('✅ Pickup availability updated in publishedProducts for product:', productId);
       } catch (error) {
         console.error('Error updating pickup availability:', error);
         throw error; // Re-throw so modal can handle it
@@ -292,7 +312,6 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
 
   const refreshProducts = useCallback(async () => {
     if (session?.access_token) {
-      console.log('🔄 Refreshing products...');
       await handleFetchProducts();
     }
   }, [session, handleFetchProducts]);

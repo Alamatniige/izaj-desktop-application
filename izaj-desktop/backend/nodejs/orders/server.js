@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient.js';
 import authenticate from '../util/middlerware.js';
 import { logAuditEvent, AuditActions } from '../util/auditLogger.js';
 import { updateStockFromOrder, reverseStockFromOrder, syncStockFromAllOrders } from '../util/stockUpdater.js';
+import { getAdminContext } from '../util/adminContext.js';
 
 const router = express.Router();
 
@@ -11,22 +12,61 @@ router.get('/orders', authenticate, async (req, res) => {
   try {
     const { status } = req.query;
 
+    // Get admin context to check SuperAdmin status and branches
+    const adminContext = await getAdminContext(req.user.id);
+    
+    console.log('🔍 [Orders] Fetching orders for user:', req.user.id);
+    console.log('🔍 [Orders] Admin context:', {
+      isSuperAdmin: adminContext.isSuperAdmin,
+      assignedBranches: adminContext.assignedBranches,
+      assignedBranchesLength: adminContext.assignedBranches?.length
+    });
+
     let query = supabase
       .from('orders')
       .select(`
         *,
         order_items(*)
-      `)
-      .order('created_at', { ascending: false });
+      `);
+
+    // Filter by branches if not SuperAdmin
+    if (!adminContext.isSuperAdmin) {
+      console.log('📋 [Orders] Regular admin - applying branch filters');
+      if (!adminContext.assignedBranches || adminContext.assignedBranches.length === 0) {
+        // No branches assigned - return empty array
+        console.log('⚠️ [Orders] No branches assigned for regular admin');
+        return res.json({
+          success: true,
+          data: [],
+          count: 0
+        });
+      }
+      // Filter by branch OR assigned_admin_id using PostgREST OR syntax
+      // Format: (branch.eq.value1,branch.eq.value2),assigned_admin_id.eq.userId
+      const branchConditions = adminContext.assignedBranches.map(b => `branch.eq.${encodeURIComponent(b)}`).join(',');
+      query = query.or(`(${branchConditions}),assigned_admin_id.eq.${req.user.id}`);
+      console.log('📋 [Orders] Applied branch filter:', branchConditions);
+    } else {
+      console.log('✅ [Orders] SuperAdmin - no filters applied, returning all orders');
+    }
 
     if (status) {
       query = query.eq('status', status);
+      console.log('📋 [Orders] Applied status filter:', status);
     }
+
+    query = query.order('created_at', { ascending: false });
 
     const { data, error } = await query;
 
     if (error) {
-      console.error('Error fetching orders:', error);
+      console.error('❌ [Orders] Error fetching orders:', error);
+      console.error('❌ [Orders] Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
       return res.status(500).json({
         success: false,
         error: 'Failed to fetch orders',
@@ -34,10 +74,16 @@ router.get('/orders', authenticate, async (req, res) => {
       });
     }
 
+    console.log('✅ [Orders] Successfully fetched orders:', {
+      count: data?.length || 0,
+      isSuperAdmin: adminContext.isSuperAdmin
+    });
+
     // Log audit event
     await logAuditEvent(req.user.id, AuditActions.VIEW_ORDERS, {
       filter: status || 'all',
-      count: data?.length || 0
+      count: data?.length || 0,
+      isSuperAdmin: adminContext.isSuperAdmin
     }, req);
     
     res.json({
@@ -47,7 +93,7 @@ router.get('/orders', authenticate, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Server error in orders:', error);
+    console.error('❌ [Orders] Server error:', error);
     res.status(500).json({
       success: false,
       error: 'Internal server error',
@@ -105,10 +151,13 @@ router.put('/orders/:id/status', authenticate, async (req, res) => {
 
     console.log('📝 Updating order status:', { id, status, tracking_number, courier, admin_notes });
 
-    // First, get the current order to log the old status
+    // Get admin context to check SuperAdmin status
+    const adminContext = await getAdminContext(req.user.id);
+
+    // First, get the current order to log the old status and check access
     const { data: currentOrder, error: fetchError } = await supabase
       .from('orders')
-      .select('order_number, status')
+      .select('order_number, status, branch, assigned_admin_id')
       .eq('id', id)
       .single();
 
@@ -119,6 +168,20 @@ router.put('/orders/:id/status', authenticate, async (req, res) => {
         error: 'Order not found',
         details: fetchError.message
       });
+    }
+
+    // Validate access if not SuperAdmin
+    if (!adminContext.isSuperAdmin) {
+      const hasAccess = 
+        (currentOrder.branch && adminContext.assignedBranches.includes(currentOrder.branch)) ||
+        currentOrder.assigned_admin_id === req.user.id;
+      
+      if (!hasAccess) {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied. You do not have permission to modify this order.'
+        });
+      }
     }
 
     const updateData = { status };

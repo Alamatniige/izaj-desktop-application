@@ -2,24 +2,21 @@ import express from 'express';
 import { supabase } from '../supabaseClient.js';
 import authenticate from '../util/middlerware.js';
 import { logAuditEvent, AuditActions } from '../util/auditLogger.js';
+import { isSuperAdmin } from '../util/adminContext.js';
 
 const router = express.Router();
 
 
-// POST - Create new admin desktop side user (Admin role required)
+// POST - Create new admin desktop side user (SuperAdmin only)
 router.post('/addUsers', authenticate, async (req, res) => {
   try {
-    const { data: adminUser, error: adminError } = await supabase
-      .from('adminUser')
-      .select('role')
-      .eq('user_id', req.user.id)
-      .single();
-
-    if (adminError || !adminUser || adminUser.role !== 'Admin') {
-      return res.status(403).json({ error: 'Access denied. Only Admins can add users.' });
+    // Check if requester is SuperAdmin
+    const requesterIsSuperAdmin = await isSuperAdmin(req.user.id);
+    if (!requesterIsSuperAdmin) {
+      return res.status(403).json({ error: 'Access denied. Only SuperAdmin can add users.' });
     }
 
-    const { email, name, role } = req.body;
+    const { email, name, role, is_super_admin, assigned_categories, assigned_branches } = req.body;
 
     if (!email || !name || !role) {
       return res.status(400).json({ error: 'Email, name, and role are required' });
@@ -30,6 +27,9 @@ router.post('/addUsers', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Role must be Admin or Customer Support' });
     }
 
+    // If user is SuperAdmin, categories and branches are optional
+    const isSuperAdminUser = is_super_admin === true;
+    
     const defaultPassword = 'admin1234';
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -38,7 +38,7 @@ router.post('/addUsers', authenticate, async (req, res) => {
 
     if (error) {
       await logAuditEvent(req.user.id, AuditActions.CREATE_USER, {
-        targetUser: { email, name, role },
+        targetUser: { email, name, role, is_super_admin: isSuperAdminUser },
         success: false,
         error: error.message
       }, req);
@@ -48,14 +48,32 @@ router.post('/addUsers', authenticate, async (req, res) => {
 
     const userId = data.user.id;
     
+    // Prepare adminUser data
+    const adminUserData = {
+      user_id: userId,
+      name,
+      role,
+      is_super_admin: isSuperAdminUser || false
+    };
+
+    // Only add categories/branches if not SuperAdmin
+    if (!isSuperAdminUser) {
+      if (assigned_categories && Array.isArray(assigned_categories)) {
+        adminUserData.assigned_categories = assigned_categories;
+      }
+      if (assigned_branches && Array.isArray(assigned_branches)) {
+        adminUserData.assigned_branches = assigned_branches;
+      }
+    }
+
     // Insert into adminUser table
     const { error: dbError } = await supabase
       .from('adminUser')
-      .insert([{ user_id: userId, name, role }]);
+      .insert([adminUserData]);
 
     if (dbError) {
       await logAuditEvent(req.user.id, AuditActions.CREATE_USER, {
-        targetUser: { email, name, role },
+        targetUser: { email, name, role, is_super_admin: isSuperAdminUser },
         success: false,
         error: dbError.message
       }, req);
@@ -83,7 +101,8 @@ router.post('/addUsers', authenticate, async (req, res) => {
         id: userId, 
         email, 
         name, 
-        role 
+        role,
+        is_super_admin: isSuperAdminUser
       },
       success: true
     }, req);
@@ -91,7 +110,7 @@ router.post('/addUsers', authenticate, async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'User created. Confirmation email sent.',
-      user: { id: userId, email, name, role }
+      user: { id: userId, email, name, role, is_super_admin: isSuperAdminUser }
     });
   } catch (error) {
     console.error('Error creating admin user:', error);
@@ -99,31 +118,14 @@ router.post('/addUsers', authenticate, async (req, res) => {
   }
 });
 
-// GET - Get list of all admin desktop side users (Admin role required)
+// GET - Get list of all admin desktop side users (SuperAdmin only)
 router.get('/users', authenticate, async (req, res) => {
   try {
-    const { data: adminUser, error: adminError } = await supabase
-      .from('adminUser')
-      .select('*')
-      .eq('user_id', req.user.id)
-      .single();
-
-    if (adminError) {
-      return res.status(500).json({ 
-        error: 'Database error while checking admin status',
-        details: adminError.message 
-      });
-    }
-
-    if (!adminUser) {
-      return res.status(404).json({ 
-        error: 'Admin user profile not found. Please contact system administrator.' 
-      });
-    }
-
-    if (adminUser.role !== 'Admin') {
+    // Check if requester is SuperAdmin
+    const requesterIsSuperAdmin = await isSuperAdmin(req.user.id);
+    if (!requesterIsSuperAdmin) {
       return res.status(403).json({ 
-        error: `Access denied. Your role is '${adminUser.role}' but only 'Admin' users can view all users.` 
+        error: 'Access denied. Only SuperAdmin can view all users.' 
       });
     }
 
@@ -165,7 +167,6 @@ router.get('/users', authenticate, async (req, res) => {
       success: true, 
       users: usersWithEmail,
       debug: {
-        currentUserRole: adminUser.role,
         totalUsers: usersWithEmail.length
       }
     });
@@ -179,17 +180,13 @@ router.get('/users', authenticate, async (req, res) => {
   }
 });
 
-// PUT - Enable/disable user account (Admin role required)
+// PUT - Enable/disable user account (SuperAdmin only)
 router.put('/users/:id/status', authenticate, async (req, res) => {
   try {
-    const { data: adminUser, error: adminError } = await supabase
-      .from('adminUser')
-      .select('role')
-      .eq('user_id', req.user.id)
-      .single();
-
-    if (adminError || !adminUser || adminUser.role !== 'Admin') {
-      return res.status(403).json({ error: 'Access denied. Only Admins can edit users.' });
+    // Check if requester is SuperAdmin
+    const requesterIsSuperAdmin = await isSuperAdmin(req.user.id);
+    if (!requesterIsSuperAdmin) {
+      return res.status(403).json({ error: 'Access denied. Only SuperAdmin can edit users.' });
     }
 
     const { status } = req.body;
@@ -241,17 +238,13 @@ router.put('/users/:id/status', authenticate, async (req, res) => {
   }
 });
 
-// DELETE - Delete user account (Admin role required)
+// DELETE - Delete user account (SuperAdmin only)
 router.delete('/users/:id', authenticate, async (req, res) => {
   try {
-    const { data: adminUser, error: adminError } = await supabase
-      .from('adminUser')
-      .select('role')
-      .eq('user_id', req.user.id)
-      .single();
-
-    if (adminError || !adminUser || adminUser.role !== 'Admin') {
-      return res.status(403).json({ error: 'Access denied. Only Admins can delete users.' });
+    // Check if requester is SuperAdmin
+    const requesterIsSuperAdmin = await isSuperAdmin(req.user.id);
+    if (!requesterIsSuperAdmin) {
+      return res.status(403).json({ error: 'Access denied. Only SuperAdmin can delete users.' });
     }
 
     const { id } = req.params;
@@ -292,6 +285,162 @@ router.delete('/users/:id', authenticate, async (req, res) => {
 
     res.json({ success: true, message: 'User deleted.' });
   } catch (error) {
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+});
+
+// GET - Get admin assignments (categories and branches)
+router.get('/users/:id/assignments', authenticate, async (req, res) => {
+  try {
+    // Check if requester is SuperAdmin
+    const requesterIsSuperAdmin = await isSuperAdmin(req.user.id);
+    if (!requesterIsSuperAdmin) {
+      return res.status(403).json({ error: 'Access denied. Only SuperAdmin can view assignments.' });
+    }
+
+    const { id } = req.params;
+
+    const { data: adminUser, error } = await supabase
+      .from('adminUser')
+      .select('assigned_categories, assigned_branches, is_super_admin')
+      .eq('user_id', id)
+      .single();
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    if (!adminUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      success: true,
+      assignments: {
+        assigned_categories: adminUser.assigned_categories || [],
+        assigned_branches: adminUser.assigned_branches || [],
+        is_super_admin: adminUser.is_super_admin || false
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching assignments:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+});
+
+// PUT - Update admin assignments (categories and branches)
+router.put('/users/:id/assignments', authenticate, async (req, res) => {
+  try {
+    // Check if requester is SuperAdmin
+    const requesterIsSuperAdmin = await isSuperAdmin(req.user.id);
+    if (!requesterIsSuperAdmin) {
+      return res.status(403).json({ error: 'Access denied. Only SuperAdmin can update assignments.' });
+    }
+
+    const { id } = req.params;
+    const { assigned_categories, assigned_branches, is_super_admin } = req.body;
+
+    // Check if target user exists
+    const { data: targetUser, error: fetchError } = await supabase
+      .from('adminUser')
+      .select('user_id, name')
+      .eq('user_id', id)
+      .single();
+
+    if (fetchError || !targetUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const updateData = {};
+
+    // Update SuperAdmin status if provided
+    if (typeof is_super_admin === 'boolean') {
+      updateData.is_super_admin = is_super_admin;
+      // If setting as SuperAdmin, clear categories/branches
+      if (is_super_admin) {
+        updateData.assigned_categories = null;
+        updateData.assigned_branches = null;
+      }
+    }
+
+    // Only update categories/branches if not SuperAdmin
+    if (!is_super_admin) {
+      if (Array.isArray(assigned_categories)) {
+        updateData.assigned_categories = assigned_categories;
+      }
+      if (Array.isArray(assigned_branches)) {
+        updateData.assigned_branches = assigned_branches;
+      }
+    }
+
+    const { error: updateError } = await supabase
+      .from('adminUser')
+      .update(updateData)
+      .eq('user_id', id);
+
+    if (updateError) {
+      return res.status(500).json({ error: updateError.message });
+    }
+
+    await logAuditEvent(req.user.id, AuditActions.UPDATE_USER, {
+      targetUser: {
+        id,
+        name: targetUser.name
+      },
+      assignments: updateData,
+      success: true
+    }, req);
+
+    res.json({
+      success: true,
+      message: 'Assignments updated successfully'
+    });
+  } catch (error) {
+    console.error('Error updating assignments:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+});
+
+// GET - Get current user's admin context (for frontend)
+router.get('/me', authenticate, async (req, res) => {
+  try {
+    console.log('🔍 [Admin Context] Fetching admin context for user:', req.user.id);
+    
+    const { data: adminUser, error } = await supabase
+      .from('adminUser')
+      .select('is_super_admin, assigned_categories, assigned_branches, role')
+      .eq('user_id', req.user.id)
+      .single();
+
+    if (error) {
+      console.error('❌ [Admin Context] Error fetching admin user:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    if (!adminUser) {
+      console.warn('⚠️ [Admin Context] Admin user not found for user:', req.user.id);
+      return res.status(404).json({ error: 'Admin user not found' });
+    }
+
+    // Explicitly check for true value (handle null, undefined, false)
+    const isSuperAdmin = adminUser.is_super_admin === true;
+    
+    console.log('✅ [Admin Context] Admin user found:', {
+      user_id: req.user.id,
+      is_super_admin: adminUser.is_super_admin,
+      isSuperAdmin: isSuperAdmin,
+      role: adminUser.role
+    });
+
+    res.json({
+      success: true,
+      is_super_admin: isSuperAdmin,
+      assigned_categories: adminUser.assigned_categories || [],
+      assigned_branches: adminUser.assigned_branches || [],
+      role: adminUser.role
+    });
+  } catch (error) {
+    console.error('❌ [Admin Context] Exception:', error);
     res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 });

@@ -123,23 +123,41 @@ export class ProductService {
     params.append('limit', limit.toString());
     params.append('sync', 'true');
 
-    const response = await fetch(`${API_URL}/api/products?${params.toString()}`, {
-      method: 'GET',
-      headers: this.getHeaders(session)
-    });
+    const url = `${API_URL}/api/products?${params.toString()}`;
+    console.log('📡 [ProductService] Fetching sync endpoint:', url);
+    console.log('📡 [ProductService] Headers:', { hasAuth: !!this.getHeaders(session).Authorization, contentType: this.getHeaders(session)['Content-Type'] });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: this.getHeaders(session)
+      });
+
+      console.log('📡 [ProductService] Response status:', response.status, response.statusText);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ [ProductService] Response not OK:', errorData);
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data: ApiResponse = await response.json();
+      console.log('✅ [ProductService] Response data:', {
+        success: data.success,
+        productsCount: data.products?.length || 0,
+        synced: data.synced,
+        skipped: data.skipped
+      });
+
+      if (!data.success) {
+        throw new Error('API returned unsuccessful response');
+      }
+
+      return data;
+    } catch (error) {
+      console.error('❌ [ProductService] Fetch error:', error);
+      throw error;
     }
-
-    const data: ApiResponse = await response.json();
-
-    if (!data.success) {
-      throw new Error('API returned unsuccessful response');
-    }
-
-    return data;
   }
 
  static async fetchMediaUrl(session: Session | null, productId: string): Promise<string[]> {
@@ -208,6 +226,30 @@ export class ProductService {
         throw new Error(`Failed to delete product ${productId}`);
       }
     });
+  }
+
+  static async bulkPublishToWebsite(session: Session | null): Promise<{ success: boolean; message: string; count: number }> {
+    const response = await fetch(`${API_URL}/api/products/publish-all`, {
+      method: 'POST',
+      headers: this.getHeaders(session),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to bulk publish products');
+    }
+
+    return {
+      success: true,
+      message: data.message || 'Products published successfully',
+      count: data.products?.length || 0
+    };
   }
 
 }

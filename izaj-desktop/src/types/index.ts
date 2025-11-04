@@ -4,6 +4,9 @@ export interface AdminUser {
   email: string;
   role: string;
   status: boolean;
+  is_super_admin?: boolean;
+  assigned_categories?: string[];
+  assigned_branches?: string[];
 }
 
 export interface Users {
