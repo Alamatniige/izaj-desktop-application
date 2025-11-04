@@ -1,7 +1,6 @@
 import { Icon } from '@iconify/react';
 import { useState, useCallback } from 'react';
 import { AddProductModal } from '../components/AddProductModal';
-import { ManageStockModal } from '../components/ManageStockModal';
 import { ViewProductModal } from '../components/ViewProductModal';
 import Stock from './Stock';
 import Sale from './sale';
@@ -33,7 +32,6 @@ interface ProductsProps {
 }
 
 export function Products({ showAddProductModal, setShowAddProductModal, session, onViewChange }: ProductsProps) {
-  const [showManageStockModal, setShowManageStockModal] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [view, setView] = useState<ViewType>('products');
   const [selectedProductForView, setSelectedProductForView] = useState<FetchedProduct | null>(null);
@@ -52,12 +50,10 @@ export function Products({ showAddProductModal, setShowAddProductModal, session,
     syncStats,
     hasLoadedFromDB,
     stockStatus,
-    isLoadingStock,
     handleFetchProducts,
     fetchPendingProducts,
     refreshProductsData,
     updatePublishedProducts,
-    checkStockStatus,
     mediaUrlsMap,
     removeProduct,
   } = useProducts(session);
@@ -107,16 +103,6 @@ const handleViewChange = (newView: ViewType) => {
       toast.success('Products updated successfully!');
     }
   }, [refreshProductsData, setShowAddProductModal]);
-
-  const handleManageStockModalClose = useCallback(async (shouldRefresh: boolean = false) => {
-    setShowManageStockModal(false);
-    if (shouldRefresh) {
-      await refreshProductsData();
-      await checkStockStatus();
-      await updatePublishedProducts();
-      toast.success('Products updated successfully!');
-    }
-  }, [refreshProductsData, checkStockStatus, updatePublishedProducts]);
 
   // Ensure product cards reflect latest stock once initial data is loaded
   useEffect(() => {
@@ -295,18 +281,6 @@ const handleViewChange = (newView: ViewType) => {
                       <span className="text-sm">
                         {isBulkPublishing ? 'Publishing...' : `Publish to Website (${productsReadyToPublish})`}
                       </span>
-                    </button>
-                  )}
-
-                  {/* Manage Stock Button */}
-                  {!isLoadingStock && stockStatus.needsSync > 0 && (
-                    <button
-                      className="flex items-center justify-center gap-2 px-4 py-3 bg-yellow-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:bg-yellow-600 transition-all duration-200"
-                      onClick={() => setShowManageStockModal(true)}
-                      style={{ fontFamily: "'Jost', sans-serif" }}
-                    >
-                      <Icon icon="mdi:sync" className="text-lg" />
-                      <span className="text-sm">Manage Stock ({stockStatus.needsSync})</span>
                     </button>
                   )}
 
@@ -532,15 +506,6 @@ const handleViewChange = (newView: ViewType) => {
                 onSuccess={() => handleAddProductModalClose(true)}
                 mode={filter === 'sale' ? 'sale' : 'product'}
                 fetchedProducts={pendingProducts}
-              />
-            )}
-            {/* Manage Stock Modal */}
-            {showManageStockModal && (
-              <ManageStockModal
-                session={session}
-                onClose={() => handleManageStockModalClose(true)} 
-                publishedProducts={publishedProducts}
-                setPublishedProducts={setPublishedProducts}
               />
             )}
             {/* View Product Modal */}
