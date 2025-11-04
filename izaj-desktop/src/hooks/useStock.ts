@@ -23,7 +23,74 @@ export const useStock = (session: Session | null) => {
 
     try {
       const products = await StockService.fetchStockProducts(session);
-      setStockProducts(products);
+      console.log('📦 [useStock] Raw products from API:', products.slice(0, 3));
+      
+      // Merge with latest stock-status to ensure display_quantity and reserved are fresh
+      let merged: FetchedProduct[] = products;
+      try {
+        const status = await ProductService.fetchStockStatus(session);
+        console.log('📊 [useStock] Stock status response:', status);
+        console.log('📊 [useStock] Stock status products sample:', status?.products?.slice(0, 3));
+        
+        if (status?.success && Array.isArray(status.products)) {
+          // Create map of product_id -> stock data for O(1) lookup
+          const stockMap = new Map<string, any>();
+          status.products.forEach((item: any) => {
+            const pidStr = String(item.product_id).trim();
+            const pidNum = Number(pidStr);
+            // Store by both string and number keys for robust matching
+            stockMap.set(pidStr, item);
+            if (!Number.isNaN(pidNum)) {
+              stockMap.set(String(pidNum), item);
+            }
+          });
+
+          console.log('🗺️ [useStock] Stock map size:', stockMap.size);
+
+          // Merge both display_quantity and reserved_quantity
+          merged = products.map(p => {
+            const pidStr = String(p.product_id).trim();
+            const pidNum = Number(pidStr);
+            let stockItem = stockMap.get(pidStr);
+            if (!stockItem && !Number.isNaN(pidNum)) {
+              stockItem = stockMap.get(String(pidNum));
+            }
+
+            if (stockItem) {
+              const existingQty = p.display_quantity ?? 0;
+              const fetchedQty = stockItem.display_quantity;
+              const finalQty = typeof fetchedQty === 'number'
+                ? (fetchedQty === 0 && existingQty > 0 ? existingQty : fetchedQty)
+                : existingQty;
+              
+              console.log(`✅ [useStock] Merged product ${pidStr}: display=${finalQty}, reserved=${stockItem.reserved_quantity}`);
+              
+              return {
+                ...p,
+                display_quantity: finalQty,
+                reserved_quantity: stockItem.reserved_quantity ?? 0,
+              };
+            }
+            console.log(`⚠️ [useStock] No stock item found for product ${pidStr}`);
+            return p;
+          });
+        }
+      } catch (e) {
+        console.error('❌ [useStock] Error merging stock:', e);
+      }
+      
+      console.log('🎯 [useStock] Final merged products sample:', merged.slice(0, 3));
+      
+      // Backend already filters for publish_status=true when status='active' is passed
+      // But we keep this frontend filter as a safety check
+      const activeOnly = merged.filter(p => p.publish_status === true);
+      console.log(`🎯 [useStock] Published products count: ${activeOnly.length} (Total fetched: ${merged.length})`);
+      console.log(`🎯 [useStock] Publish status breakdown:`, {
+        published: merged.filter(p => p.publish_status === true).length,
+        unpublished: merged.filter(p => p.publish_status === false).length
+      });
+      
+      setStockProducts(activeOnly);
       
     } catch (error) {
       console.error('Error fetching stock products:', error);
@@ -48,6 +115,17 @@ export const useStock = (session: Session | null) => {
   useEffect(() => {
       fetchStockProducts();
       fetchStockStatus();
+  }, [fetchStockProducts, fetchStockStatus]);
+
+  // Auto-refresh every 30 seconds to show latest stock changes from orders
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      console.log('🔄 [useStock] Auto-refreshing stock data...');
+      fetchStockProducts();
+      fetchStockStatus();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(intervalId);
   }, [fetchStockProducts, fetchStockStatus]);
 
   const filteredProducts = useMemo(() => {

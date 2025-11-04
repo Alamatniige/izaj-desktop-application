@@ -23,6 +23,7 @@ import {
 import { useFilter } from '../hooks/useFilter';
 import { FetchedProduct } from '../types/product';
 import { ProductService } from '../services/productService';
+import { useEffect } from 'react';
 
 interface ProductsProps {
   showAddProductModal: boolean;
@@ -116,6 +117,36 @@ const handleViewChange = (newView: ViewType) => {
       toast.success('Products updated successfully!');
     }
   }, [refreshProductsData, checkStockStatus, updatePublishedProducts]);
+
+  // Ensure product cards reflect latest stock once initial data is loaded
+  useEffect(() => {
+    if (hasLoadedFromDB) {
+      updatePublishedProducts();
+    }
+  }, [hasLoadedFromDB, updatePublishedProducts]);
+
+  // Helper: get latest stock using normalized product_id from stock-status
+  const getLatestDisplayQty = useCallback((p: FetchedProduct): number => {
+    if (!stockStatus || !Array.isArray(stockStatus.products)) {
+      return p.display_quantity ?? 0;
+    }
+    const pidStr = String(p.product_id).trim();
+    const pidNum = Number(pidStr);
+    const match = stockStatus.products.find(s => {
+      const sidStr = String(s.product_id).trim();
+      if (sidStr === pidStr) return true;
+      const sidNum = Number(sidStr);
+      return !Number.isNaN(pidNum) && !Number.isNaN(sidNum) && sidNum === pidNum;
+    });
+    return (match?.display_quantity ?? p.display_quantity ?? 0) as number;
+  }, [stockStatus]);
+
+  // Helper: prevent flicker from non-zero to zero due to late responses
+  const getStableDisplayQty = useCallback((p: FetchedProduct): number => {
+    const latest = getLatestDisplayQty(p);
+    const base = p.display_quantity ?? 0;
+    return latest === 0 && base > 0 ? base : latest;
+  }, [getLatestDisplayQty]);
 
   // Count products ready to publish to website (is_published = true, publish_status = false)
   const productsReadyToPublish = publishedProducts.filter(
@@ -467,8 +498,8 @@ const handleViewChange = (newView: ViewType) => {
                           </div>
                           <div className="text-right">
                             <p className="text-xs text-gray-500 mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Stock</p>
-                            <p className={`text-lg font-bold ${getStockColor(product.display_quantity)}`} style={{ fontFamily: "'Jost', sans-serif" }}>
-                              {product.display_quantity}
+                            <p className={`text-lg font-bold ${getStockColor(getStableDisplayQty(product))}`} style={{ fontFamily: "'Jost', sans-serif" }}>
+                              {getStableDisplayQty(product)}
                             </p>
                           </div>
                         </div>
@@ -477,13 +508,13 @@ const handleViewChange = (newView: ViewType) => {
                         <div className="mt-3 space-y-1">
                           <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
                             <div
-                              className={`h-full transition-all duration-300 ${getStockProgressColor(product.display_quantity)}`}
-                              style={{ width: getStockProgressWidth(product.display_quantity) }}
+                              className={`h-full transition-all duration-300 ${getStockProgressColor(getStableDisplayQty(product))}`}
+                              style={{ width: getStockProgressWidth(getStableDisplayQty(product)) }}
                             ></div>
                           </div>
                           <div className="flex justify-between text-xs text-gray-500">
                             <span style={{ fontFamily: "'Jost', sans-serif" }}>Stock level</span>
-                            <span style={{ fontFamily: "'Jost', sans-serif" }}>{getStockLevel(product.display_quantity)}</span>
+                            <span style={{ fontFamily: "'Jost', sans-serif" }}>{getStockLevel(getStableDisplayQty(product))}</span>
                           </div>
                         </div>
                       </div>

@@ -1,5 +1,5 @@
 import { Icon } from '@iconify/react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { ViewType } from '../types';
 import { Session } from '@supabase/supabase-js';
 import { useStock } from '../hooks/useStock';
@@ -7,10 +7,8 @@ import {
   formatPrice, 
   getStockStatusColor, 
   getStatusBadgeClass,
-//  calculateStockStats,
 } from '../utils/stockUtils';
 import { FilterType } from '../types/product';
- // import { StockProduct } from '../types/stock';
 
 interface StockProps {
   onViewChange: (view: ViewType) => void;
@@ -64,6 +62,13 @@ function Stock({ onViewChange, session }: StockProps) {
   const handleRefresh = () => {
     refetch();
   };
+
+  // Use a stable stock value to avoid flicker from late zeroes
+  const getStableDisplayQty = useCallback((p: typeof filteredProducts[number]): number => {
+    const qty = typeof p.display_quantity === 'number' ? p.display_quantity : 0;
+    const base = Number.isFinite(qty) ? qty : 0;
+    return base < 0 ? 0 : base;
+  }, []);
 
   if (isLoading) {
     return (
@@ -170,12 +175,12 @@ function Stock({ onViewChange, session }: StockProps) {
               </div>
               <div className="bg-white p-4 rounded-xl shadow-md border border-gray-100">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-yellow-100 rounded-lg">
-                    <Icon icon="mdi:shopping" className="text-xl text-yellow-500" />
+                  <div className="p-2 bg-orange-100 rounded-lg">
+                    <Icon icon="mdi:package-variant-closed" className="text-xl text-orange-500" />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500" style={{ fontFamily: "'Jost', sans-serif" }}>Total Reserved</p>
-                    <p className="text-lg font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>{stats.totalSold.toLocaleString()}</p>
+                    <p className="text-xs text-gray-500" style={{ fontFamily: "'Jost', sans-serif" }}>Total Sold</p>
+                    <p className="text-lg font-bold text-orange-600" style={{ fontFamily: "'Jost', sans-serif" }}>{stats.totalSold.toLocaleString()}</p>
                   </div>
                 </div>
               </div>
@@ -290,13 +295,13 @@ function Stock({ onViewChange, session }: StockProps) {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[800px]">
               <thead>
-                <tr className="text-sm text-gray-500 border-b border-gray-200">
-                  <th className="font-medium text-left py-4 px-4" style={{ fontFamily: "'Jost', sans-serif" }}>Product Name</th>
-                  <th className="font-medium text-left py-4 px-4" style={{ fontFamily: "'Jost', sans-serif" }}>Price</th>
-                  <th className="font-medium text-left py-4 px-4" style={{ fontFamily: "'Jost', sans-serif" }}>Sold</th>
-                  <th className="font-medium text-left py-4 px-4" style={{ fontFamily: "'Jost', sans-serif" }}>Stock</th>
-                  <th className="font-medium text-left py-4 px-4" style={{ fontFamily: "'Jost', sans-serif" }}>Status</th>
-                  <th className="font-medium text-left py-4 px-4" style={{ fontFamily: "'Jost', sans-serif" }}>Category</th>
+                <tr className="bg-gradient-to-r from-gray-50 to-white border-b-2 border-gray-200">
+                  <th className="font-semibold text-left py-4 px-4 text-gray-700" style={{ fontFamily: "'Jost', sans-serif" }}>Product</th>
+                  <th className="font-semibold text-left py-4 px-4 text-gray-700" style={{ fontFamily: "'Jost', sans-serif" }}>Price</th>
+                  <th className="font-semibold text-left py-4 px-4 text-gray-700" style={{ fontFamily: "'Jost', sans-serif" }}>Sold</th>
+                  <th className="font-semibold text-left py-4 px-4 text-gray-700" style={{ fontFamily: "'Jost', sans-serif" }}>Stock</th>
+                  <th className="font-semibold text-left py-4 px-4 text-gray-700" style={{ fontFamily: "'Jost', sans-serif" }}>Status</th>
+                  <th className="font-semibold text-left py-4 px-4 text-gray-700" style={{ fontFamily: "'Jost', sans-serif" }}>Category</th>
                 </tr>
               </thead>
               <tbody>
@@ -318,35 +323,52 @@ function Stock({ onViewChange, session }: StockProps) {
                   </tr>
                 ) : (
                   filteredProducts.map((product) => (
-                    <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                      <td className="py-4 px-4">
+                    <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50 transition-all duration-200">
+                      <td className="py-5 px-4">
                         <div>
-                          <p className="font-medium text-gray-800 text-base" style={{ fontFamily: "'Jost', sans-serif" }}>{product.product_name}</p>
+                          <p className="font-semibold text-gray-800 text-base leading-tight" style={{ fontFamily: "'Jost', sans-serif" }}>{product.product_name}</p>
+                          <p className="text-xs text-gray-500 mt-0.5" style={{ fontFamily: "'Jost', sans-serif" }}>SKU: {product.id.substring(0, 8)}</p>
                         </div>
                       </td>
-                      <td className="py-4 px-4 text-base" style={{ fontFamily: "'Jost', sans-serif" }}>
-                        {formatPrice(product.price)}
-                      </td>
-                      <td className="py-4 px-4 text-base" style={{ fontFamily: "'Jost', sans-serif" }}>
-                        {product.reserved_quantity || 0}
-                      </td>
-                      <td className="py-4 px-4">
-                        <span className={`font-medium text-base ${getStockStatusColor(product.display_quantity)}`} style={{ fontFamily: "'Jost', sans-serif" }}>
-                          {product.display_quantity}
+                      <td className="py-5 px-4">
+                        <span className="text-base font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
+                          {formatPrice(product.price)}
                         </span>
                       </td>
-                      <td className="py-4 px-4">
+                      <td className="py-5 px-4">
+                        <div className="inline-flex items-center justify-center min-w-[60px] px-3 py-1.5 bg-orange-50 rounded-lg border border-orange-200">
+                          <span className="font-bold text-orange-600 text-base" style={{ fontFamily: "'Jost', sans-serif" }}>
+                            {product.reserved_quantity || 0}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-5 px-4">
+                        <div className={`inline-flex items-center justify-center min-w-[60px] px-3 py-1.5 rounded-lg border ${
+                          getStableDisplayQty(product) === 0 
+                            ? 'bg-red-50 border-red-200' 
+                            : getStableDisplayQty(product) <= 10 
+                            ? 'bg-yellow-50 border-yellow-200' 
+                            : 'bg-green-50 border-green-200'
+                        }`}>
+                          <span className={`font-bold text-base ${getStockStatusColor(getStableDisplayQty(product))}`} style={{ fontFamily: "'Jost', sans-serif" }}>
+                            {getStableDisplayQty(product)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-5 px-4">
                         <span
-                          className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${getStatusBadgeClass(product.publish_status)}`}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold border ${getStatusBadgeClass(product.publish_status)}`}
                         >
-                          <span style={{ fontFamily: "'Jost', sans-serif" }}>{product.publish_status ? '🟢' : '🔴'}</span>
+                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: product.publish_status ? '#10b981' : '#ef4444' }}></span>
                           <span style={{ fontFamily: "'Jost', sans-serif" }}>{product.publish_status ? 'Active' : 'Inactive'}</span>
                         </span>
                       </td>
-                      <td className="py-4 px-4 text-base" style={{ fontFamily: "'Jost', sans-serif" }}>
-                        {typeof product.category === 'object' && product.category !== null
-                          ? product.category.category_name
-                          : product.category || 'Uncategorized'}
+                      <td className="py-5 px-4">
+                        <span className="inline-flex items-center px-3 py-1 bg-gray-100 rounded-lg text-sm font-medium text-gray-700" style={{ fontFamily: "'Jost', sans-serif" }}>
+                          {typeof product.category === 'object' && product.category !== null
+                            ? product.category.category_name
+                            : product.category || 'Uncategorized'}
+                        </span>
                       </td>
                     </tr>
                   ))

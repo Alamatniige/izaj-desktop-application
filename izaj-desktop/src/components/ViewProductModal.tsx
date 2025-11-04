@@ -4,6 +4,7 @@ import { useProducts } from '../hooks/useProducts';
 import { Session } from '@supabase/supabase-js';
 import { FetchedProduct } from '../types/product';
 import toast from 'react-hot-toast';
+import { ProductService } from '../services/productService';
 
 interface ViewProductModalProps {
   session: Session | null;
@@ -48,6 +49,53 @@ export function ViewProductModal({
       setCurrentProduct(product);
     }
   }, [product.id]);
+
+  // Ensure display_quantity is up-to-date from stock-status
+  useEffect(() => {
+    const ensureStock = async () => {
+      try {
+        if (!session?.access_token) return;
+        const data = await ProductService.fetchStockStatus(session);
+        const pid = String(product.product_id).trim();
+        const match = Array.isArray(data.products)
+          ? data.products.find(p => String(p.product_id).trim() === pid)
+          : null;
+        if (match && typeof match.display_quantity === 'number') {
+          setCurrentProduct(prev => {
+            const prevQty = prev.display_quantity ?? 0;
+            const nextQty = match.display_quantity;
+            // Do not downgrade from non-zero to zero
+            const finalQty = nextQty === 0 && prevQty > 0 ? prevQty : nextQty;
+            return { ...prev, display_quantity: finalQty };
+          });
+        }
+      } catch (e) {
+        // silent
+      }
+    };
+    ensureStock();
+  }, [session?.access_token, product.product_id]);
+
+  // Fallback: fetch exact product stock directly if still missing/zero
+  useEffect(() => {
+    const fetchSingleStock = async () => {
+      try {
+        if (!session?.access_token) return;
+        const single = await ProductService.fetchSingleProductStock(session, String(product.product_id));
+        if (single && typeof single.display_quantity === 'number') {
+          setCurrentProduct(prev => {
+            const prevQty = prev.display_quantity ?? 0;
+            const nextQty = single.display_quantity;
+            const finalQty = nextQty === 0 && prevQty > 0 ? prevQty : nextQty;
+            return { ...prev, display_quantity: finalQty };
+          });
+        }
+      } catch (_e) {
+        // ignore
+      }
+    };
+    fetchSingleStock();
+  }, [session?.access_token, product.product_id]);
   
   const handlePrevMedia = () => {
     setCurrentMediaIndex((prev) => (prev - 1 + mediaUrls.length) % mediaUrls.length);
@@ -361,7 +409,7 @@ export function ViewProductModal({
                       <span className="text-sm text-orange-600 font-semibold uppercase tracking-wide">Stock</span>
                     </div>
                     <span className="text-2xl font-bold text-orange-700" style={{ fontFamily: "'Jost', sans-serif" }}>
-                      {currentProduct.display_quantity || currentProduct.stock_quantity || 'N/A'}
+                      {currentProduct.display_quantity ?? 'N/A'}
                     </span>
                   </div>
                   

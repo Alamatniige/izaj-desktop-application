@@ -13,7 +13,7 @@ export class StockService {
   }
 
   static async fetchStockProducts(session: Session | null): Promise<FetchedProduct[]> {
-    const response = await fetch(`${API_URL}/api/client-products`, {
+    const response = await fetch(`${API_URL}/api/client-products?status=active`, {
       method: 'GET',
       headers: this.getHeaders(session)
     });
@@ -26,9 +26,15 @@ export class StockService {
     if (!data.success || !data.products) {
       throw new Error('Failed to fetch stock products');
     }
-    console.log('Fetched products:', data.products);
+    console.log('📦 [StockService] Fetched products from API:', data.products.length);
+    console.log('📦 [StockService] Sample products:', data.products.slice(0, 2));
 
-    return data.products;
+    // Backend already filters for publish_status=true when status='active' is passed
+    // This frontend filter is kept as an additional safety check
+    const publishedProducts = data.products.filter((p: FetchedProduct) => p.publish_status === true);
+    console.log('📦 [StockService] Published products after filter:', publishedProducts.length);
+    
+    return publishedProducts;
   }
 
   

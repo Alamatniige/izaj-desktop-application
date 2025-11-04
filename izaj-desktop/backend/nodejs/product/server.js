@@ -303,10 +303,12 @@ router.get('/client-products', async (req, res) => {
           last_sync_at
         )
       `)
-      .eq('publish_status', true)
       .order('inserted_at', { ascending: false });
 
-    if (status && status !== 'all') {
+    // Filter by publish_status when status is 'active' (for Stock page)
+    if (status === 'active') {
+      query = query.eq('publish_status', true);
+    } else if (status && status !== 'all') {
       query = query.eq('status', status);
     }
 
@@ -331,23 +333,41 @@ router.get('/client-products', async (req, res) => {
     }
 
     const transformedProducts = products.map(product => {
-    const stock = product.product_stock || {};
-    return {
-      ...product,
-      display_quantity: stock.display_quantity ?? 0,
-      reserved_quantity: stock.reserved_quantity ?? 0,
-      last_sync_at: stock.last_sync_at,
-      product_stock: undefined
-    };
-  });
+      const stock = (product.product_stock && Array.isArray(product.product_stock))
+        ? (product.product_stock[0] || {})
+        : {};
+      return {
+        ...product,
+        display_quantity: stock.display_quantity ?? 0,
+        reserved_quantity: stock.reserved_quantity ?? 0,
+        last_sync_at: stock.last_sync_at,
+        product_stock: undefined
+      };
+    });
 
-
-    const { count: totalCount, error: countError } = await supabase
+    // Apply same filters to count query
+    let countQuery = supabase
       .from('products')
-      .select('*', { count: 'exact', head: true })
-      .eq('publish_status', true);
+      .select('*', { count: 'exact', head: true });
+
+    if (status === 'active') {
+      countQuery = countQuery.eq('publish_status', true);
+    } else if (status && status !== 'all') {
+      countQuery = countQuery.eq('status', status);
+    }
+
+    if (category && category !== 'all') {
+      countQuery = countQuery.eq('category', category);
+    }
+
+    if (search && search.trim()) {
+      countQuery = countQuery.ilike('product_name', `%${search.trim()}%`);
+    }
+
+    const { count: totalCount, error: countError } = await countQuery;
 
     if (countError) {
+      console.error('Error getting count:', countError);
     }
 
     res.json({
@@ -1395,6 +1415,14 @@ router.patch('/products/:id', authenticate, async (req, res) => {
 // GET /api/products/stock-status - Get detailed stock status with sync information
 router.get('/products/stock-status', authenticate, async (req, res) => {
   try {
+    // First, let's directly query product_stock to see what's there
+    const { data: directStock, error: directError } = await supabase
+      .from('product_stock')
+      .select('product_id, display_quantity, reserved_quantity, current_quantity')
+      .limit(5);
+    
+    console.log('🔍 [stock-status] Direct product_stock query sample:', directStock);
+    
     const { data, error } = await supabase
       .from('products')
       .select(`
@@ -1406,8 +1434,7 @@ router.get('/products/stock-status', authenticate, async (req, res) => {
           reserved_quantity,
           last_sync_at
         )
-      `)
-      .eq('publish_status', true);
+      `);
 
     if (error) {
       console.error('Error fetching stock status:', error);
@@ -1417,10 +1444,21 @@ router.get('/products/stock-status', authenticate, async (req, res) => {
       });
     }
 
+    console.log('🔍 [stock-status] Sample product with stock relation:', data?.[0]);
+
     const stockStatus = (data || []).map(product => {
-      const stock = product.product_stock?.[0] || {};
-      const currentQty = stock.current_quantity || 0;
-      const displayQty = stock.display_quantity || 0;
+      // Handle both array and object format from Supabase relation
+      let stock = {};
+      if (Array.isArray(product.product_stock)) {
+        stock = product.product_stock[0] || {};
+      } else if (product.product_stock && typeof product.product_stock === 'object') {
+        stock = product.product_stock;
+      }
+      
+      // Use ?? instead of || to preserve actual 0 values vs missing values
+      const currentQty = stock.current_quantity ?? 0;
+      const displayQty = stock.display_quantity ?? 0;
+      const reservedQty = stock.reserved_quantity ?? 0;
       const needsSync = currentQty !== displayQty;
 
       return {
@@ -1428,12 +1466,14 @@ router.get('/products/stock-status', authenticate, async (req, res) => {
         product_name: product.product_name,
         current_quantity: currentQty,
         display_quantity: displayQty,
-        reserved_quantity: stock.reserved_quantity || 0,
+        reserved_quantity: reservedQty,
         last_sync_at: stock.last_sync_at,
         needs_sync: needsSync,
-        has_stock_entry: !!stock.current_quantity
+        has_stock_entry: !!(stock.current_quantity !== undefined || stock.display_quantity !== undefined)
       };
     });
+
+    console.log('🔍 [stock-status] Sample transformed stock:', stockStatus.slice(0, 3));
 
     res.json({
       success: true,
@@ -1474,6 +1514,31 @@ router.get('/products/product-status', authenticate, async (req, res) => {
   } catch (err) {
     console.error('Unexpected error:', err);
     return res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// GET /api/products/:productId/stock - Get stock info for a single product_id
+router.get('/products/:productId/stock', authenticate, async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const { data, error } = await supabase
+      .from('product_stock')
+      .select('display_quantity, current_quantity, reserved_quantity, last_sync_at')
+      .eq('product_id', productId)
+      .maybeSingle();
+
+    if (error) {
+      return res.status(500).json({ success: false, error: 'Failed to fetch stock', details: error.message });
+    }
+
+    if (!data) {
+      return res.status(404).json({ success: false, error: 'No stock found for product' });
+    }
+
+    return res.json({ success: true, product_id: productId, stock: data });
+  } catch (err) {
+    console.error('Error fetching single product stock:', err);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 

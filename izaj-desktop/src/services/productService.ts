@@ -12,6 +12,21 @@ export class ProductService {
     };
   }
 
+  static async fetchSingleProductStock(session: Session | null, productId: string): Promise<{ display_quantity: number | null } | null> {
+    const response = await fetch(`${API_URL}/api/products/${encodeURIComponent(productId)}/stock`, {
+      method: 'GET',
+      headers: this.getHeaders(session)
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    if (!data?.success) return null;
+    return { display_quantity: typeof data.stock?.display_quantity === 'number' ? data.stock.display_quantity : null };
+  }
+
   static async fetchClientProducts(session: Session | null): Promise<FetchedProduct[]> {
     const response = await fetch(`${API_URL}/api/client-products`, {
       method: 'GET',

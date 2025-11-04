@@ -148,12 +148,14 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
     }
 
     if (lastFetchTime) {
-      setPublishedProducts(prev => {
-        const existingIds = new Set(prev.map(p => p.product_id));
-        const filteredNewProducts = newProducts.filter(p => !existingIds.has(p.product_id));
-        const combined = [...prev, ...filteredNewProducts];
-        return combined;
-      });
+      // When doing incremental syncs, make sure we also merge in the latest stock
+      // for any newly fetched products so display_quantity reflects product_stock.display_quantity
+      setPublishedProducts(prev => prev); // no-op to ensure React state is defined
+      const existingIds = new Set(publishedProducts.map(p => p.product_id));
+      const filteredNewProducts = newProducts.filter(p => !existingIds.has(p.product_id));
+      const combined = [...publishedProducts, ...filteredNewProducts];
+      const mergedWithStock = await mergeStockData(combined);
+      setPublishedProducts(mergedWithStock);
     } else {
       const merged = await mergeStockData(newProducts);
       setPublishedProducts(merged);
@@ -308,6 +310,23 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
 
   useEffect(() => {
 }, [mediaUrlsMap]);
+
+  // Auto-refresh stock data every 30 seconds to show latest changes from orders
+  useEffect(() => {
+    if (!enabled || !session?.access_token) return;
+
+    const intervalId = setInterval(async () => {
+      console.log('🔄 [useProducts] Auto-refreshing stock data...');
+      try {
+        await checkStockStatus();
+        await updatePublishedProducts();
+      } catch (error) {
+        console.error('Error auto-refreshing stock:', error);
+      }
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(intervalId);
+  }, [enabled, session?.access_token, checkStockStatus, updatePublishedProducts]);
 
 
   const refreshProducts = useCallback(async () => {

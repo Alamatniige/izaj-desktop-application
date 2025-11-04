@@ -86,7 +86,12 @@ export const mergeStockIntoProducts = (
   // Merge stock data into products
   const merged = products.map(product => {
     const productId = String(product.product_id).trim();
-    const stockQty = stockMap.get(productId) ?? product.display_quantity ?? 0;
+    const fetchedQty = stockMap.get(productId);
+    const existingQty = product.display_quantity ?? 0;
+    // Avoid downgrading a known non-zero stock to zero due to timing/race
+    const stockQty = typeof fetchedQty === 'number'
+      ? (fetchedQty === 0 && existingQty > 0 ? existingQty : fetchedQty)
+      : existingQty;
     
     return {
       ...product,

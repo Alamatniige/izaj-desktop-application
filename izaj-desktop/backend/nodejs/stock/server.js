@@ -339,4 +339,83 @@ router.get('/product-status', authenticate, async (req, res) => {
   }
 });
 
+// GET /debug-stock - Debug endpoint to view raw product_stock table data
+router.get('/debug-stock', authenticate, async (req, res) => {
+  try {
+    console.log('🔍 [Debug] Fetching raw product_stock data...');
+    
+    // Get all product_stock records with product names
+    const { data: stockData, error: stockError } = await supabase
+      .from('product_stock')
+      .select(`
+        product_id,
+        current_quantity,
+        display_quantity,
+        reserved_quantity,
+        last_sync_at,
+        updated_at
+      `)
+      .order('updated_at', { ascending: false })
+      .limit(50);
+
+    if (stockError) {
+      console.error('❌ [Debug] Error fetching stock data:', stockError);
+      return res.status(500).json({ 
+        error: 'Failed to fetch stock data',
+        details: stockError.message 
+      });
+    }
+
+    // Get product names for the stock records
+    const productIds = stockData.map(s => s.product_id);
+    const { data: products, error: productsError } = await supabase
+      .from('products')
+      .select('product_id, product_name')
+      .in('product_id', productIds);
+
+    if (productsError) {
+      console.error('❌ [Debug] Error fetching product names:', productsError);
+    }
+
+    // Create product name map
+    const productNameMap = {};
+    (products || []).forEach(p => {
+      productNameMap[p.product_id] = p.product_name;
+    });
+
+    // Combine stock data with product names
+    const enrichedData = stockData.map(stock => ({
+      product_id: stock.product_id,
+      product_name: productNameMap[stock.product_id] || 'Unknown Product',
+      current_quantity: stock.current_quantity,
+      display_quantity: stock.display_quantity,
+      reserved_quantity: stock.reserved_quantity,
+      // Calculate what display should be if formula is correct
+      calculated_display: stock.current_quantity - stock.reserved_quantity,
+      // Check if values match the formula
+      is_correct: (stock.current_quantity - stock.reserved_quantity) === stock.display_quantity,
+      last_sync_at: stock.last_sync_at,
+      updated_at: stock.updated_at
+    }));
+
+    console.log('✅ [Debug] Retrieved', enrichedData.length, 'stock records');
+    console.log('📊 [Debug] Sample records:', enrichedData.slice(0, 3));
+
+    return res.status(200).json({ 
+      success: true,
+      count: enrichedData.length,
+      records: enrichedData,
+      summary: {
+        total_records: enrichedData.length,
+        with_reserved: enrichedData.filter(r => r.reserved_quantity > 0).length,
+        incorrect_formula: enrichedData.filter(r => !r.is_correct).length
+      }
+    });
+
+  } catch (err) {
+    console.error('❌ [Debug] Unexpected error:', err);
+    return res.status(500).json({ error: 'Internal Server Error', details: err.message });
+  }
+});
+
 export default router;
