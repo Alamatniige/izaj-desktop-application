@@ -105,7 +105,7 @@ function App() {
         return <UpdatePassword />;
       case 'DASHBOARD':
       default:
-        return <Dashboard session={session} onNavigate={handleNavigation} />;
+        return <Dashboard session={session} onNavigate={handleNavigation} isActive={currentPage === 'DASHBOARD'} />;
     }
   };
 

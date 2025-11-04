@@ -7,7 +7,7 @@ import { supabase } from '../supabaseClient.js';
  */
 export async function getAdminContext(userId) {
   try {
-    console.log('🔍 [AdminContext] Fetching context for user:', userId);
+    // Removed verbose log to reduce terminal noise
     
     const { data: adminUser, error } = await supabase
       .from('adminUser')
@@ -27,7 +27,10 @@ export async function getAdminContext(userId) {
     }
 
     if (!adminUser) {
-      console.warn('⚠️ [AdminContext] Admin user not found for user:', userId);
+      // Only log warnings in development
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('⚠️ [AdminContext] Admin user not found for user:', userId);
+      }
       return {
         isSuperAdmin: false,
         assignedCategories: [],
@@ -38,16 +41,7 @@ export async function getAdminContext(userId) {
 
     const isSuperAdmin = adminUser.is_super_admin === true;
     
-    console.log('✅ [AdminContext] Admin user found:', {
-      userId,
-      is_super_admin: adminUser.is_super_admin,
-      isSuperAdmin: isSuperAdmin,
-      hasCategories: !!adminUser.assigned_categories,
-      categoriesCount: adminUser.assigned_categories?.length || 0,
-      hasBranches: !!adminUser.assigned_branches,
-      branchesCount: adminUser.assigned_branches?.length || 0,
-      role: adminUser.role
-    });
+    // Removed verbose success log to reduce terminal noise
 
     return {
       isSuperAdmin: isSuperAdmin,

@@ -1,6 +1,6 @@
 import { Icon } from '@iconify/react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { useDashboard } from '../hooks/useDashboard';
 import ReactECharts from 'echarts-for-react';
@@ -8,9 +8,10 @@ import ReactECharts from 'echarts-for-react';
 interface DashboardProps {
   session: Session | null;
   onNavigate?: (page: string) => void;
+  isActive?: boolean;
 }
 
-const Dashboard = ({ session }: DashboardProps) => {
+const Dashboard = ({ session, isActive = true }: DashboardProps) => {
   const {
     stats,
     salesReport,
@@ -19,8 +20,20 @@ const Dashboard = ({ session }: DashboardProps) => {
     monthlyEarnings,
     isLoading,
     selectedYear,
-    setSelectedYear
+    setSelectedYear,
+    refreshDashboard
   } = useDashboard(session);
+  
+  const prevActiveRef = useRef<boolean>(false);
+  
+  // Refresh dashboard when it becomes active (when navigating back to it)
+  useEffect(() => {
+    // If dashboard just became active (was inactive, now active), refresh data
+    if (isActive && !prevActiveRef.current && session) {
+      refreshDashboard();
+    }
+    prevActiveRef.current = isActive;
+  }, [isActive, session, refreshDashboard]);
   
   const [salesExpanded, setSalesExpanded] = useState(false);
   const [cardOrder, setCardOrder] = useState(['customer', 'order', 'earning']);

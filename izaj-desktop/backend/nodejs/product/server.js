@@ -1421,7 +1421,7 @@ router.get('/products/stock-status', authenticate, async (req, res) => {
       .select('product_id, display_quantity, reserved_quantity, current_quantity')
       .limit(5);
     
-    console.log('🔍 [stock-status] Direct product_stock query sample:', directStock);
+    // Removed verbose log to reduce terminal noise
     
     const { data, error } = await supabase
       .from('products')
@@ -1444,7 +1444,7 @@ router.get('/products/stock-status', authenticate, async (req, res) => {
       });
     }
 
-    console.log('🔍 [stock-status] Sample product with stock relation:', data?.[0]);
+    // Removed verbose log to reduce terminal noise
 
     const stockStatus = (data || []).map(product => {
       // Handle both array and object format from Supabase relation
@@ -1473,7 +1473,7 @@ router.get('/products/stock-status', authenticate, async (req, res) => {
       };
     });
 
-    console.log('🔍 [stock-status] Sample transformed stock:', stockStatus.slice(0, 3));
+    // Removed verbose log to reduce terminal noise
 
     res.json({
       success: true,

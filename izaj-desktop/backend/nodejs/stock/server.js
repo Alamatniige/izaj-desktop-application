@@ -342,7 +342,7 @@ router.get('/product-status', authenticate, async (req, res) => {
 // GET /debug-stock - Debug endpoint to view raw product_stock table data
 router.get('/debug-stock', authenticate, async (req, res) => {
   try {
-    console.log('🔍 [Debug] Fetching raw product_stock data...');
+    // Removed verbose log to reduce terminal noise
     
     // Get all product_stock records with product names
     const { data: stockData, error: stockError } = await supabase
@@ -398,8 +398,7 @@ router.get('/debug-stock', authenticate, async (req, res) => {
       updated_at: stock.updated_at
     }));
 
-    console.log('✅ [Debug] Retrieved', enrichedData.length, 'stock records');
-    console.log('📊 [Debug] Sample records:', enrichedData.slice(0, 3));
+    // Removed verbose logs to reduce terminal noise
 
     return res.status(200).json({ 
       success: true,

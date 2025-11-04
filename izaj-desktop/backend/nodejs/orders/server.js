@@ -15,12 +15,7 @@ router.get('/orders', authenticate, async (req, res) => {
     // Get admin context to check SuperAdmin status and branches
     const adminContext = await getAdminContext(req.user.id);
     
-    console.log('🔍 [Orders] Fetching orders for user:', req.user.id);
-    console.log('🔍 [Orders] Admin context:', {
-      isSuperAdmin: adminContext.isSuperAdmin,
-      assignedBranches: adminContext.assignedBranches,
-      assignedBranchesLength: adminContext.assignedBranches?.length
-    });
+    // Removed verbose logs to reduce terminal noise
 
     let query = supabase
       .from('orders')
@@ -31,10 +26,8 @@ router.get('/orders', authenticate, async (req, res) => {
 
     // Filter by branches if not SuperAdmin
     if (!adminContext.isSuperAdmin) {
-      console.log('📋 [Orders] Regular admin - applying branch filters');
       if (!adminContext.assignedBranches || adminContext.assignedBranches.length === 0) {
         // No branches assigned - return empty array
-        console.log('⚠️ [Orders] No branches assigned for regular admin');
         return res.json({
           success: true,
           data: [],
@@ -45,14 +38,10 @@ router.get('/orders', authenticate, async (req, res) => {
       // Format: (branch.eq.value1,branch.eq.value2),assigned_admin_id.eq.userId
       const branchConditions = adminContext.assignedBranches.map(b => `branch.eq.${encodeURIComponent(b)}`).join(',');
       query = query.or(`(${branchConditions}),assigned_admin_id.eq.${req.user.id}`);
-      console.log('📋 [Orders] Applied branch filter:', branchConditions);
-    } else {
-      console.log('✅ [Orders] SuperAdmin - no filters applied, returning all orders');
     }
 
     if (status) {
       query = query.eq('status', status);
-      console.log('📋 [Orders] Applied status filter:', status);
     }
 
     query = query.order('created_at', { ascending: false });
@@ -74,10 +63,7 @@ router.get('/orders', authenticate, async (req, res) => {
       });
     }
 
-    console.log('✅ [Orders] Successfully fetched orders:', {
-      count: data?.length || 0,
-      isSuperAdmin: adminContext.isSuperAdmin
-    });
+    // Removed verbose success log to reduce terminal noise
 
     // Log audit event
     await logAuditEvent(req.user.id, AuditActions.VIEW_ORDERS, {
@@ -149,7 +135,7 @@ router.put('/orders/:id/status', authenticate, async (req, res) => {
     const { id } = req.params;
     const { status, tracking_number, courier, admin_notes } = req.body;
 
-    console.log('📝 Updating order status:', { id, status, tracking_number, courier, admin_notes });
+    // Removed verbose log to reduce terminal noise
 
     // Get admin context to check SuperAdmin status
     const adminContext = await getAdminContext(req.user.id);
@@ -194,7 +180,7 @@ router.put('/orders/:id/status', authenticate, async (req, res) => {
       updateData.delivered_at = new Date().toISOString();
     }
 
-    console.log('📝 Update data:', updateData);
+    // Removed verbose log to reduce terminal noise
 
     const { data, error } = await supabase
       .from('orders')
@@ -220,15 +206,13 @@ router.put('/orders/:id/status', authenticate, async (req, res) => {
 
     // Update stock when order is approved
     if (status === 'approved' && currentOrder.status !== 'approved') {
-      console.log('📦 [Orders] Order approved, updating stock...');
       try {
         const stockResult = await updateStockFromOrder(id);
         if (!stockResult.success) {
           console.error('⚠️ [Orders] Stock update had errors:', stockResult.errors);
           // Don't fail the request, but log it
-        } else {
-          console.log(`✅ [Orders] Stock updated successfully: ${stockResult.updated} products`);
         }
+        // Removed success log to reduce terminal noise
       } catch (stockError) {
         console.error('⚠️ [Orders] Error updating stock (non-critical):', stockError);
       }
@@ -236,14 +220,12 @@ router.put('/orders/:id/status', authenticate, async (req, res) => {
 
     // Reverse stock when order is cancelled
     if (status === 'cancelled' && currentOrder.status !== 'cancelled' && currentOrder.status === 'approved') {
-      console.log('🔄 [Orders] Order cancelled, reversing stock...');
       try {
         const stockResult = await reverseStockFromOrder(id);
         if (!stockResult.success) {
           console.error('⚠️ [Orders] Stock reversal had errors:', stockResult.errors);
-        } else {
-          console.log(`✅ [Orders] Stock reversed successfully: ${stockResult.updated} products`);
         }
+        // Removed success log to reduce terminal noise
       } catch (stockError) {
         console.error('⚠️ [Orders] Error reversing stock (non-critical):', stockError);
       }
@@ -264,7 +246,7 @@ router.put('/orders/:id/status', authenticate, async (req, res) => {
       console.error('⚠️ Audit logging failed (non-critical):', auditError);
     }
 
-    console.log('✅ Order status updated successfully');
+    // Removed verbose success log to reduce terminal noise
 
     res.json({
       success: true,
@@ -316,14 +298,12 @@ router.put('/orders/:id/cancel', authenticate, async (req, res) => {
 
     // Reverse stock if order was previously approved
     if (currentOrder?.status === 'approved') {
-      console.log('🔄 [Orders] Cancelling approved order, reversing stock...');
       try {
         const stockResult = await reverseStockFromOrder(id);
         if (!stockResult.success) {
           console.error('⚠️ [Orders] Stock reversal had errors:', stockResult.errors);
-        } else {
-          console.log(`✅ [Orders] Stock reversed successfully: ${stockResult.updated} products`);
         }
+        // Removed success log to reduce terminal noise
       } catch (stockError) {
         console.error('⚠️ [Orders] Error reversing stock (non-critical):', stockError);
       }
@@ -354,7 +334,7 @@ router.put('/orders/:id/cancel', authenticate, async (req, res) => {
 // POST /api/orders/process-stock - Sync stock based on all approved orders (idempotent)
 router.post('/orders/process-stock', authenticate, async (req, res) => {
   try {
-    console.log('📦 [Orders] Syncing stock from all approved orders...');
+    // Removed verbose log to reduce terminal noise
 
     // Use the sync function which calculates expected values and updates to match
     // This is idempotent - safe to run multiple times
@@ -368,7 +348,7 @@ router.post('/orders/process-stock', authenticate, async (req, res) => {
       });
     }
 
-    console.log(`✅ [Orders] Stock sync completed: ${stockResult.updated} products updated`);
+    // Removed verbose success log to reduce terminal noise
 
     await logAuditEvent(req.user.id, 'PROCESS_ORDER_STOCK', {
       action: 'Synced stock from all approved orders',

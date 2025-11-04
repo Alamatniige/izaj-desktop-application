@@ -404,7 +404,7 @@ router.put('/users/:id/assignments', authenticate, async (req, res) => {
 // GET - Get current user's admin context (for frontend)
 router.get('/me', authenticate, async (req, res) => {
   try {
-    console.log('🔍 [Admin Context] Fetching admin context for user:', req.user.id);
+    // Removed verbose log to reduce terminal noise
     
     const { data: adminUser, error } = await supabase
       .from('adminUser')
@@ -418,19 +418,17 @@ router.get('/me', authenticate, async (req, res) => {
     }
 
     if (!adminUser) {
-      console.warn('⚠️ [Admin Context] Admin user not found for user:', req.user.id);
+      // Only log warnings in development
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('⚠️ [Admin Context] Admin user not found for user:', req.user.id);
+      }
       return res.status(404).json({ error: 'Admin user not found' });
     }
 
     // Explicitly check for true value (handle null, undefined, false)
     const isSuperAdmin = adminUser.is_super_admin === true;
     
-    console.log('✅ [Admin Context] Admin user found:', {
-      user_id: req.user.id,
-      is_super_admin: adminUser.is_super_admin,
-      isSuperAdmin: isSuperAdmin,
-      role: adminUser.role
-    });
+    // Removed verbose success log to reduce terminal noise
 
     res.json({
       success: true,

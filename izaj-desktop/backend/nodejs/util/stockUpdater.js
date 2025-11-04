@@ -8,7 +8,7 @@ import { supabase } from '../supabaseClient.js';
  */
 export async function updateStockFromOrder(orderId) {
   try {
-    console.log(`📦 [StockUpdater] Processing stock update for order: ${orderId}`);
+    // Removed verbose log to reduce terminal noise
 
     // Get order items
     const { data: orderItems, error: itemsError } = await supabase
@@ -27,7 +27,7 @@ export async function updateStockFromOrder(orderId) {
     }
 
     if (!orderItems || orderItems.length === 0) {
-      console.log('⚠️ [StockUpdater] No order items found for this order');
+      // Removed verbose log to reduce terminal noise
       return {
         success: true,
         updated: 0,
@@ -36,7 +36,7 @@ export async function updateStockFromOrder(orderId) {
       };
     }
 
-    console.log(`📦 [StockUpdater] Found ${orderItems.length} order items`);
+    // Removed verbose log to reduce terminal noise
 
     const updateResults = [];
     const errors = [];
@@ -48,11 +48,11 @@ export async function updateStockFromOrder(orderId) {
         const quantity = parseInt(item.quantity) || 0;
 
         if (quantity <= 0) {
-          console.log(`⚠️ [StockUpdater] Skipping item with invalid quantity: ${productId}`);
+          // Removed verbose log to reduce terminal noise
           continue;
         }
 
-        console.log(`📦 [StockUpdater] Processing product ${productId}, quantity: ${quantity}`);
+        // Removed verbose log to reduce terminal noise
 
         // Get current stock
         const { data: currentStock, error: fetchError } = await supabase
@@ -77,7 +77,7 @@ export async function updateStockFromOrder(orderId) {
         const newDisplayQty = Math.max(0, currentDisplayQty - quantity);
         const newReservedQty = (currentReservedQty || 0) + quantity;
 
-        console.log(`📦 [StockUpdater] Product ${productId}: ${currentDisplayQty} → ${newDisplayQty} (display), ${currentReservedQty} → ${newReservedQty} (reserved)`);
+        // Removed verbose log to reduce terminal noise
 
         // Update stock
         const { data: updatedStock, error: updateError } = await supabase
@@ -108,7 +108,7 @@ export async function updateStockFromOrder(orderId) {
             old_reserved: currentReservedQty,
             new_reserved: newReservedQty
           });
-          console.log(`✅ [StockUpdater] Successfully updated stock for product ${productId}`);
+          // Removed verbose log to reduce terminal noise
         }
       } catch (itemError) {
         console.error(`❌ [StockUpdater] Error processing item:`, itemError);
@@ -119,7 +119,7 @@ export async function updateStockFromOrder(orderId) {
       }
     }
 
-    console.log(`✅ [StockUpdater] Completed: ${updateResults.length} updated, ${errors.length} errors`);
+    // Removed verbose log to reduce terminal noise
 
     return {
       success: errors.length === 0,
@@ -145,7 +145,7 @@ export async function updateStockFromOrder(orderId) {
  */
 async function calculateExpectedReservedStock() {
   try {
-    console.log('🔍 [StockUpdater] Calculating expected reserved stock from order_items...');
+    // Removed verbose log to reduce terminal noise
     
     // Get all approved, in_transit, and complete orders ONLY
     const { data: orders, error: ordersError } = await supabase
@@ -159,11 +159,11 @@ async function calculateExpectedReservedStock() {
     }
 
     if (!orders || orders.length === 0) {
-      console.log('⚠️ [StockUpdater] No approved/in_transit/complete orders found');
+      // Removed verbose log to reduce terminal noise
       return new Map();
     }
 
-    console.log(`📦 [StockUpdater] Found ${orders.length} approved/in_transit/complete orders`);
+    // Removed verbose log to reduce terminal noise
     const orderIds = orders.map(o => o.id);
 
     // Get ALL order items for these specific orders
@@ -178,58 +178,29 @@ async function calculateExpectedReservedStock() {
     }
 
     if (!orderItems || orderItems.length === 0) {
-      console.log('⚠️ [StockUpdater] No order items found for approved orders');
+      // Removed verbose log to reduce terminal noise
       return new Map();
     }
 
-    console.log(`📦 [StockUpdater] Found ${orderItems.length} order items`);
+    // Removed verbose log to reduce terminal noise
 
     // Calculate total reserved quantity per product
     const reservedMap = new Map();
-    const itemDetails = new Map(); // Track details for logging
     
     // Process each order item
     (orderItems || []).forEach(item => {
       const productId = String(item.product_id).trim();
       const quantity = parseInt(item.quantity) || 0;
-      const orderId = item.order_id;
       
       // Only process valid quantities
       if (quantity > 0 && productId) {
         const current = reservedMap.get(productId) || 0;
         const newTotal = current + quantity;
         reservedMap.set(productId, newTotal);
-        
-        // Track details for debugging
-        if (!itemDetails.has(productId)) {
-          itemDetails.set(productId, []);
-        }
-        itemDetails.get(productId).push({
-          order_id: orderId,
-          quantity: quantity
-        });
-      } else {
-        console.warn(`⚠️ [StockUpdater] Skipping invalid order item: product_id=${productId}, quantity=${quantity}`);
       }
     });
 
-    // Log detailed calculation for each product
-    console.log(`\n📊 [StockUpdater] Reserved quantity calculation from order_items:`);
-    console.log(`   Total products with orders: ${reservedMap.size}`);
-    
-    for (const [productId, total] of reservedMap.entries()) {
-      const details = itemDetails.get(productId) || [];
-      const quantities = details.map(d => `${d.quantity} (order: ${d.order_id})`);
-      const sumCheck = details.reduce((sum, d) => sum + d.quantity, 0);
-      
-      console.log(`\n   📦 Product ${productId}:`);
-      console.log(`      Order items: ${details.length}`);
-      details.forEach((d, idx) => {
-        console.log(`         ${idx + 1}. Order ${d.order_id}: quantity = ${d.quantity}`);
-      });
-      console.log(`      SUM: ${details.map(d => d.quantity).join(' + ')} = ${total}`);
-      console.log(`      Verification: ${sumCheck === total ? '✅' : '❌'} (calculated: ${sumCheck}, stored: ${total})`);
-    }
+    // Removed verbose logs to reduce terminal noise
 
     return reservedMap;
   } catch (error) {
@@ -245,13 +216,13 @@ async function calculateExpectedReservedStock() {
  */
 export async function syncStockFromAllOrders() {
   try {
-    console.log('🔄 [StockUpdater] Syncing stock based on all approved orders...');
+    // Removed verbose log to reduce terminal noise
 
     // Calculate expected reserved quantities from all approved orders
     const expectedReservedMap = await calculateExpectedReservedStock();
     
     if (expectedReservedMap.size === 0) {
-      console.log('⚠️ [StockUpdater] No approved orders found');
+      // Removed verbose log to reduce terminal noise
       return {
         success: true,
         updated: 0,
@@ -260,7 +231,7 @@ export async function syncStockFromAllOrders() {
       };
     }
 
-    console.log(`📦 [StockUpdater] Found ${expectedReservedMap.size} products with orders`);
+    // Removed verbose log to reduce terminal noise
 
     // Get current stock for all products that have orders
     const productIds = Array.from(expectedReservedMap.keys());
@@ -350,21 +321,11 @@ export async function syncStockFromAllOrders() {
         // Where reserved_quantity = EXACT SUM of all order_items.quantity from approved orders ONLY
         const expectedDisplayQty = Math.max(0, currentQuantity - expectedReservedQty);
 
-        console.log(`\n📦 [StockUpdater] Processing Product: ${productId}`);
-        console.log(`   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-        console.log(`   Current Quantity (NOT MODIFIED): ${currentQuantity}`);
-        console.log(`   Current Display Quantity: ${currentDisplayQty}`);
-        console.log(`   Current Reserved Quantity: ${currentReservedQty}`);
-        console.log(`   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-        console.log(`   Expected Reserved (from order_items SUM): ${expectedReservedQty}`);
-        console.log(`   Calculation: ${currentQuantity} - ${expectedReservedQty} = ${expectedDisplayQty}`);
-        console.log(`   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-        console.log(`   NEW Display Quantity: ${expectedDisplayQty}`);
-        console.log(`   NEW Reserved Quantity: ${expectedReservedQty}`);
+        // Removed verbose logs to reduce terminal noise
 
         // Only update if values are different
         if (currentDisplayQty !== expectedDisplayQty || currentReservedQty !== expectedReservedQty) {
-          console.log(`   ✅ Needs update (display and/or reserved)`);
+          // Removed verbose log to reduce terminal noise
 
           // Update stock - DO NOT touch current_quantity, only update display and reserved
           // Use update instead of upsert to preserve current_quantity
@@ -421,19 +382,10 @@ export async function syncStockFromAllOrders() {
               } : null
             });
             
-            if (verifyStock) {
-              console.log(`   ✅ Updated successfully`);
-              console.log(`   🔍 Verification:`);
-              console.log(`      Display: ${verifyStock.display_quantity} (expected: ${expectedDisplayQty}) ${verifyStock.display_quantity === expectedDisplayQty ? '✅' : '❌'}`);
-              console.log(`      Reserved: ${verifyStock.reserved_quantity} (expected: ${expectedReservedQty}) ${verifyStock.reserved_quantity === expectedReservedQty ? '✅' : '❌'}`);
-              console.log(`      Current: ${verifyStock.current_quantity} (unchanged: ${currentQuantity}) ${verifyStock.current_quantity === currentQuantity ? '✅' : '❌'}`);
-            } else {
-              console.log(`   ✅ Updated (verification pending)`);
-            }
+            // Removed verbose verification logs to reduce terminal noise
           }
-        } else {
-          console.log(`   ✅ Stock already correct (no update needed)`);
         }
+        // Removed verbose log to reduce terminal noise
       } catch (itemError) {
         console.error(`❌ [StockUpdater] Error processing product ${productId}:`, itemError);
         errors.push({
@@ -456,7 +408,7 @@ export async function syncStockFromAllOrders() {
             const expectedDisplayQty = currentQuantity; // All stock should be available (no reserved)
 
             if (stock.display_quantity !== expectedDisplayQty || stock.reserved_quantity !== 0) {
-              console.log(`🔄 [StockUpdater] Product ${productId}: Resetting reserved stock (no orders)`);
+              // Removed verbose log to reduce terminal noise
               
               // Update only display and reserved, DO NOT touch current_quantity
               const { error: updateError } = await supabase
@@ -484,7 +436,7 @@ export async function syncStockFromAllOrders() {
       }
     }
 
-    console.log(`✅ [StockUpdater] Sync completed: ${updateResults.length} products updated, ${errors.length} errors`);
+    // Removed verbose log to reduce terminal noise
 
     return {
       success: errors.length === 0,
@@ -511,7 +463,7 @@ export async function syncStockFromAllOrders() {
  */
 export async function reverseStockFromOrder(orderId) {
   try {
-    console.log(`🔄 [StockUpdater] Reversing stock for cancelled order: ${orderId}`);
+    // Removed verbose log to reduce terminal noise
 
     // Get order items
     const { data: orderItems, error: itemsError } = await supabase
@@ -530,7 +482,7 @@ export async function reverseStockFromOrder(orderId) {
     }
 
     if (!orderItems || orderItems.length === 0) {
-      console.log('⚠️ [StockUpdater] No order items found for this order');
+      // Removed verbose log to reduce terminal noise
       return {
         success: true,
         updated: 0,
@@ -573,7 +525,7 @@ export async function reverseStockFromOrder(orderId) {
         const newDisplayQty = currentDisplayQty + quantity;
         const newReservedQty = Math.max(0, currentReservedQty - quantity);
 
-        console.log(`🔄 [StockUpdater] Product ${productId}: ${currentDisplayQty} → ${newDisplayQty} (display), ${currentReservedQty} → ${newReservedQty} (reserved)`);
+        // Removed verbose log to reduce terminal noise
 
         // Update stock
         const { data: updatedStock, error: updateError } = await supabase
@@ -614,7 +566,7 @@ export async function reverseStockFromOrder(orderId) {
       }
     }
 
-    console.log(`✅ [StockUpdater] Reversal completed: ${updateResults.length} updated, ${errors.length} errors`);
+    // Removed verbose log to reduce terminal noise
 
     return {
       success: errors.length === 0,

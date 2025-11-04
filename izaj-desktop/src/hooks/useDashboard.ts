@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { toast } from 'react-hot-toast';
 import { DashboardService, DashboardStats, SalesReport, BestSellingProduct, CategorySales } from '../services/dashboardService';
@@ -12,6 +12,7 @@ export const useDashboard = (session: Session | null) => {
   const [isLoading, setIsLoading] = useState(true);
   const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const isMountedRef = useRef(true);
 
   const fetchDashboardData = useCallback(async () => {
     if (!session) {
@@ -30,6 +31,9 @@ export const useDashboard = (session: Session | null) => {
         DashboardService.getCategorySales(session, 10),
         DashboardService.getMonthlyEarnings(session, selectedYear)
       ]);
+
+      // Only update state if component is still mounted
+      if (!isMountedRef.current) return;
 
       if (statsResponse.success) {
         setStats(statsResponse.stats);
@@ -55,13 +59,34 @@ export const useDashboard = (session: Session | null) => {
       console.error('Error fetching dashboard data:', error);
       toast.error('Failed to load dashboard data');
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   }, [session, period, selectedYear]);
 
   useEffect(() => {
+    isMountedRef.current = true;
     fetchDashboardData();
+    
+    return () => {
+      isMountedRef.current = false;
+    };
   }, [fetchDashboardData]);
+
+  // Add visibility change listener to refresh when tab/window becomes visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && session) {
+        fetchDashboardData();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [session, fetchDashboardData]);
 
   const refreshDashboard = useCallback(() => {
     fetchDashboardData();

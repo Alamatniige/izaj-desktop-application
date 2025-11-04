@@ -84,7 +84,7 @@ app.use('/api/admin', settings);
 app.use('/api/dashboard', async (req, res) => {
   try {
     const pythonUrl = `${PYTHON_SERVICE_URL}${req.originalUrl}`;
-    console.log(`Proxying dashboard request to: ${pythonUrl}`);
+    // Removed verbose log to reduce terminal noise
     
     const response = await axios({
       method: req.method,

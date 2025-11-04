@@ -149,23 +149,13 @@ router.get('/subscription-message/subscriber-count', authenticate, async (req, r
     }
 
     // Get count of active subscribers
-    console.log('=== SUBSCRIBER COUNT API CALL ===');
-    console.log('Using Supabase URL:', supabaseUrl?.substring(0, 50) || 'NOT SET');
+    // Removed verbose logs to reduce terminal noise
     
     // Query active subscribers directly
     const { data: activeSubscribers, error: fetchError, count } = await supabase
       .from('newsletter_subscribers')
       .select('email, is_active, id', { count: 'exact' })
       .eq('is_active', true);
-    
-    console.log('Active subscribers query result:', {
-      dataLength: activeSubscribers?.length || 0,
-      count: count,
-      error: fetchError,
-      errorCode: fetchError?.code,
-      errorMessage: fetchError?.message,
-      sample: activeSubscribers?.slice(0, 2)
-    });
     
     if (fetchError) {
       console.error('Error fetching active subscribers:', fetchError);
@@ -176,7 +166,7 @@ router.get('/subscription-message/subscriber-count', authenticate, async (req, r
     }
     
     const activeCount = activeSubscribers ? activeSubscribers.length : 0;
-    console.log(`Found ${activeCount} active subscribers (count: ${count})`);
+    // Removed verbose log to reduce terminal noise
 
     res.json({
       success: true,
@@ -250,7 +240,7 @@ router.post('/subscription-message/send-to-all', authenticate, async (req, res) 
     const results = [];
     const errors = [];
 
-    console.log(`Starting to send emails to ${subscribers.length} subscribers...`);
+    // Removed verbose log to reduce terminal noise
 
     for (const subscriber of subscribers) {
       try {
@@ -269,7 +259,7 @@ router.post('/subscription-message/send-to-all', authenticate, async (req, res) 
     const successful = results.length;
     const failed = errors.length;
 
-    console.log(`Email sending completed: ${successful} successful, ${failed} failed`);
+    // Removed verbose log to reduce terminal noise
 
     if (successful === 0) {
       return res.status(500).json({ 

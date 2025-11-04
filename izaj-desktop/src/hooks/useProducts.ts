@@ -316,7 +316,7 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
     if (!enabled || !session?.access_token) return;
 
     const intervalId = setInterval(async () => {
-      console.log('🔄 [useProducts] Auto-refreshing stock data...');
+      // Removed verbose log to reduce terminal noise
       try {
         await checkStockStatus();
         await updatePublishedProducts();

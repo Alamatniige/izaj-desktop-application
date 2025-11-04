@@ -23,14 +23,11 @@ export const useStock = (session: Session | null) => {
 
     try {
       const products = await StockService.fetchStockProducts(session);
-      console.log('📦 [useStock] Raw products from API:', products.slice(0, 3));
       
       // Merge with latest stock-status to ensure display_quantity and reserved are fresh
       let merged: FetchedProduct[] = products;
       try {
         const status = await ProductService.fetchStockStatus(session);
-        console.log('📊 [useStock] Stock status response:', status);
-        console.log('📊 [useStock] Stock status products sample:', status?.products?.slice(0, 3));
         
         if (status?.success && Array.isArray(status.products)) {
           // Create map of product_id -> stock data for O(1) lookup
@@ -44,8 +41,6 @@ export const useStock = (session: Session | null) => {
               stockMap.set(String(pidNum), item);
             }
           });
-
-          console.log('🗺️ [useStock] Stock map size:', stockMap.size);
 
           // Merge both display_quantity and reserved_quantity
           merged = products.map(p => {
@@ -63,15 +58,12 @@ export const useStock = (session: Session | null) => {
                 ? (fetchedQty === 0 && existingQty > 0 ? existingQty : fetchedQty)
                 : existingQty;
               
-              console.log(`✅ [useStock] Merged product ${pidStr}: display=${finalQty}, reserved=${stockItem.reserved_quantity}`);
-              
               return {
                 ...p,
                 display_quantity: finalQty,
                 reserved_quantity: stockItem.reserved_quantity ?? 0,
               };
             }
-            console.log(`⚠️ [useStock] No stock item found for product ${pidStr}`);
             return p;
           });
         }
@@ -79,16 +71,9 @@ export const useStock = (session: Session | null) => {
         console.error('❌ [useStock] Error merging stock:', e);
       }
       
-      console.log('🎯 [useStock] Final merged products sample:', merged.slice(0, 3));
-      
       // Backend already filters for publish_status=true when status='active' is passed
       // But we keep this frontend filter as a safety check
       const activeOnly = merged.filter(p => p.publish_status === true);
-      console.log(`🎯 [useStock] Published products count: ${activeOnly.length} (Total fetched: ${merged.length})`);
-      console.log(`🎯 [useStock] Publish status breakdown:`, {
-        published: merged.filter(p => p.publish_status === true).length,
-        unpublished: merged.filter(p => p.publish_status === false).length
-      });
       
       setStockProducts(activeOnly);
       
@@ -120,7 +105,7 @@ export const useStock = (session: Session | null) => {
   // Auto-refresh every 30 seconds to show latest stock changes from orders
   useEffect(() => {
     const intervalId = setInterval(() => {
-      console.log('🔄 [useStock] Auto-refreshing stock data...');
+      // Removed verbose log to reduce terminal noise
       fetchStockProducts();
       fetchStockStatus();
     }, 30000); // 30 seconds
