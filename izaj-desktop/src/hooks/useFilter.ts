@@ -159,13 +159,13 @@ export const useFilter = (session: Session | null, options: UseFilterOptions = {
                 mediaMap[product.product_id] = urls;
               }
             } catch (err) {
-              console.error(`❌ Failed to fetch media for on-sale product ${product.id}`, err);
+              console.error(`Failed to fetch media for on-sale product ${product.id}`, err);
             }
           })
         );
         setOnSaleMediaMap(mediaMap);
       } catch (error) {
-        console.error('Error fetching active products:', error);
+        console.error('Error fetching on-sale products:', error);
         setError('Failed to fetch active products');
       } finally {
         setIsLoading(false)
@@ -194,8 +194,10 @@ export const useFilter = (session: Session | null, options: UseFilterOptions = {
     }, [fetchFilteredProducts, selectedCategory, statusFilter, enabled, initialProducts]);
     
     useEffect(() => {
-      if (enabled) fetchOnSaleProducts();
-    }, [fetchOnSaleProducts, enabled])
+      if (enabled && session?.access_token) {
+        fetchOnSaleProducts();
+      }
+    }, [fetchOnSaleProducts, enabled, session])
 
   return {
     filteredProducts: visibleProducts, initialProducts,

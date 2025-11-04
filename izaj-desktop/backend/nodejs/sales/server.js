@@ -22,50 +22,28 @@ router.get('/products', async (req, res, next) => {
 // Get all published products on sale with sale details
 router.get('/onsale/products', async (req, res, next) => {
   try {
-    console.log('🔍 Fetching on-sale products...');
-    
-    // First, try to get products with active sales
+    // Fetch all products marked as on_sale with their sale details
     const { data, error } = await supabase
       .from('products')
       .select(`
         *,
-        sale!inner(*)
+        sale(*)
       `)
-      .eq('on_sale', true)
-      .eq('publish_status', true)
-      .lte('sale.start_date', new Date().toISOString())
-      .gte('sale.end_date', new Date().toISOString());
+      .eq('on_sale', true);
 
     if (error) {
-      console.error('Error fetching on-sale products with sales:', error);
-      
-      // Fallback: get products that are marked as on_sale but without date filtering
-      console.log('🔄 Trying fallback query...');
-      const { data: fallbackData, error: fallbackError } = await supabase
-        .from('products')
-        .select(`
-          *,
-          sale(*)
-        `)
-        .eq('on_sale', true)
-        .eq('publish_status', true);
-
-      if (fallbackError) {
-        console.error('Error in fallback query:', fallbackError);
-        return res.status(500).json({
-          success: false,
-          error: 'Failed to fetch on-sale products',
-          details: fallbackError.message
-        });
-      }
-
-      console.log('✅ Fallback query successful, found products:', fallbackData?.length || 0);
-      return res.json(fallbackData || []);
+      console.error('Error fetching on-sale products:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch on-sale products',
+        details: error.message
+      });
     }
-
-    console.log('✅ Main query successful, found products:', data?.length || 0);
-    // Return empty array if no products on sale (this is normal)
-    res.json(data || []);
+    
+    // Filter for published products
+    const publishedData = data?.filter(p => p.publish_status === true) || [];
+    
+    res.json(publishedData);
   } catch (error) {
     console.error('Unexpected error in on-sale products endpoint:', error);
     next(error);
@@ -123,12 +101,24 @@ router.post('/create', async (req, res, next) => {
       return res.status(400).json({ error: "Either percentage or fixed_amount is required" });
     }
 
-    // 1. Insert into sale
+    // First, get the product's database ID from the Shopify product_id
+    const { data: product, error: productFetchError } = await supabase
+      .from("products")
+      .select('id, product_id, product_name')
+      .eq("product_id", product_id.trim())
+      .single();
+
+    if (productFetchError || !product) {
+      console.error("Product not found:", productFetchError);
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    // 1. Insert into sale using the database ID
     const { data: sale, error: saleError } = await supabase
       .from("sale")
       .insert([
         {
-          product_id,
+          product_id: product.id, // Use the database ID, not Shopify ID
           percentage: percentage || null,
           fixed_amount: fixed_amount || null,
           start_date,
@@ -138,22 +128,24 @@ router.post('/create', async (req, res, next) => {
       .select()
       .single();
 
-    if (saleError) throw saleError;
+    if (saleError) {
+      console.error("Sale insert error:", saleError);
+      throw saleError;
+    }
 
     // 2. Update product.on_sale = true
     const { data: updatedProduct, error: productError } = await supabase
-    .from("products")
-    .update({ on_sale: true })
-    .ilike("product_id", product_id.trim())
-    .select();
-
-    console.log("Updated product:", updatedProduct, productError);
+      .from("products")
+      .update({ on_sale: true })
+      .eq("id", product.id) // Use database ID for consistency
+      .select();
 
     if (productError) throw productError;
 
     res.status(201).json({
       success: true,
       sale,
+      product: updatedProduct[0]
     });
 
   } catch (error) {
