@@ -28,6 +28,17 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: error.message });
     }
 
+    // Enforce email confirmation before allowing login (using service key requires manual check)
+    if (!data?.user?.email_confirmed_at) {
+      await logAuditEvent(null, AuditActions.LOGIN, {
+        email,
+        success: false,
+        error: 'Email not confirmed'
+      }, req);
+
+      return res.status(403).json({ error: 'Please confirm your email before logging in.' });
+    }
+
     await logAuditEvent(data.user.id, AuditActions.LOGIN, {
       email,
       success: true

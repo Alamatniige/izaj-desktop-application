@@ -88,6 +88,19 @@ router.post('/addUsers', authenticate, async (req, res) => {
       return res.status(500).json({ error: dbError.message });
     }
 
+    // Send invitation email via Supabase (uses your configured SMTP — set Gmail in Supabase Auth settings)
+    try {
+      const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
+        redirectTo: 'izaj://login'
+      });
+      if (inviteError) {
+        // Non-fatal: user is created; frontend can offer manual resend later
+        console.warn('Failed to send invite email:', inviteError.message);
+      }
+    } catch (inviteEx) {
+      console.warn('Exception sending invite email:', inviteEx);
+    }
+
     await logAuditEvent(req.user.id, AuditActions.CREATE_USER, {
       targetUser: { 
         id: userId, 
