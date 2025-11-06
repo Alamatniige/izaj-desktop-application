@@ -762,60 +762,108 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                                 {!newAdmin.is_super_admin && (
                                   <>
                                     <div className="space-y-2">
-                                      <label className="block text-sm font-semibold text-gray-700">
-                                        Assigned Categories
-                                      </label>
-                                      <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
+                                      <div className="flex items-center justify-between">
+                                        <label className="block text-sm font-semibold text-gray-700">
+                                          Assigned Categories
+                                        </label>
+                                        {newAdmin.assigned_categories.length > 0 && (
+                                          <span className="text-xs text-yellow-600 font-medium">
+                                            {newAdmin.assigned_categories.length} selected
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="relative border border-gray-300 rounded-xl bg-white min-h-[120px] max-h-[200px] overflow-y-auto">
+                                        <div className="absolute left-3 top-3 flex items-center pointer-events-none z-10">
                                           <Icon icon="mdi:tag-multiple" className="w-5 h-5 text-gray-400" />
                                         </div>
-                                        <select
-                                          multiple
-                                          value={newAdmin.assigned_categories}
-                                          onChange={(e) => {
-                                            const selected = Array.from(e.target.selectedOptions, option => option.value);
-                                            setNewAdmin({ ...newAdmin, assigned_categories: selected });
-                                          }}
-                                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-yellow-200 focus:border-yellow-400 transition-colors duration-200 bg-white min-h-[120px] max-h-[200px] overflow-y-auto"
-                                        >
-                                          {availableCategories.length > 0 ? (
-                                            availableCategories.map(category => (
-                                              <option key={category} value={category}>{category}</option>
-                                            ))
-                                          ) : (
-                                            <option value="" disabled>No categories available. Please add categories to products first.</option>
-                                          )}
-                                        </select>
-                                        <p className="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple categories</p>
+                                        {availableCategories.length > 0 ? (
+                                          <div className="pl-10 pr-4 py-3 space-y-2">
+                                            {availableCategories.map(category => (
+                                              <label
+                                                key={category}
+                                                className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                                              >
+                                                <input
+                                                  type="checkbox"
+                                                  checked={newAdmin.assigned_categories.includes(category)}
+                                                  onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                      setNewAdmin({
+                                                        ...newAdmin,
+                                                        assigned_categories: [...newAdmin.assigned_categories, category]
+                                                      });
+                                                    } else {
+                                                      setNewAdmin({
+                                                        ...newAdmin,
+                                                        assigned_categories: newAdmin.assigned_categories.filter(c => c !== category)
+                                                      });
+                                                    }
+                                                  }}
+                                                  className="w-4 h-4 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500 cursor-pointer"
+                                                />
+                                                <span className="text-sm text-gray-700">{category}</span>
+                                              </label>
+                                            ))}
+                                          </div>
+                                        ) : (
+                                          <div className="pl-10 pr-4 py-3">
+                                            <p className="text-sm text-gray-500">No categories available. Please add categories to products first.</p>
+                                          </div>
+                                        )}
                                       </div>
+                                      <p className="text-xs text-gray-500">Select multiple categories by clicking the checkboxes</p>
                                     </div>
                                     <div className="space-y-2">
-                                      <label className="block text-sm font-semibold text-gray-700">
-                                        Assigned Branches
-                                      </label>
-                                      <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
+                                      <div className="flex items-center justify-between">
+                                        <label className="block text-sm font-semibold text-gray-700">
+                                          Assigned Branches
+                                        </label>
+                                        {newAdmin.assigned_branches.length > 0 && (
+                                          <span className="text-xs text-yellow-600 font-medium">
+                                            {newAdmin.assigned_branches.length} selected
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="relative border border-gray-300 rounded-xl bg-white min-h-[120px] max-h-[200px] overflow-y-auto">
+                                        <div className="absolute left-3 top-3 flex items-center pointer-events-none z-10">
                                           <Icon icon="mdi:store" className="w-5 h-5 text-gray-400" />
                                         </div>
-                                        <select
-                                          multiple
-                                          value={newAdmin.assigned_branches}
-                                          onChange={(e) => {
-                                            const selected = Array.from(e.target.selectedOptions, option => option.value);
-                                            setNewAdmin({ ...newAdmin, assigned_branches: selected });
-                                          }}
-                                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-yellow-200 focus:border-yellow-400 transition-colors duration-200 bg-white min-h-[120px] max-h-[200px] overflow-y-auto"
-                                        >
-                                          {availableBranches.length > 0 ? (
-                                            availableBranches.map(branch => (
-                                              <option key={branch} value={branch}>{branch}</option>
-                                            ))
-                                          ) : (
-                                            <option value="" disabled>No branches available. Please add branches to products first.</option>
-                                          )}
-                                        </select>
-                                        <p className="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple branches</p>
+                                        {availableBranches.length > 0 ? (
+                                          <div className="pl-10 pr-4 py-3 space-y-2">
+                                            {availableBranches.map(branch => (
+                                              <label
+                                                key={branch}
+                                                className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                                              >
+                                                <input
+                                                  type="checkbox"
+                                                  checked={newAdmin.assigned_branches.includes(branch)}
+                                                  onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                      setNewAdmin({
+                                                        ...newAdmin,
+                                                        assigned_branches: [...newAdmin.assigned_branches, branch]
+                                                      });
+                                                    } else {
+                                                      setNewAdmin({
+                                                        ...newAdmin,
+                                                        assigned_branches: newAdmin.assigned_branches.filter(b => b !== branch)
+                                                      });
+                                                    }
+                                                  }}
+                                                  className="w-4 h-4 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500 cursor-pointer"
+                                                />
+                                                <span className="text-sm text-gray-700">{branch}</span>
+                                              </label>
+                                            ))}
+                                          </div>
+                                        ) : (
+                                          <div className="pl-10 pr-4 py-3">
+                                            <p className="text-sm text-gray-500">No branches available. Please add branches to products first.</p>
+                                          </div>
+                                        )}
                                       </div>
+                                      <p className="text-xs text-gray-500">Select multiple branches by clicking the checkboxes</p>
                                     </div>
                                   </>
                                 )}

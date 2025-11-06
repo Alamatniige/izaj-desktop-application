@@ -31,9 +31,14 @@ router.post('/addUsers', authenticate, async (req, res) => {
     const isSuperAdminUser = is_super_admin === true;
     
     const defaultPassword = 'admin1234';
-    const { data, error } = await supabase.auth.signUp({
+    
+    // Use admin.createUser instead of signUp to ensure the user is immediately
+    // available in auth.users for the foreign key constraint
+    // email_confirm: false means they still need to confirm their email before logging in
+    const { data, error } = await supabase.auth.admin.createUser({
       email,
       password: defaultPassword,
+      email_confirm: false, // User must confirm email before first login
     });
 
     if (error) {
@@ -67,6 +72,8 @@ router.post('/addUsers', authenticate, async (req, res) => {
     }
 
     // Insert into adminUser table
+    // The user_id references auth.users(id) which was created by admin.createUser above
+    // admin.createUser ensures the user is immediately available in auth.users
     const { error: dbError } = await supabase
       .from('adminUser')
       .insert([adminUserData]);
@@ -79,21 +86,6 @@ router.post('/addUsers', authenticate, async (req, res) => {
       }, req);
       
       return res.status(500).json({ error: dbError.message });
-    }
-
-    // Also set user_type in profiles table to 'admin'
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .upsert({ 
-        id: userId, 
-        name, 
-        user_type: 'admin',
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'id' });
-
-    if (profileError) {
-      console.error('Error setting admin user_type in profiles:', profileError);
-      // Don't fail the request, just log the error
     }
 
     await logAuditEvent(req.user.id, AuditActions.CREATE_USER, {
