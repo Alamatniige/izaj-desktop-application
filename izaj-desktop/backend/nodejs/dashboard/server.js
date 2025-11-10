@@ -26,14 +26,32 @@ router.get('/dashboard/stats', authenticate, async (req, res) => {
         startDate.setMonth(now.getMonth() - 1);
     }
 
-    // Get total customers count (only customer type users)
-    const { count: totalCustomers, error: customerError } = await supabaseAdmin
+    // Get all admin user IDs to exclude from customer count
+    const { data: adminUsers, error: adminUsersError } = await supabaseAdmin
+      .from('adminUser')
+      .select('user_id');
+
+    const adminUserIds = adminUsers ? adminUsers.map(admin => admin.user_id) : [];
+    
+    // Build query to exclude admin users
+    let customerQuery = supabaseAdmin
       .from('user_profiles')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: false })
       .or('user_type.eq.customer,user_type.is.null');
+
+    // Execute query to get all customer profiles
+    const { data: customerProfiles, error: customerError } = await customerQuery;
+
+    // Filter out admin users and get count
+    const totalCustomers = customerProfiles 
+      ? customerProfiles.filter(profile => !adminUserIds.includes(profile.id)).length 
+      : 0;
 
     if (customerError) {
       console.error('Error fetching customer count:', customerError);
+    }
+    if (adminUsersError) {
+      console.error('Error fetching admin users:', adminUsersError);
     }
 
     // Get order statistics (use admin client to bypass RLS)
@@ -73,12 +91,17 @@ router.get('/dashboard/stats', authenticate, async (req, res) => {
       });
     }
 
-    // Get customer count for the period (only customer type users)
-    const { count: periodCustomers, error: periodCustomerError } = await supabaseAdmin
+    // Get customer count for the period (only customer type users, excluding admin users)
+    const { data: periodCustomerProfiles, error: periodCustomerError } = await supabaseAdmin
       .from('user_profiles')
-      .select('*', { count: 'exact', head: true })
+      .select('id')
       .gte('created_at', startDate.toISOString())
       .or('user_type.eq.customer,user_type.is.null');
+
+    // Filter out admin users and get count
+    const periodCustomers = periodCustomerProfiles 
+      ? periodCustomerProfiles.filter(profile => !adminUserIds.includes(profile.id)).length 
+      : 0;
 
     // Calculate growth percentage
     const previousPeriodEarnings = totalEarnings - periodEarnings;

@@ -8,6 +8,8 @@ const router = express.Router();
 
 
 // POST - Create new admin desktop side user (SuperAdmin only)
+// IMPORTANT: Admin users are ONLY stored in adminUser table, NOT in profiles table
+// Any profile entries that might be auto-created by database triggers are immediately deleted
 router.post('/addUsers', authenticate, async (req, res) => {
   try {
     // Check if requester is SuperAdmin
@@ -35,6 +37,8 @@ router.post('/addUsers', authenticate, async (req, res) => {
     // Use admin.createUser instead of signUp to ensure the user is immediately
     // available in auth.users for the foreign key constraint
     // email_confirm: false means they still need to confirm their email before logging in
+    // NOTE: This might trigger a database function that auto-creates a profile entry,
+    // but we will immediately delete it to ensure admin users only exist in adminUser table
     const { data, error } = await supabase.auth.admin.createUser({
       email,
       password: defaultPassword,
@@ -89,6 +93,80 @@ router.post('/addUsers', authenticate, async (req, res) => {
       }, req);
       
       return res.status(500).json({ error: dbError.message });
+    }
+
+    // CRITICAL: Clean up any profile entry that might have been auto-created for this admin user
+    // Admin users should ONLY exist in adminUser table, NOT in profiles table
+    // This prevents admin users from being counted as customers in dashboard stats
+    try {
+      // Wait a brief moment in case there's a database trigger that creates the profile asynchronously
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Delete from profiles table
+      const { error: profileDeleteError, data: deletedProfiles } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userId)
+        .select();
+
+      if (profileDeleteError) {
+        console.error(`❌ [Admin User] Failed to delete profile for admin user ${userId}:`, profileDeleteError.message);
+        // Try one more time after a short delay
+        await new Promise(resolve => setTimeout(resolve, 200));
+        const { error: retryError } = await supabase
+          .from('profiles')
+          .delete()
+          .eq('id', userId);
+        
+        if (retryError) {
+          console.error(`❌ [Admin User] Retry also failed for ${userId}:`, retryError.message);
+        } else {
+          console.log(`✅ [Admin User] Successfully deleted profile on retry for admin user ${userId}`);
+        }
+      } else {
+        const deletedCount = deletedProfiles ? deletedProfiles.length : 0;
+        if (deletedCount > 0) {
+          console.log(`✅ [Admin User] Cleaned up ${deletedCount} profile entry/entries for admin user ${userId}`);
+        } else {
+          console.log(`ℹ️ [Admin User] No profile entry found for admin user ${userId} (already clean)`);
+        }
+      }
+
+      // Also try to delete from user_profiles table if it exists (might be a view/alias)
+      try {
+        const { error: userProfilesDeleteError } = await supabase
+          .from('user_profiles')
+          .delete()
+          .eq('id', userId);
+
+        if (userProfilesDeleteError && !userProfilesDeleteError.message.includes('does not exist')) {
+          console.warn(`⚠️ [Admin User] Could not delete from user_profiles for ${userId}:`, userProfilesDeleteError.message);
+        }
+      } catch (userProfilesErr) {
+        // Non-fatal: user_profiles might not exist or might be a view
+        console.log(`ℹ️ [Admin User] user_profiles cleanup skipped for ${userId}`);
+      }
+
+      // Final verification: Check if profile still exists
+      const { data: remainingProfile, error: checkError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (!checkError && remainingProfile) {
+        console.error(`❌ [Admin User] WARNING: Profile still exists for admin user ${userId} after cleanup attempt!`);
+        // Try one final deletion
+        await supabase
+          .from('profiles')
+          .delete()
+          .eq('id', userId);
+      } else {
+        console.log(`✅ [Admin User] Verified: No profile entry exists for admin user ${userId}`);
+      }
+    } catch (cleanupError) {
+      console.error(`❌ [Admin User] Exception during profile cleanup for ${userId}:`, cleanupError);
+      // Non-fatal error, but log it for monitoring
     }
 
     // Send invitation email via Supabase (uses your configured SMTP — set Gmail in Supabase Auth settings)
@@ -535,6 +613,83 @@ router.get('/me', authenticate, async (req, res) => {
     });
   } catch (error) {
     console.error('❌ [Admin Context] Exception:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+});
+
+// POST - Cleanup: Remove admin users from profiles table (SuperAdmin only)
+router.post('/cleanup-profiles', authenticate, async (req, res) => {
+  try {
+    // Check if requester is SuperAdmin
+    const requesterIsSuperAdmin = await isSuperAdmin(req.user.id);
+    if (!requesterIsSuperAdmin) {
+      return res.status(403).json({ error: 'Access denied. Only SuperAdmin can cleanup profiles.' });
+    }
+
+    // Get all admin user IDs
+    const { data: adminUsers, error: adminUsersError } = await supabase
+      .from('adminUser')
+      .select('user_id');
+
+    if (adminUsersError) {
+      return res.status(500).json({ error: `Failed to fetch admin users: ${adminUsersError.message}` });
+    }
+
+    if (!adminUsers || adminUsers.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No admin users found. Nothing to cleanup.',
+        deleted: 0
+      });
+    }
+
+    const adminUserIds = adminUsers.map(admin => admin.user_id);
+    
+    // Delete profiles for all admin users from 'profiles' table
+    const { data: deletedProfiles, error: deleteError } = await supabase
+      .from('profiles')
+      .delete()
+      .in('id', adminUserIds)
+      .select();
+
+    if (deleteError) {
+      console.error('Error deleting admin user profiles:', deleteError);
+      return res.status(500).json({ error: `Failed to delete profiles: ${deleteError.message}` });
+    }
+
+    const deletedCount = deletedProfiles ? deletedProfiles.length : 0;
+
+    // Also try to delete from 'user_profiles' table if it exists (might be a view/alias)
+    try {
+      const { error: userProfilesDeleteError } = await supabase
+        .from('user_profiles')
+        .delete()
+        .in('id', adminUserIds);
+
+      if (userProfilesDeleteError) {
+        // Non-fatal: user_profiles might not exist or might be a view
+        console.log('Note: Could not delete from user_profiles (might be a view or not exist)');
+      }
+    } catch (err) {
+      // Non-fatal error
+      console.log('Note: user_profiles cleanup skipped');
+    }
+
+    await logAuditEvent(req.user.id, AuditActions.DELETE_USER, {
+      action: 'cleanup_profiles',
+      adminUserIds: adminUserIds,
+      deletedCount: deletedCount,
+      success: true
+    }, req);
+
+    res.json({
+      success: true,
+      message: `Successfully removed ${deletedCount} admin user profile(s) from profiles table.`,
+      deleted: deletedCount,
+      adminUserIds: adminUserIds
+    });
+  } catch (error) {
+    console.error('Error cleaning up admin user profiles:', error);
     res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 });
