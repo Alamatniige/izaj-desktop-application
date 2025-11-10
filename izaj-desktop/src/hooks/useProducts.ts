@@ -191,6 +191,9 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
 }, [session, lastFetchTime, fetchPendingCount, checkStockStatus, mergeStockData]);
 
   const refreshProductsData = useCallback(async () => {
+    // Reset fetchSuccess when refreshing after adding products
+    // This ensures the Sync Products button shows the correct state
+    setFetchSuccess(false);
     await Promise.all([
       loadExistingProducts(),
       fetchPendingCount(),

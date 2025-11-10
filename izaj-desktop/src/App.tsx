@@ -14,10 +14,23 @@ import { ProfileData } from './pages/profile';
 import PrivateRoute from './route/PrivateRoute';
 import { useNotifications } from './utils/notificationsProvider';
 import UpdatePassword from './pages/update-password';
+import AcceptInvite from './pages/accept-invite';
 import API_URL from '../config/api';
 
 function App() {
   const location = useLocation();
+  
+  // Handle update-password route FIRST, before any other logic
+  // This ensures it's rendered even if user is not logged in
+  if (location.pathname === '/update-password') {
+    return <UpdatePassword />;
+  }
+  
+  // Handle accept-invite route
+  if (location.pathname === '/accept-invite') {
+    return <AcceptInvite />;
+  }
+  
   const [session, setSession] = useState<Session | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [currentPage, setCurrentPage] = useState('DASHBOARD');
@@ -108,11 +121,6 @@ function App() {
         return <Dashboard session={session} onNavigate={handleNavigation} isActive={currentPage === 'DASHBOARD'} />;
     }
   };
-
-  // Handle update-password route separately
-  if (location.pathname === '/update-password') {
-    return <UpdatePassword />;
-  }
 
   return (
     <PrivateRoute isLoggedIn={isLoggedIn} onLogin={handleLoginSuccess}>

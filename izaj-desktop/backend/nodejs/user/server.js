@@ -74,6 +74,9 @@ router.post('/addUsers', authenticate, async (req, res) => {
     // Insert into adminUser table
     // The user_id references auth.users(id) which was created by admin.createUser above
     // admin.createUser ensures the user is immediately available in auth.users
+    // Set initial status to false (inactive) - will be set to true when user accepts invite
+    adminUserData.status = false;
+    
     const { error: dbError } = await supabase
       .from('adminUser')
       .insert([adminUserData]);
@@ -90,15 +93,37 @@ router.post('/addUsers', authenticate, async (req, res) => {
 
     // Send invitation email via Supabase (uses your configured SMTP — set Gmail in Supabase Auth settings)
     try {
-      const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
-        redirectTo: 'izaj://login'
+      // Determine the redirect URL based on environment
+      // For development, use localhost. For production, use the production URL
+      const isDevelopment = process.env.NODE_ENV !== 'production';
+      const redirectUrl = isDevelopment 
+        ? 'http://localhost:3000/accept-invite'
+        : (process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/accept-invite` : 'http://localhost:3000/accept-invite');
+      
+      console.log(`📧 [Invite] Sending invite to ${email} with redirect URL: ${redirectUrl}`);
+      console.log(`📧 [Invite] IMPORTANT: Make sure "${redirectUrl}" is added to Supabase Dashboard > Authentication > URL Configuration > Redirect URLs`);
+      console.log(`📧 [Invite] Also check: Site URL should be set to your frontend URL (e.g., http://localhost:3000)`);
+      
+      // Use data parameter to get the invite link if needed
+      const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
+        redirectTo: redirectUrl,
+        data: {
+          redirect_url: redirectUrl // Additional data that might be used
+        }
       });
+      
       if (inviteError) {
         // Non-fatal: user is created; frontend can offer manual resend later
-        console.warn('Failed to send invite email:', inviteError.message);
+        console.error('❌ [Invite] Failed to send invite email:', inviteError.message);
+        console.error('❌ [Invite] Error details:', JSON.stringify(inviteError, null, 2));
+      } else {
+        console.log(`✅ [Invite] Invite email sent successfully to ${email}`);
+        if (inviteData) {
+          console.log(`📧 [Invite] Invite data:`, JSON.stringify(inviteData, null, 2));
+        }
       }
     } catch (inviteEx) {
-      console.warn('Exception sending invite email:', inviteEx);
+      console.error('❌ [Invite] Exception sending invite email:', inviteEx);
     }
 
     await logAuditEvent(req.user.id, AuditActions.CREATE_USER, {
@@ -402,6 +427,72 @@ router.put('/users/:id/assignments', authenticate, async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating assignments:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+});
+
+// POST - Activate user when they accept invite (no auth required, uses tokens from invite)
+router.post('/activate-invite', async (req, res) => {
+  try {
+    const { access_token, refresh_token } = req.body;
+
+    if (!access_token || !refresh_token) {
+      return res.status(400).json({ error: 'Access token and refresh token are required' });
+    }
+
+    // Set session using the tokens from invite
+    const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+      access_token: access_token,
+      refresh_token: refresh_token
+    });
+
+    if (sessionError || !sessionData.session) {
+      console.error('Invalid invite tokens:', sessionError?.message);
+      return res.status(400).json({ 
+        error: sessionError?.message || 'Invalid or expired invite tokens. Please request a new invitation.' 
+      });
+    }
+
+    const userId = sessionData.session.user.id;
+
+    // Check if user exists in adminUser table
+    const { data: adminUser, error: fetchError } = await supabase
+      .from('adminUser')
+      .select('user_id, name, role, status')
+      .eq('user_id', userId)
+      .single();
+
+    if (fetchError || !adminUser) {
+      console.error('Admin user not found:', fetchError?.message);
+      return res.status(404).json({ error: 'User not found. Please contact administrator.' });
+    }
+
+    // Update status to true (active) if not already active
+    if (adminUser.status !== true) {
+      const { error: updateError } = await supabase
+        .from('adminUser')
+        .update({ status: true })
+        .eq('user_id', userId);
+
+      if (updateError) {
+        console.error('Error updating user status:', updateError.message);
+        return res.status(500).json({ error: 'Failed to activate account. Please contact administrator.' });
+      }
+
+      console.log(`✅ User ${adminUser.name} (${userId}) activated after accepting invite`);
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Account activated successfully',
+      user: {
+        id: userId,
+        name: adminUser.name,
+        role: adminUser.role
+      }
+    });
+  } catch (error) {
+    console.error('Error activating invite:', error);
     res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 });

@@ -93,10 +93,17 @@ router.post('/forgot-password', async (req, res) => {
       return res.status(400).json({ error: 'Email is required' });
     }
 
+    // Determine the redirect URL based on environment
+    // For development, use localhost. For production, use the production URL or a web-based redirect
+    const isDevelopment = process.env.NODE_ENV !== 'production';
+    const redirectUrl = isDevelopment 
+      ? 'http://localhost:3000/update-password'
+      : (process.env.FRONTEND_URL || 'http://localhost:3000/update-password');
+    
     // Send password reset email using Supabase
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-      // Use custom desktop deep link scheme handled by Tauri
-      redirectTo: 'izaj://update-password',
+      // Use web URL that can be opened in browser, then redirect to deep link
+      redirectTo: redirectUrl,
     });
 
     if (error) {
@@ -136,7 +143,24 @@ router.post('/update-password', async (req, res) => {
       return res.status(400).json({ error: 'Password and tokens are required' });
     }
 
-    // Update password using Supabase
+    // First, set the session with the provided tokens
+    const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+      access_token: access_token,
+      refresh_token: refresh_token
+    });
+
+    if (sessionError || !sessionData.session) {
+      await logAuditEvent(null, AuditActions.PASSWORD_RESET_COMPLETE, {
+        success: false,
+        error: sessionError?.message || 'Invalid or expired reset tokens'
+      }, req);
+      
+      return res.status(400).json({ 
+        error: sessionError?.message || 'Invalid or expired reset tokens. Please request a new password reset.' 
+      });
+    }
+
+    // Now update the password using the authenticated session
     const { data, error } = await supabase.auth.updateUser({
       password: password
     });

@@ -1,5 +1,5 @@
 import { Icon } from '@iconify/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLogin } from '../hooks/useLogin';
 import { Session } from '@supabase/supabase-js';
 
@@ -10,6 +10,7 @@ interface LoginProps {
 
 export default function Login({ onLogin, handleNavigation }: LoginProps) {
   const [showPassword, setShowPassword] = useState(false);
+  const [inviteAccepted, setInviteAccepted] = useState(false);
   
   const {
     email,
@@ -19,9 +20,54 @@ export default function Login({ onLogin, handleNavigation }: LoginProps) {
     rememberMe,
     setRememberMe,
     error,
+    success,
     isLoading,
     handleSubmit,
   } = useLogin({ onLogin });
+
+  useEffect(() => {
+    // Check if user just accepted an invite (has tokens in URL)
+    const urlParams = new URLSearchParams(window.location.search);
+    const hash = window.location.hash;
+    const hashParams = new URLSearchParams(hash.substring(1));
+    const accessToken = hashParams.get('access_token') || urlParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token') || urlParams.get('refresh_token');
+    const type = hashParams.get('type') || urlParams.get('type');
+    
+    // If we have tokens and we're on login page, redirect to accept-invite page
+    // This handles the case where Supabase redirects to login instead of accept-invite
+    // BUT only if we haven't already processed the invite (check localStorage to prevent loop)
+    if (accessToken && refreshToken && window.location.pathname === '/') {
+      const inviteProcessed = localStorage.getItem('invite_processed');
+      const inviteToken = `${accessToken}_${refreshToken}`;
+      
+      // If this exact invite was already processed, don't redirect again
+      if (inviteProcessed === inviteToken) {
+        console.log('🔍 [Login] Invite already processed, skipping redirect');
+        // Clear URL parameters
+        window.history.replaceState({}, document.title, window.location.pathname);
+        return;
+      }
+      
+      console.log('🔍 [Login] Invite tokens detected, redirecting to accept-invite page');
+      // Mark that we're processing this invite
+      localStorage.setItem('invite_processing', inviteToken);
+      // Redirect to accept-invite page with tokens
+      const search = new URLSearchParams();
+      search.set('access_token', accessToken);
+      search.set('refresh_token', refreshToken);
+      if (type) search.set('type', type);
+      window.location.href = `/accept-invite?${search.toString()}${hash ? `#${hash.substring(1)}` : ''}`;
+      return;
+    }
+    
+    // If tokens are present but we're not redirecting, show success message
+    if (accessToken && refreshToken) {
+      setInviteAccepted(true);
+      // Clear URL parameters after detecting
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 via-slate-50 to-gray-100 relative overflow-hidden">
@@ -61,6 +107,20 @@ export default function Login({ onLogin, handleNavigation }: LoginProps) {
         <div className="text-gray-600 mb-6 text-sm font-medium" style={{ fontFamily: "'Jost', sans-serif" }}>Welcome back! Please sign in to continue</div>
 
         <form onSubmit={handleSubmit} className="w-full space-y-4">
+          {inviteAccepted && (
+            <div className="mb-4 text-green-600 text-sm text-center bg-green-50 rounded-xl py-3 px-4 border border-green-200 shadow-sm" style={{ fontFamily: "'Jost', sans-serif" }}>
+              <Icon icon="mdi:check-circle-outline" className="inline mr-2 text-green-500" />
+              Invitation accepted! Please sign in with your email and password.
+            </div>
+          )}
+
+          {success && (
+            <div className="mb-4 text-green-600 text-sm text-center bg-green-50 rounded-xl py-3 px-4 border border-green-200 shadow-sm" style={{ fontFamily: "'Jost', sans-serif" }}>
+              <Icon icon="mdi:check-circle-outline" className="inline mr-2 text-green-500" />
+              {success}
+            </div>
+          )}
+
           {error && (
             <div className="mb-4 text-red-600 text-sm text-center bg-red-50 rounded-xl py-3 px-4 border border-red-200 shadow-sm" style={{ fontFamily: "'Jost', sans-serif" }}>
               <Icon icon="mdi:alert-circle-outline" className="inline mr-2 text-red-500" />
