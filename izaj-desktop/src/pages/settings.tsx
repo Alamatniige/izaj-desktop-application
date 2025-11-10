@@ -10,7 +10,7 @@ interface SettingsProps {
 }
 
 const Settings: React.FC<SettingsProps> = ({ session }) => {
-  const [activeTab, setActiveTab] = useState('auditLogs');
+  const [activeTab, setActiveTab] = useState('subscriptionMessage');
   const [isAddAdminModalOpen, setIsAddAdminModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterAction, setFilterAction] = useState('');
@@ -194,7 +194,7 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
 
   const tabs = useMemo(() => [
     ...(isSuperAdmin ? [{ id: 'userManagement', label: 'User Management', icon: 'mdi:account-group' }] : []),
-    { id: 'auditLogs', label: 'Audit Logs', icon: 'mdi:history' },
+    ...(isSuperAdmin ? [{ id: 'auditLogs', label: 'Audit Logs', icon: 'mdi:history' }] : []),
     { id: 'subscriptionMessage', label: 'Subscription Message', icon: 'mdi:email-newsletter' },
   ], [isSuperAdmin]);
 
@@ -203,6 +203,13 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
     console.log('Current SuperAdmin status:', isSuperAdmin);
     console.log('Available tabs:', tabs.map(t => t.id));
   }, [isSuperAdmin, tabs]);
+
+  // Reset activeTab if user is not super admin and current tab is restricted
+  useEffect(() => {
+    if (!isSuperAdmin && (activeTab === 'auditLogs' || activeTab === 'userManagement')) {
+      setActiveTab('subscriptionMessage');
+    }
+  }, [isSuperAdmin, activeTab]);
 
   // Removed handleSave - no longer needed since we removed outer form
 
@@ -538,15 +545,17 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
 
   useEffect(() => {
   if (!session?.access_token) return;
-  fetchAdminUsers();
-  if (activeTab === 'auditLogs') {
+  if (isSuperAdmin) {
+    fetchAdminUsers();
+  }
+  if (activeTab === 'auditLogs' && isSuperAdmin) {
     fetchAuditLogs();
   }
   if (activeTab === 'subscriptionMessage') {
     fetchSubscriptionMessage();
     fetchSubscriberCount();
   }
-  }, [session, activeTab, fetchAdminUsers, fetchAuditLogs, fetchSubscriptionMessage, fetchSubscriberCount]);
+  }, [session, activeTab, isSuperAdmin, fetchAdminUsers, fetchAuditLogs, fetchSubscriptionMessage, fetchSubscriberCount]);
 
   const getActionColor = (action: string) => {
   switch (action) {
@@ -1023,7 +1032,7 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                 )}
               
                 {/* Audit Logs Section */}
-                {activeTab === 'auditLogs' && (
+                {activeTab === 'auditLogs' && isSuperAdmin && (
                   <div className="space-y-6">
                     <div className="flex justify-between items-center">
                       <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
