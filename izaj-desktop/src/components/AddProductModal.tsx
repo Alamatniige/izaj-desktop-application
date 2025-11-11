@@ -585,30 +585,30 @@ export function AddProductModal({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center backdrop-blur-sm z-50 p-4 sm:p-6 overflow-y-auto" onClick={onClose}>
       <div
-        className="bg-white w-full max-w-6xl max-h-[85vh] rounded-3xl shadow-2xl border border-gray-100 overflow-hidden transform transition-all relative flex flex-col my-4 sm:my-6"
+        className="bg-white dark:bg-slate-900 w-full max-w-6xl max-h-[85vh] rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden transform transition-all relative flex flex-col my-4 sm:my-6"
         style={{ boxShadow: '0 20px 60px 0 rgba(0, 0, 0, 0.15)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-full bg-white/90 hover:bg-gray-50 text-gray-500 hover:text-gray-700 shadow-lg focus:outline-none focus:ring-2 focus:ring-gray-300 transition-all z-10"
+          className="absolute top-4 right-4 p-2 rounded-full bg-white/90 dark:bg-slate-800/90 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-300 hover:text-gray-700 dark:hover:text-slate-100 shadow-lg focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-amber-500 transition-all z-10"
           aria-label="Close"
         >
           <Icon icon="mdi:close" className="text-xl" />
         </button>
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 p-6">
+        <div className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-800 dark:to-slate-900 border-b border-gray-100 dark:border-slate-800 p-6">
           <div className="flex items-center gap-4">
             <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg">
               <Icon icon={mode === 'sale' ? "mdi:tag-outline" : "mdi:plus-circle"} className="text-2xl text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
                 {mode === 'sale' ? 'Create Sale' : 'Add Product'}
               </h2>
-              <p className="text-gray-600 text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>
+              <p className="text-gray-600 dark:text-slate-400 text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>
                 {mode === 'sale' ? 'Set up product discounts and promotions' : 'Add new products to your inventory'}
               </p>
             </div>
@@ -616,18 +616,18 @@ export function AddProductModal({
         </div>
 
         {/* Content */}
-        <div className={`p-5 space-y-5 overflow-y-auto flex-1 ${mode === 'product' && !showFullForm ? 'flex flex-col justify-center' : ''}`}>
+        <div className={`p-5 space-y-5 overflow-y-auto flex-1 text-gray-900 dark:text-slate-100 ${mode === 'product' && !showFullForm ? 'flex flex-col justify-center' : ''}`}>
           {mode === 'sale' ? renderSaleForm() : renderProductForm()}
         </div>
 
         {/* Footer */}
         {(mode === 'sale' || fetchedProducts.length > 0) && (
-          <div className="bg-gradient-to-r from-gray-50 to-white border-t border-gray-100 p-6">
+          <div className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-800 dark:to-slate-900 border-t border-gray-100 dark:border-slate-800 p-6">
             <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-3">
               <button
                 onClick={onClose}
                 disabled={isPublishing}
-                className="flex items-center justify-center gap-2 px-6 py-3 bg-white border-2 border-gray-200 text-gray-700 font-semibold rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 transition-all duration-200"
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-white dark:bg-slate-800 border-2 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 font-semibold rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 dark:hover:bg-slate-700 transition-all duration-200"
                 style={{ fontFamily: "'Jost', sans-serif" }}
               >
                 <Icon icon="mdi:close-circle-outline" className="text-lg" />

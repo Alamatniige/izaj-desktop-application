@@ -215,13 +215,13 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       <main
-        className="flex-1 px-4 sm:px-6 md:px-8 py-4 sm:py-6 bg-white m-2 sm:m-4 rounded-2xl shadow-lg border border-white overflow-y-auto"
+        className="flex-1 px-4 sm:px-6 md:px-8 py-4 sm:py-6 bg-white dark:bg-slate-800 m-2 sm:m-4 rounded-2xl shadow-lg border border-white dark:border-slate-700 overflow-y-auto"
         style={{
           boxShadow: '0 4px 32px 0 rgba(252, 211, 77, 0.07)',
         }}
       >
         {/* Header Section */}
-        <div className="bg-gradient-to-r from-white via-gray-50 to-white rounded-2xl p-6 mb-8 border border-gray-100 shadow-sm">
+        <div className="bg-gradient-to-r from-white via-gray-50 to-white dark:from-slate-800 dark:via-slate-700 dark:to-slate-800 rounded-2xl p-6 mb-8 border border-gray-100 dark:border-slate-700 shadow-sm">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
             {/* Title Section */}
             <div className="flex-1">
@@ -233,14 +233,14 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
                 
                 {/* Title */}
                 <div>
-                  <h2 className="text-2xl lg:text-3xl font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  <h2 className="text-2xl lg:text-3xl font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
                     Orders Management
                   </h2>
                 </div>
               </div>
               
               {/* Description */}
-              <p className="text-gray-600 text-base" style={{ fontFamily: "'Jost', sans-serif" }}>
+              <p className="text-gray-600 dark:text-slate-400 text-base" style={{ fontFamily: "'Jost', sans-serif" }}>
                 Manage and track all customer orders
               </p>
             </div>
@@ -258,7 +258,7 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
           ].map((stat) => (
               <div
                 key={stat.key}
-                className={`bg-white rounded-2xl shadow-lg border border-gray-100 p-4 transition-all duration-200 hover:shadow-xl hover:scale-105 cursor-pointer ${
+                className={`bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-700 p-4 transition-all duration-200 hover:shadow-xl hover:scale-105 cursor-pointer ${
                   filter === stat.key ? 'ring-2 ring-blue-500 shadow-xl' : ''
                 }`}
                 onClick={() => {
@@ -270,11 +270,11 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
                   <div className={`flex items-center justify-center w-10 h-10 bg-gradient-to-br ${stat.iconBg} rounded-xl shadow-lg`}>
                     <Icon icon={stat.icon} className="text-lg text-white" />
                   </div>
-                  <span className={`text-xs font-semibold ${filter === stat.key ? stat.text : 'text-gray-600'}`} style={{ fontFamily: "'Jost', sans-serif" }}>
+                  <span className={`text-xs font-semibold ${filter === stat.key ? stat.text : 'text-gray-600 dark:text-slate-400'}`} style={{ fontFamily: "'Jost', sans-serif" }}>
                     {stat.label}
                   </span>
                 </div>
-                <div className="text-2xl font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
+                <div className="text-2xl font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
                   {stat.count}
                 </div>
               </div>
@@ -283,7 +283,7 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
 
         {/* Filter Section */}
         {/* Filter and search controls */}
-        <div className="bg-gradient-to-r from-gray-50 to-white rounded-2xl px-4 py-3 mb-6 border border-gray-100 shadow-sm w-full">
+        <div className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-700 dark:to-slate-800 rounded-2xl px-4 py-3 mb-6 border border-gray-100 dark:border-slate-700 shadow-sm w-full">
           <div className="flex flex-wrap lg:flex-nowrap items-center justify-between gap-4 mb-2 mt-2">
               {/* Filter buttons */}
               <div className="flex flex-wrap items-center gap-2 flex-1">
@@ -312,7 +312,7 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
                       className={`px-3 py-1.5 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
                         filter === tab.key
                           ? `${getActiveColor(tab.key)} text-white shadow-lg`
-                          : 'bg-white text-gray-700 hover:bg-gray-50 shadow-sm border border-gray-200'
+                          : 'bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-600 shadow-sm border border-gray-200 dark:border-slate-600'
                       }`}
                       style={{ fontFamily: "'Jost', sans-serif" }}
                       onClick={() => {
@@ -355,14 +355,14 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
                       setCurrentPage(1);
                     }}
                     placeholder="Search orders..." 
-                    className="w-36 pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                    className="w-36 pl-10 pr-4 py-2 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900 dark:text-slate-100"
                     style={{ fontFamily: "'Jost', sans-serif" }}
                   />
                 </div>
 
                 {/* Refresh Button */}
                 <button
-                  className="px-3 py-2 bg-white border border-gray-200 text-gray-700 font-semibold rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2"
+                  className="px-3 py-2 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 font-semibold rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 dark:hover:bg-slate-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2"
                   style={{ fontFamily: "'Jost', sans-serif" }}
                   onClick={() => refetchOrders()}
                   type="button"
@@ -381,10 +381,10 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
           </div>
         ) : (
           <>
-        <div className="bg-white rounded-3xl shadow-2xl border border-white overflow-hidden mx-auto">
+        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-white dark:border-slate-700 overflow-hidden mx-auto">
           <table className="min-w-full text-sm">
             <thead>
-              <tr className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-200">
+              <tr className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-700 dark:to-slate-800 border-b border-gray-200 dark:border-slate-700">
                     <th className="px-4 py-4 text-center w-12">
                       <input
                         type="checkbox"
@@ -393,37 +393,37 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
                         className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
                       />
                     </th>
-                    <th className="px-6 py-4 text-left font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Order #</th>
-                    <th className="px-6 py-4 text-left font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Customer</th>
-                    <th className="px-6 py-4 text-left font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Items</th>
-                    <th className="px-6 py-4 text-left font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Total</th>
-                    <th className="px-6 py-4 text-left font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Payment</th>
-                    <th className="px-6 py-4 text-left font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Date</th>
-                    <th className="px-6 py-4 text-left font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Status</th>
-                    <th className="px-6 py-4 text-left font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Actions</th>
+                    <th className="px-6 py-4 text-left font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Order #</th>
+                    <th className="px-6 py-4 text-left font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Customer</th>
+                    <th className="px-6 py-4 text-left font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Items</th>
+                    <th className="px-6 py-4 text-left font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Total</th>
+                    <th className="px-6 py-4 text-left font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Payment</th>
+                    <th className="px-6 py-4 text-left font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Date</th>
+                    <th className="px-6 py-4 text-left font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Status</th>
+                    <th className="px-6 py-4 text-left font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
               {paginatedOrders.map((order) => (
-                    <tr key={order.id} className="hover:bg-gray-50 transition-colors duration-200">
+                    <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors duration-200">
                       <td className="px-4 py-4 text-center">
                         <input
                           type="checkbox"
                           checked={selectedOrderIds.has(order.id)}
                           onChange={() => handleSelectOrder(order.id)}
-                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                          className="w-4 h-4 text-blue-600 bg-gray-100 dark:bg-slate-700 border-gray-300 dark:border-slate-600 rounded focus:ring-blue-500"
                         />
                       </td>
                       <td className="px-6 py-4">
-                        <div className="font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>{order.order_number}</div>
-                        <div className="text-xs text-gray-400">{formatOrderDate(order.created_at)}</div>
+                        <div className="font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{order.order_number}</div>
+                        <div className="text-xs text-gray-400 dark:text-slate-500">{formatOrderDate(order.created_at)}</div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="font-medium text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>{order.recipient_name}</div>
-                        <div className="text-xs text-gray-500">{order.shipping_phone}</div>
+                        <div className="font-medium text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{order.recipient_name}</div>
+                        <div className="text-xs text-gray-500 dark:text-slate-400">{order.shipping_phone}</div>
                       </td>
                        <td className="px-6 py-4">
-                         <div className="text-gray-700" style={{ fontFamily: "'Jost', sans-serif" }}>
+                         <div className="text-gray-700 dark:text-slate-200" style={{ fontFamily: "'Jost', sans-serif" }}>
                            {(() => {
                              const items = order.order_items || order.items;
                              const totalQty = items && Array.isArray(items) 
@@ -433,11 +433,11 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
                            })()} items
                          </div>
                        </td>
-                      <td className="px-6 py-4 font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>{formatPrice(order.total_amount)}</td>
+                      <td className="px-6 py-4 font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{formatPrice(order.total_amount)}</td>
                       <td className="px-6 py-4">
-                        <span className="text-xs text-gray-600 capitalize" style={{ fontFamily: "'Jost', sans-serif" }}>{order.payment_method.replace('_', ' ')}</span>
+                        <span className="text-xs text-gray-600 dark:text-slate-300 capitalize" style={{ fontFamily: "'Jost', sans-serif" }}>{order.payment_method.replace('_', ' ')}</span>
                       </td>
-                      <td className="px-6 py-4 text-gray-500 text-xs">{formatOrderDate(order.created_at)}</td>
+                      <td className="px-6 py-4 text-gray-500 dark:text-slate-400 text-xs">{formatOrderDate(order.created_at)}</td>
                       <td className="px-6 py-4">
                         <span
                           className={`inline-flex items-center px-3 py-1 rounded-xl text-xs font-bold text-white shadow-sm ${
@@ -470,7 +470,7 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
               ))}
               {paginatedOrders.length === 0 && (
                 <tr>
-                      <td colSpan={9} className="text-center py-12 text-gray-400">
+                      <td colSpan={9} className="text-center py-12 text-gray-400 dark:text-slate-500">
                         <Icon icon="mdi:package-variant-closed" className="w-16 h-16 mx-auto mb-3 opacity-50" />
                         <p className="text-lg" style={{ fontFamily: "'Jost', sans-serif" }}>No orders found.</p>
                   </td>
@@ -482,13 +482,13 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
 
         {/* Pagination */}
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6">
-          <div className="text-xs sm:text-sm text-gray-500">
+          <div className="text-xs sm:text-sm text-gray-500 dark:text-slate-400">
             Showing {filteredOrders.length === 0 ? 0 : (currentPage - 1) * ordersPerPage + 1} to{' '}
             {Math.min(currentPage * ordersPerPage, filteredOrders.length)} of {filteredOrders.length} entries
           </div>
           <div className="flex items-center gap-2">
             <button
-                  className="px-3 py-1 border border-gray-200 rounded-lg text-xs sm:text-sm hover:bg-gray-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1 border border-gray-200 dark:border-slate-600 rounded-lg text-xs sm:text-sm hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-slate-200"
               disabled={currentPage === 1}
               onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
               type="button"
@@ -502,7 +502,7 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
                 <button
                   key={idx}
                   className={`px-2 sm:px-3 py-1 rounded-lg text-xs sm:text-sm ${
-                          currentPage === pageNum ? 'bg-yellow-400 text-white font-bold' : 'hover:bg-gray-50 border border-gray-200'
+                          currentPage === pageNum ? 'bg-yellow-400 text-white font-bold' : 'hover:bg-gray-50 dark:hover:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200'
                   }`}
                         onClick={() => setCurrentPage(pageNum)}
                   type="button"
@@ -513,7 +513,7 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
                   })}
             </div>
             <button
-                  className="px-3 py-1 border border-gray-200 rounded-lg text-xs sm:text-sm hover:bg-gray-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1 border border-gray-200 dark:border-slate-600 rounded-lg text-xs sm:text-sm hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-slate-200"
               disabled={currentPage === pageCount || pageCount === 0}
               onClick={() => setCurrentPage((prev) => Math.min(pageCount, prev + 1))}
               type="button"
@@ -538,27 +538,27 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
           onClick={closeModal}
         >
           <div
-            className="relative bg-white rounded-3xl shadow-2xl border border-gray-100 max-w-md w-full overflow-hidden"
+            className="relative bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 max-w-md w-full overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="bg-gradient-to-r from-blue-50 to-white p-6 border-b border-gray-100">
+            <div className="bg-gradient-to-r from-blue-50 to-white dark:from-slate-800 dark:to-slate-900 p-6 border-b border-gray-100 dark:border-slate-800">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-500 rounded-xl shadow-lg">
                     <Icon icon="mdi:package-variant" className="text-lg text-white" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
                       Update Order Status
                     </h3>
-                    <p className="text-sm text-gray-600" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    <p className="text-sm text-gray-600 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>
                       Order: {selectedOrder.order_number}
                     </p>
                   </div>
                 </div>
                 <button
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-200 transition-colors"
                   onClick={closeModal}
                   type="button"
                 >
@@ -567,7 +567,7 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
               </div>
             </div>
 
-            <div className="p-6 space-y-3 mb-6">
+            <div className="p-6 space-y-3 mb-6 text-gray-900 dark:text-slate-100">
               {selectedOrder.status === 'pending' && (
                 <button
                   onClick={() => confirmStatusUpdate('approved')}

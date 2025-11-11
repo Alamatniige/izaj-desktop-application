@@ -234,19 +234,19 @@ export function ViewProductModal({
     return (
       <div className="fixed inset-0 bg-black/40 flex items-center justify-center backdrop-blur-sm z-50 p-4 sm:p-6" onClick={() => setShowDeleteConfirm(false)}>
         <div
-          className="bg-white w-full max-w-md rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-100/50 p-6 sm:p-8"
+          className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-100/50 dark:border-slate-800 p-6 sm:p-8"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="text-center">
             <Icon icon="mdi:alert-circle-outline" className="text-5xl text-red-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">Delete Product</h3>
-            <p className="text-gray-600 mb-6">
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-slate-100 mb-2">Delete Product</h3>
+            <p className="text-gray-600 dark:text-slate-400 mb-6">
               Are you sure you want to delete "{currentProduct.product_name}"? This action cannot be undone.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteProduct(false)}
-                className="flex-1 px-4 py-2.5 rounded-xl border-2 border-gray-200 text-gray-600 font-medium hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-2.5 rounded-xl border-2 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 font-medium hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
               >
                 Cancel
               </button>
@@ -266,30 +266,30 @@ export function ViewProductModal({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center backdrop-blur-sm z-50 p-4 sm:p-6 overflow-y-auto" onClick={handleClose}>
       <div
-        className="bg-white w-full max-w-6xl max-h-[85vh] rounded-3xl shadow-2xl border border-gray-100 overflow-hidden transform transition-all relative flex flex-col my-4 sm:my-6"
+        className="bg-white dark:bg-slate-900 w-full max-w-6xl max-h-[85vh] rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden transform transition-all relative flex flex-col my-4 sm:my-6"
         style={{ boxShadow: '0 20px 60px 0 rgba(0, 0, 0, 0.15)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close button */}
         <button
           onClick={handleClose}
-          className="absolute top-4 right-4 p-2 rounded-full bg-white/90 hover:bg-gray-50 text-gray-500 hover:text-gray-700 shadow-lg focus:outline-none focus:ring-2 focus:ring-gray-300 transition-all z-10"
+          className="absolute top-4 right-4 p-2 rounded-full bg-white/90 dark:bg-slate-800/90 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-300 hover:text-gray-700 dark:hover:text-slate-100 shadow-lg focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-amber-500 transition-all z-10"
           aria-label="Close"
         >
           <Icon icon="mdi:close" className="text-xl" />
         </button>
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 p-6">
+        <div className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-800 dark:to-slate-900 border-b border-gray-100 dark:border-slate-800 p-6">
           <div className="flex items-center gap-4">
             <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg">
               <Icon icon="mdi:eye-outline" className="text-2xl text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
                 Product Details
               </h2>
-              <p className="text-gray-600 text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>
+              <p className="text-gray-600 dark:text-slate-400 text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>
                 View and manage product information
               </p>
             </div>
@@ -297,7 +297,7 @@ export function ViewProductModal({
         </div>
 
         {/* Content */}
-        <div className="p-5 space-y-5 overflow-y-auto flex-1">
+        <div className="p-5 space-y-5 overflow-y-auto flex-1 text-gray-900 dark:text-slate-100">
 
           {/* Main Product Information */}
           <div className="overflow-hidden">
@@ -352,10 +352,10 @@ export function ViewProductModal({
                     )}
                   </div>
                 ) : (
-                  <div className="w-full max-w-lg mx-auto bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl flex items-center justify-center h-[450px] border border-gray-200">
+                  <div className="w-full max-w-lg mx-auto bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-800 dark:to-slate-900 rounded-2xl flex items-center justify-center h-[450px] border border-gray-200 dark:border-slate-800">
                     <div className="text-center">
-                      <Icon icon="mdi:image-outline" className="text-6xl text-gray-400 mb-3" />
-                      <p className="text-gray-500 font-medium">No image available</p>
+                      <Icon icon="mdi:image-outline" className="text-6xl text-gray-400 dark:text-slate-500 mb-3" />
+                      <p className="text-gray-500 dark:text-slate-400 font-medium">No image available</p>
                     </div>
                   </div>
                 )}
@@ -462,12 +462,12 @@ export function ViewProductModal({
                 </div>
 
                 {/* Description */}
-                <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-2xl p-6 border border-gray-100">
+                <div className="bg-gradient-to-br from-gray-50 to-slate-50 dark:from-slate-800 dark:to-slate-900 rounded-2xl p-6 border border-gray-100 dark:border-slate-800">
                   <div className="flex items-center gap-2 mb-3">
-                    <Icon icon="mdi:text-box-outline" className="text-lg text-gray-600" />
-                    <span className="text-sm text-gray-600 font-semibold uppercase tracking-wide">Description</span>
+                    <Icon icon="mdi:text-box-outline" className="text-lg text-gray-600 dark:text-slate-400" />
+                    <span className="text-sm text-gray-600 dark:text-slate-400 font-semibold uppercase tracking-wide">Description</span>
                   </div>
-                  <div className="text-base text-gray-700 whitespace-pre-wrap max-h-40 overflow-y-auto leading-relaxed" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  <div className="text-base text-gray-700 dark:text-slate-200 whitespace-pre-wrap max-h-40 overflow-y-auto leading-relaxed" style={{ fontFamily: "'Jost', sans-serif" }}>
                     {currentProduct.description || 'No description available'}
                   </div>
                 </div>
@@ -477,7 +477,7 @@ export function ViewProductModal({
         </div>
 
         {/* Footer Actions */}
-        <div className="bg-gradient-to-r from-gray-50 to-white border-t border-gray-100 p-6">
+        <div className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-800 dark:to-slate-900 border-t border-gray-100 dark:border-slate-800 p-6">
           <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-3">
             {/* Edit Button */}
             {onEdit && (

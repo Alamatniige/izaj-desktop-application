@@ -88,20 +88,20 @@ export function ManageStockModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-      <div className="bg-white w-[600px] rounded-2xl shadow-2xl border border-white overflow-hidden">
-        <div className="flex justify-between items-center p-6 border-b border-gray-100">
+    <div className="fixed inset-0 bg-black/30 dark:bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
+      <div className="bg-white dark:bg-slate-900 w-[600px] rounded-2xl shadow-2xl border border-white dark:border-slate-800 overflow-hidden">
+        <div className="flex justify-between items-center p-6 border-b border-gray-100 dark:border-slate-800">
           <div className="flex items-center gap-3">
             <Icon icon="mdi:sync" className="text-2xl text-yellow-400" />
-            <h2 className="text-xl font-bold text-gray-800">
-              Manage Stock {products.length > 0 && <span className="text-sm text-yellow-600">({products.length})</span>}
+            <h2 className="text-xl font-bold text-gray-800 dark:text-slate-100">
+              Manage Stock {products.length > 0 && <span className="text-sm text-yellow-600 dark:text-yellow-400">({products.length})</span>}
             </h2>
           </div>
-          <button onClick={() => onClose(false)} className="text-gray-400 hover:text-gray-600">
+          <button onClick={() => onClose(false)} className="text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-200 transition-colors">
             <Icon icon="mdi:close" className="text-2xl" />
           </button>
         </div>
-        <div className="p-6">
+        <div className="p-6 text-gray-900 dark:text-slate-100">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Icon icon="mdi:loading" className="animate-spin text-2xl text-yellow-400 mr-2" />
@@ -128,10 +128,10 @@ export function ManageStockModal({
                   {selected.length} selected
                 </span>
               </div>
-              <div className="overflow-x-auto max-h-80 border rounded-lg mb-4">
+              <div className="overflow-x-auto max-h-80 border border-gray-200 dark:border-slate-700 rounded-lg mb-4">
                 <table className="min-w-full text-sm">
                   <thead>
-                    <tr className="bg-gray-50">
+                    <tr className="bg-gray-50 dark:bg-slate-800">
                       <th></th>
                       <th className="text-left py-2 px-3">Product Name</th>
                       <th className="text-right py-2 px-3">Current</th>
@@ -142,7 +142,7 @@ export function ManageStockModal({
                   </thead>
                   <tbody>
                     {products.map((p) => (
-                      <tr key={p.product_id} className="border-b">
+                      <tr key={p.product_id} className="border-b border-gray-200 dark:border-slate-700">
                         <td>
                           <input
                             type="checkbox"

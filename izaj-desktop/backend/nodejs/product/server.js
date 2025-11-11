@@ -145,7 +145,7 @@ router.get('/products', authenticate, async (req, res) => {
     if (productIds.length > 0) {
       const existingResult = await supabase
         .from('products')
-        .select('product_id, is_published, publish_status')
+        .select('product_id, is_published, publish_status, on_sale')
         .in('product_id', productIds);
       
       existingProducts = existingResult.data || [];
@@ -154,21 +154,27 @@ router.get('/products', authenticate, async (req, res) => {
     }
     
     // Create a map of existing products for quick lookup
+    // Normalize product_id to string for consistent Map key matching
     const existingProductsMap = new Map();
     if (existingProducts) {
       existingProducts.forEach(p => {
-        existingProductsMap.set(p.product_id, {
+        // Normalize to string to match with r.id (which is int4 from centralized_product)
+        const key = String(p.product_id).trim();
+        existingProductsMap.set(key, {
           is_published: p.is_published,
-          publish_status: p.publish_status
+          publish_status: p.publish_status,
+          on_sale: p.on_sale // Also preserve on_sale status
         });
       });
     }
 
     // Insertion of Inventory DB to Client DB
-    // For existing products, preserve their is_published and publish_status values
-    // For new products, set both to false
+    // For existing products, preserve their is_published, publish_status, and on_sale values
+    // For new products, set is_published and publish_status to false, on_sale to false
     const rowsForClient = filteredRows.map((r) => {
-      const existing = existingProductsMap.get(r.id);
+      // Normalize r.id to string to match Map key (product_id is text in DB)
+      const lookupKey = String(r.id).trim();
+      const existing = existingProductsMap.get(lookupKey);
       return {
         product_id: r.id,
         product_name: r.product_name,
@@ -179,7 +185,7 @@ router.get('/products', authenticate, async (req, res) => {
         // Preserve existing values, or set to false for new products
         is_published: existing ? existing.is_published : false,
         publish_status: existing ? existing.publish_status : false,
-        on_sale: false,
+        on_sale: existing ? existing.on_sale : false, // Preserve on_sale for existing products
         pickup_available: true, // Default to available for pickup
       };
     });
@@ -961,22 +967,87 @@ router.get('/products/existing', authenticate, async (req, res) => {
 
 // GET /api/products/pending-count - Get count of products that are not yet published
 router.get('/products/pending-count', authenticate, async (req, res) => {
-  const { count, error } = await supabase
-    .from('products')
-    .select('*', { count: 'exact', head: true })
-    .eq('is_published', false);
-  
-  res.json({ count: count || 0 });
+  try {
+    // Get admin context to check SuperAdmin status and categories
+    const adminContext = await getAdminContext(req.user.id);
+    
+    let query = supabase
+      .from('products')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_published', false);
+
+    // Filter by categories if not SuperAdmin
+    if (!adminContext.isSuperAdmin) {
+      if (!adminContext.assignedCategories || adminContext.assignedCategories.length === 0) {
+        // No categories assigned - return count 0
+        return res.json({ count: 0 });
+      }
+      query = query.in('category', adminContext.assignedCategories);
+    }
+
+    const { count, error } = await query;
+    
+    if (error) {
+      console.error('Error fetching pending count:', error);
+      return res.status(500).json({ 
+        error: 'Failed to fetch pending count',
+        details: error.message 
+      });
+    }
+    
+    res.json({ count: count || 0 });
+  } catch (error) {
+    console.error('Error in pending-count endpoint:', error);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      details: error.message 
+    });
+  }
 });
 
 // GET /api/products/pending - Get all products that are pending publication
 router.get('/products/pending', authenticate, async (req, res) => {
-  const { data, error } = await supabase
-    .from('products')
-    .select('*')
-    .eq('is_published', false);
-  
-  res.json({ success: true, products: data || [] });
+  try {
+    // Get admin context to check SuperAdmin status and categories
+    const adminContext = await getAdminContext(req.user.id);
+    
+    let query = supabase
+      .from('products')
+      .select('*')
+      .eq('is_published', false);
+
+    // Filter by categories if not SuperAdmin
+    if (!adminContext.isSuperAdmin) {
+      if (!adminContext.assignedCategories || adminContext.assignedCategories.length === 0) {
+        // No categories assigned - return empty array
+        return res.json({
+          success: true,
+          products: []
+        });
+      }
+      query = query.in('category', adminContext.assignedCategories);
+    }
+
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error('Error fetching pending products:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch pending products',
+        details: error.message
+      });
+    }
+    
+    res.json({ success: true, products: data || [] });
+  } catch (error) {
+    console.error('Error in pending endpoint:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      details: error.message
+    });
+  }
 });
 
 // POST /api/products/publish - Publish selected products (make them visible to admin side/desktop app)

@@ -338,16 +338,16 @@ const Profile: React.FC<ProfileProps> = ({ session }) => {
     <div className="flex-1 overflow-y-auto">
       <main className="flex-1 px-8 py-6">
         {/* Header Section */}
-        <div className="bg-gradient-to-r from-white via-gray-50 to-white rounded-2xl p-6 mb-8 border border-gray-100 shadow-sm">
+        <div className="bg-gradient-to-r from-white via-gray-50 to-white dark:from-slate-800 dark:via-slate-700 dark:to-slate-800 rounded-2xl p-6 mb-8 border border-gray-100 dark:border-slate-700 shadow-sm">
           <div className="flex items-center gap-4">
             <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-purple-400 to-purple-500 rounded-xl shadow-lg">
               <Icon icon="mdi:account-circle" className="text-2xl text-white" />
             </div>
             <div>
-              <h2 className="text-2xl lg:text-3xl font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
+              <h2 className="text-2xl lg:text-3xl font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
                 Profile Settings
               </h2>
-              <p className="text-gray-600 text-base" style={{ fontFamily: "'Jost', sans-serif" }}>
+              <p className="text-gray-600 dark:text-slate-400 text-base" style={{ fontFamily: "'Jost', sans-serif" }}>
                 Manage your personal information and account settings
               </p>
             </div>
@@ -356,7 +356,7 @@ const Profile: React.FC<ProfileProps> = ({ session }) => {
 
         <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-6 lg:gap-8">
           {/* Profile Card */}
-          <div className="w-full lg:w-[375px] lg:min-w-[320px] lg:max-w-[430px] bg-white rounded-3xl shadow-2xl border border-gray-100 flex flex-col items-center p-6 sm:p-8"
+          <div className="w-full lg:w-[375px] lg:min-w-[320px] lg:max-w-[430px] bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-700 flex flex-col items-center p-6 sm:p-8"
             style={{
               boxShadow: '0 4px 32px 0 rgba(147, 51, 234, 0.07)',
             }}>
@@ -396,13 +396,13 @@ const Profile: React.FC<ProfileProps> = ({ session }) => {
               onChange={handleAvatarChange}
             />
             <div className="text-center">
-              <h3 className="text-lg sm:text-xl font-bold text-gray-800 mt-2" style={{ fontFamily: "'Jost', sans-serif" }}>{profile.name}</h3>
-              <span className="text-sm text-gray-500 bg-gray-100 px-3 py-0.5 rounded-full mt-1 inline-block" style={{ fontFamily: "'Jost', sans-serif" }}>
+              <h3 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-slate-100 mt-2" style={{ fontFamily: "'Jost', sans-serif" }}>{profile.name}</h3>
+              <span className="text-sm text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 px-3 py-0.5 rounded-full mt-1 inline-block" style={{ fontFamily: "'Jost', sans-serif" }}>
                 {profile.role}
               </span>
               <div className="mt-3">
-                <p className="text-gray-400 text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>{profile.email}</p>
-                <p className="text-gray-400 text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>{profile.phone}</p>
+                <p className="text-gray-400 dark:text-slate-400 text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>{profile.email}</p>
+                <p className="text-gray-400 dark:text-slate-400 text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>{profile.phone}</p>
               </div>
             </div>
           </div>
@@ -420,7 +420,7 @@ const Profile: React.FC<ProfileProps> = ({ session }) => {
           )}
 
           {/* Profile Form */}
-          <div className="flex-1 bg-white rounded-3xl shadow-2xl border border-gray-100 p-6 sm:p-8 lg:p-12 flex flex-col justify-center"
+          <div className="flex-1 bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-700 p-6 sm:p-8 lg:p-12 flex flex-col justify-center"
             style={{
               boxShadow: '0 4px 32px 0 rgba(147, 51, 234, 0.07)',
             }}>
@@ -439,75 +439,75 @@ const Profile: React.FC<ProfileProps> = ({ session }) => {
             <form onSubmit={handleSave} className="space-y-6 sm:space-y-8 max-w-2xl mx-auto w-full">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8">
                 <div className="space-y-1">
-                  <label className="block text-gray-700 font-medium" style={{ fontFamily: "'Jost', sans-serif" }}>Full Name</label>
+                  <label className="block text-gray-700 dark:text-slate-300 font-medium" style={{ fontFamily: "'Jost', sans-serif" }}>Full Name</label>
                   <input
                     type="text"
                     name="name"
                     disabled={!editMode}
                     value={profile.name}
                     onChange={handleChange}
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-200 focus:border-purple-400 transition disabled:bg-gray-50 text-gray-700 text-base sm:text-lg"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-purple-200 focus:border-purple-400 transition disabled:bg-gray-50 dark:disabled:bg-slate-700 text-gray-700 dark:text-slate-100 bg-white dark:bg-slate-800 text-base sm:text-lg"
                     style={{ fontFamily: "'Jost', sans-serif" }}
                     placeholder="Enter your name"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="block text-gray-700 font-medium" style={{ fontFamily: "'Jost', sans-serif" }}>Phone Number</label>
+                  <label className="block text-gray-700 dark:text-slate-300 font-medium" style={{ fontFamily: "'Jost', sans-serif" }}>Phone Number</label>
                   <input
                     type="text"
                     name="phone"
                     disabled={!editMode}
                     value={profile.phone}
                     onChange={handleChange}
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-200 focus:border-purple-400 transition disabled:bg-gray-50 text-gray-700 text-base sm:text-lg"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-purple-200 focus:border-purple-400 transition disabled:bg-gray-50 dark:disabled:bg-slate-700 text-gray-700 dark:text-slate-100 bg-white dark:bg-slate-800 text-base sm:text-lg"
                     style={{ fontFamily: "'Jost', sans-serif" }}
                     placeholder="Enter your phone number"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="block text-gray-700 font-medium" style={{ fontFamily: "'Jost', sans-serif" }}>Address</label>
+                  <label className="block text-gray-700 dark:text-slate-300 font-medium" style={{ fontFamily: "'Jost', sans-serif" }}>Address</label>
                   <input
                     type="text"
                     name="address"
                     disabled={!editMode}
                     value={profile.address || ""}
                     onChange={handleChange}
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-200 focus:border-purple-400 transition disabled:bg-gray-50 text-gray-700 text-base sm:text-lg"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-purple-200 focus:border-purple-400 transition disabled:bg-gray-50 dark:disabled:bg-slate-700 text-gray-700 dark:text-slate-100 bg-white dark:bg-slate-800 text-base sm:text-lg"
                     style={{ fontFamily: "'Jost', sans-serif" }}
                     placeholder="Enter your address"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="block text-gray-700 font-medium" style={{ fontFamily: "'Jost', sans-serif" }}>Role</label>
+                  <label className="block text-gray-700 dark:text-slate-300 font-medium" style={{ fontFamily: "'Jost', sans-serif" }}>Role</label>
                   <input
                     type="text"
                     name="role"
                     disabled
                     value={profile.role}
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-700 text-base sm:text-lg"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 text-gray-700 dark:text-slate-200 text-base sm:text-lg"
                     style={{ fontFamily: "'Jost', sans-serif" }}
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="block text-gray-700 font-medium" style={{ fontFamily: "'Jost', sans-serif" }}>Email</label>
+                  <label className="block text-gray-700 dark:text-slate-300 font-medium" style={{ fontFamily: "'Jost', sans-serif" }}>Email</label>
                   <input
                     type="email"
                     name="email"
                     disabled
                     value={profile.email}
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-700 text-base sm:text-lg"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 text-gray-700 dark:text-slate-200 text-base sm:text-lg"
                     style={{ fontFamily: "'Jost', sans-serif" }}
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="block text-gray-700 font-medium" style={{ fontFamily: "'Jost', sans-serif" }}>Password</label>
+                  <label className="block text-gray-700 dark:text-slate-300 font-medium" style={{ fontFamily: "'Jost', sans-serif" }}>Password</label>
                   <input
                     type="password"
                     name="password"
                     disabled={!editMode}
                     value={profile.password}
                     onChange={handleChange}
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-200 focus:border-purple-400 transition disabled:bg-gray-50 text-gray-700 text-base sm:text-lg"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-purple-200 focus:border-purple-400 transition disabled:bg-gray-50 dark:disabled:bg-slate-700 text-gray-700 dark:text-slate-100 bg-white dark:bg-slate-800 text-base sm:text-lg"
                     style={{ fontFamily: "'Jost', sans-serif" }}
                     placeholder={editMode ? "Enter new password" : "********"}
                   />

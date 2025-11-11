@@ -238,7 +238,7 @@ const Dashboard = ({ session, isActive = true }: DashboardProps) => {
                                       </select>
                                     </div>
                                     <div className="flex flex-col items-center gap-2 mb-6">
-                                      <span className="text-4xl font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
+                                      <span className="text-4xl font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
                                         {stats?.earnings.total ? formatCurrency(stats.earnings.total) : '₱0.00'}
                                       </span>
                                       {stats && stats.earnings.growth && parseFloat(stats.earnings.growth) !== 0 && (
@@ -270,21 +270,21 @@ const Dashboard = ({ session, isActive = true }: DashboardProps) => {
               </div>
 
               {/* Sales Report - Full Width */}
-              <div className="bg-white rounded-3xl shadow-2xl border border-white p-4 sm:p-8 mb-8"
+              <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-white dark:border-slate-700 p-4 sm:p-8 mb-8"
                 style={{
                   boxShadow: '0 4px 32px 0 rgba(252, 211, 77, 0.07)',
                 }}>
                 <div
-                  className={`bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl shadow-lg border border-indigo-100 p-6 transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl hover:border-indigo-200 cursor-pointer
+                  className={`bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-slate-700 dark:to-slate-800 rounded-2xl shadow-lg border border-indigo-100 dark:border-slate-600 p-6 transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl hover:border-indigo-200 dark:hover:border-slate-500 cursor-pointer
                     ${salesExpanded ? 'h-auto' : 'h-[400px]'}
                   `}
                   onClick={() => setSalesExpanded((prev) => !prev)}
                 >
                 <div className="flex items-center gap-2 mb-6">
                   <Icon icon="mdi:chart-line" className="text-indigo-400 w-6 h-6" />
-                  <h3 className="text-lg font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Sales Report</h3>
+                  <h3 className="text-lg font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Sales Report</h3>
                   <select 
-                    className="text-sm text-gray-500 border border-gray-300 rounded px-3 py-1 bg-white"
+                    className="text-sm text-gray-500 dark:text-slate-300 border border-gray-300 dark:border-slate-600 rounded px-3 py-1 bg-white dark:bg-slate-700"
                     style={{ fontFamily: "'Jost', sans-serif" }}
                     value={selectedYear}
                     onChange={(e) => {
@@ -425,24 +425,24 @@ const Dashboard = ({ session, isActive = true }: DashboardProps) => {
                 {/* Expanded content */}
                 {salesExpanded && salesReport && (
                   <div className="mt-8 transition-all duration-300">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="bg-indigo-50 rounded-xl p-4 flex flex-col items-center">
-                        <span className="text-2xl font-bold text-indigo-600" style={{ fontFamily: "'Jost', sans-serif" }}>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="bg-indigo-50 dark:bg-slate-700 rounded-xl p-4 flex flex-col items-center">
+                        <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-300" style={{ fontFamily: "'Jost', sans-serif" }}>
                           {formatCurrency(salesReport.summary.totalSales)}
                         </span>
-                        <span className="text-xs text-gray-500 mt-1" style={{ fontFamily: "'Jost', sans-serif" }}>Total Sales</span>
+                        <span className="text-xs text-gray-500 dark:text-slate-400 mt-1" style={{ fontFamily: "'Jost', sans-serif" }}>Total Sales</span>
                       </div>
-                      <div className="bg-indigo-50 rounded-xl p-4 flex flex-col items-center">
-                        <span className="text-2xl font-bold text-indigo-600" style={{ fontFamily: "'Jost', sans-serif" }}>
+                      <div className="bg-indigo-50 dark:bg-slate-700 rounded-xl p-4 flex flex-col items-center">
+                        <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-300" style={{ fontFamily: "'Jost', sans-serif" }}>
                           {salesReport.summary.averageGrowth}%
                         </span>
-                        <span className="text-xs text-gray-500 mt-1" style={{ fontFamily: "'Jost', sans-serif" }}>Growth Rate</span>
+                        <span className="text-xs text-gray-500 dark:text-slate-400 mt-1" style={{ fontFamily: "'Jost', sans-serif" }}>Growth Rate</span>
                       </div>
-                      <div className="bg-indigo-50 rounded-xl p-4 flex flex-col items-center">
-                        <span className="text-2xl font-bold text-indigo-600" style={{ fontFamily: "'Jost', sans-serif" }}>
+                      <div className="bg-indigo-50 dark:bg-slate-700 rounded-xl p-4 flex flex-col items-center">
+                        <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-300" style={{ fontFamily: "'Jost', sans-serif" }}>
                           {salesReport.summary.totalOrders}
                         </span>
-                        <span className="text-xs text-gray-500 mt-1" style={{ fontFamily: "'Jost', sans-serif" }}>Transactions</span>
+                        <span className="text-xs text-gray-500 dark:text-slate-400 mt-1" style={{ fontFamily: "'Jost', sans-serif" }}>Transactions</span>
                       </div>
                     </div>
                   </div>
@@ -451,38 +451,38 @@ const Dashboard = ({ session, isActive = true }: DashboardProps) => {
               </div>
 
               {/* Bottom Row Stats Cards */}
-              <div className="bg-white rounded-3xl shadow-2xl border border-white p-4 sm:p-8 mb-8"
+              <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-white dark:border-slate-700 p-4 sm:p-8 mb-8"
                 style={{
                   boxShadow: '0 4px 32px 0 rgba(252, 211, 77, 0.07)',
                 }}>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   {/* Top Solds Container */}
                   <div>
-                    <div className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-2xl shadow-lg border border-pink-100 p-6 transition-transform duration-200 hover:scale-[1.01] hover:shadow-2xl hover:border-pink-200 h-[400px]">
+                    <div className="bg-gradient-to-br from-pink-50 to-rose-50 dark:from-slate-700 dark:to-slate-800 rounded-2xl shadow-lg border border-pink-100 dark:border-slate-600 p-6 transition-transform duration-200 hover:scale-[1.01] hover:shadow-2xl hover:border-pink-200 dark:hover:border-slate-500 h-[400px]">
                       <div className="flex items-center gap-2 mb-6">
-                        <Icon icon="mdi:star" className="text-pink-400 w-6 h-6" />
-                        <h3 className="text-lg font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Top Sold Products</h3>
+                        <Icon icon="mdi:star" className="text-pink-400 dark:text-pink-300 w-6 h-6" />
+                        <h3 className="text-lg font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Top Sold Products</h3>
                       </div>
                       <div className="space-y-4 overflow-y-auto h-[calc(100%-4rem)]">
                         {bestSelling.length > 0 ? (
                           bestSelling.map((item, index) => (
-                            <div key={index} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50">
-                              <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center">
-                                <Icon icon="mdi:lightbulb-outline" className="w-6 h-6 text-gray-400" />
+                            <div key={index} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700">
+                              <div className="w-10 h-10 bg-gray-200 dark:bg-slate-600 rounded-lg flex items-center justify-center">
+                                <Icon icon="mdi:lightbulb-outline" className="w-6 h-6 text-gray-400 dark:text-slate-300" />
                               </div>
                               <div className="flex-1">
-                                <p className="font-medium text-sm text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>{item.product_name}</p>
-                                <p className="text-gray-500 text-xs" style={{ fontFamily: "'Jost', sans-serif" }}>{item.total_quantity} sold</p>
+                                <p className="font-medium text-sm text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{item.product_name}</p>
+                                <p className="text-gray-500 dark:text-slate-400 text-xs" style={{ fontFamily: "'Jost', sans-serif" }}>{item.total_quantity} sold</p>
                               </div>
                               <div className="text-right">
-                                <p className="text-sm font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
+                                <p className="text-sm font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
                                   {formatCurrency(item.total_revenue)}
                                 </p>
                               </div>
                             </div>
                           ))
                         ) : (
-                          <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                          <div className="flex flex-col items-center justify-center h-full text-gray-400 dark:text-slate-500">
                             <Icon icon="mdi:package-variant" className="w-12 h-12 mb-2" />
                             <p className="text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>No sales data yet</p>
                           </div>
@@ -493,31 +493,31 @@ const Dashboard = ({ session, isActive = true }: DashboardProps) => {
 
                   {/* Top Sold by Category Container */}
                   <div>
-                    <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl shadow-lg border border-emerald-100 p-6 transition-transform duration-200 hover:scale-[1.01] hover:shadow-2xl hover:border-emerald-200 h-[400px]">
+                    <div className="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-slate-700 dark:to-slate-800 rounded-2xl shadow-lg border border-emerald-100 dark:border-slate-600 p-6 transition-transform duration-200 hover:scale-[1.01] hover:shadow-2xl hover:border-emerald-200 dark:hover:border-slate-500 h-[400px]">
                       <div className="flex items-center gap-2 mb-6">
-                        <Icon icon="mdi:chart-pie" className="text-emerald-400 w-6 h-6" />
-                        <h3 className="text-lg font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Top Sold by Category</h3>
+                        <Icon icon="mdi:chart-pie" className="text-emerald-400 dark:text-emerald-300 w-6 h-6" />
+                        <h3 className="text-lg font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Top Sold by Category</h3>
                       </div>
                       <div className="space-y-4 overflow-y-auto h-[calc(100%-4rem)]">
                         {categorySales.length > 0 ? (
                           categorySales.map((item, index) => (
-                            <div key={index} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50">
-                              <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
-                                <Icon icon="mdi:tag" className="w-6 h-6 text-emerald-500" />
+                            <div key={index} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700">
+                              <div className="w-10 h-10 bg-emerald-100 dark:bg-slate-600 rounded-lg flex items-center justify-center">
+                                <Icon icon="mdi:tag" className="w-6 h-6 text-emerald-500 dark:text-emerald-300" />
                               </div>
                               <div className="flex-1">
-                                <p className="font-medium text-sm text-gray-800 capitalize" style={{ fontFamily: "'Jost', sans-serif" }}>{item.category}</p>
-                                <p className="text-gray-500 text-xs" style={{ fontFamily: "'Jost', sans-serif" }}>{item.total_quantity} sold • {item.product_count} products</p>
+                                <p className="font-medium text-sm text-gray-800 dark:text-slate-100 capitalize" style={{ fontFamily: "'Jost', sans-serif" }}>{item.category}</p>
+                                <p className="text-gray-500 dark:text-slate-400 text-xs" style={{ fontFamily: "'Jost', sans-serif" }}>{item.total_quantity} sold • {item.product_count} products</p>
                               </div>
                               <div className="text-right">
-                                <p className="text-sm font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
+                                <p className="text-sm font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
                                   {formatCurrency(item.total_revenue)}
                                 </p>
                               </div>
                             </div>
                           ))
                         ) : (
-                          <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                          <div className="flex flex-col items-center justify-center h-full text-gray-400 dark:text-slate-500">
                             <Icon icon="mdi:chart-pie" className="w-12 h-12 mb-2" />
                             <p className="text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>No category data yet</p>
                           </div>

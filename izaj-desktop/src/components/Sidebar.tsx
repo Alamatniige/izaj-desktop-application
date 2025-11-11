@@ -77,9 +77,8 @@ const Sidebar = ({
               />
             </div>
             <h1
-              className="text-2xl font-regular text-gray-800 dark:text-gray-100 drop-shadow-lg"
+              className="text-2xl font-regular text-gray-800 dark:text-slate-100 drop-shadow-lg"
               style={{
-                color: "#000000",
                 fontFamily: "'Playfair Display', serif",
                 textShadow: "-2px 0px 2px rgba(0, 0, 0, 0.5)",
                 letterSpacing: "8px",
@@ -107,9 +106,8 @@ const Sidebar = ({
           </div>
           {!sidebarCollapsed && (
             <h1
-              className="text-xl sm:text-2xl md:text-4xl font-semibold text-black dark:text-gray-100 ml-3 sm:ml-4 md:ml-6"
+              className="text-xl sm:text-2xl md:text-4xl font-semibold text-black dark:text-slate-100 ml-3 sm:ml-4 md:ml-6"
               style={{
-                color: "#000000",
                 fontFamily: "'Playfair Display', serif",
                 textShadow: "-2px 0px 2px rgba(0, 0, 0, 0.5)",
                 letterSpacing: "10px",

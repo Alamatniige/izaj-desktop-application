@@ -605,16 +605,16 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
     <div className="flex-1 overflow-y-auto">
       <main className="flex-1 px-8 py-6">
         {/* Header Section */}
-        <div className="bg-gradient-to-r from-white via-gray-50 to-white rounded-2xl p-6 mb-8 border border-gray-100 shadow-sm">
+        <div className="bg-gradient-to-r from-white via-gray-50 to-white dark:from-slate-800 dark:via-slate-700 dark:to-slate-800 rounded-2xl p-6 mb-8 border border-gray-100 dark:border-slate-700 shadow-sm">
           <div className="flex items-center gap-4">
             <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-xl shadow-lg">
               <Icon icon="mdi:cog" className="text-2xl text-white" />
             </div>
             <div>
-              <h2 className="text-2xl lg:text-3xl font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
+              <h2 className="text-2xl lg:text-3xl font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
                 Settings
               </h2>
-              <p className="text-gray-600 text-base" style={{ fontFamily: "'Jost', sans-serif" }}>
+              <p className="text-gray-600 dark:text-slate-400 text-base" style={{ fontFamily: "'Jost', sans-serif" }}>
                 Manage your application settings and system configuration
               </p>
             </div>
@@ -623,13 +623,13 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
 
         {/* Main Content */}
         <div className="max-w-7xl mx-auto">
-          <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden"
+          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-700 overflow-hidden"
             style={{
               boxShadow: '0 4px 32px 0 rgba(251, 191, 36, 0.07)',
             }}>
             
             {/* Tabs Navigation */}
-            <div className="border-b border-gray-200 overflow-x-auto">
+            <div className="border-b border-gray-200 dark:border-slate-700 overflow-x-auto">
               <nav className="flex space-x-4 sm:space-x-8 px-4 sm:px-6" aria-label="Tabs">
                 {tabs.map((tab) => (
                   <button
@@ -638,8 +638,8 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                     className={`
                       py-3 sm:py-4 px-1 border-b-2 font-medium text-xs sm:text-sm flex items-center gap-1 sm:gap-2 whitespace-nowrap
                       ${activeTab === tab.id
-                        ? 'border-yellow-500 text-yellow-600 font-semibold'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        ? 'border-yellow-500 text-yellow-600 dark:text-yellow-400 font-semibold'
+                        : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 hover:border-gray-300 dark:hover:border-slate-600'
                       }
                     `}
                   >
@@ -666,9 +666,9 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                     ) : (
                     <>
                     {/* Admin Users Section */}
-                    <div className="bg-white rounded-3xl border border-gray-100 p-4 sm:p-6 shadow-lg">
+                    <div className="bg-white dark:bg-slate-800 rounded-3xl border border-gray-100 dark:border-slate-700 p-4 sm:p-6 shadow-lg">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-0 mb-4 sm:mb-6">
-                        <h3 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-slate-100 flex items-center gap-2">
                           <Icon icon="mdi:account-tie" className="text-yellow-400" />
                           Admin Users
                         </h3>
@@ -916,35 +916,35 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                       )}
 
                       <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-100">
-                          <thead className="bg-gradient-to-r from-gray-50 to-white">
+                        <table className="min-w-full divide-y divide-gray-100 dark:divide-slate-700">
+                          <thead className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-700 dark:to-slate-800">
                             <tr>
-                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Name</th>
-                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Email</th>
-                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Role</th>
-                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Type</th>
-                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Assignments</th>
-                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
-                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
+                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-slate-100 uppercase tracking-wider">Name</th>
+                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-slate-100 uppercase tracking-wider">Email</th>
+                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-slate-100 uppercase tracking-wider">Role</th>
+                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-slate-100 uppercase tracking-wider">Type</th>
+                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-slate-100 uppercase tracking-wider">Assignments</th>
+                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-slate-100 uppercase tracking-wider">Status</th>
+                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-slate-100 uppercase tracking-wider">Actions</th>
                             </tr>
                           </thead>
-                          <tbody className="bg-white divide-y divide-gray-100">
+                          <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-100 dark:divide-slate-700">
                             {settings.userManagement.adminUsers.map((user) => (
-                              <tr key={user.id} className="hover:bg-gray-50 transition-colors duration-200">
+                              <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors duration-200">
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <div className="flex items-center">
                                     <div className="flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10">
-                                      <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                                        <Icon icon="mdi:account" className="w-4 h-4 sm:w-6 sm:h-6 text-gray-500" />
+                                      <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-gray-200 dark:bg-slate-600 flex items-center justify-center">
+                                        <Icon icon="mdi:account" className="w-4 h-4 sm:w-6 sm:h-6 text-gray-500 dark:text-slate-300" />
                                       </div>
                                     </div>
                                     <div className="ml-3 sm:ml-4">
-                                      <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                                      <div className="text-sm font-medium text-gray-900 dark:text-slate-100">{user.name}</div>
                                     </div>
                                   </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="text-sm text-gray-900">{user.email}</div>
+                                  <div className="text-sm text-gray-900 dark:text-slate-100">{user.email}</div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-xl bg-blue-100 text-blue-800 shadow-sm">
@@ -1041,16 +1041,16 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                       </h3>
                       <div className="flex gap-4">
                         <div className="relative">
+                          <div className="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                            <Icon icon="mdi:magnify" className="w-5 h-5 text-gray-400" />
+                          </div>
                           <input
                             type="text"
                             placeholder="Search logs..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-200 focus:border-yellow-400"
-                          />
-                          <Icon 
-                            icon="mdi:magnify" 
-                            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" 
+                            className="w-full lg:w-64 pl-10 pr-4 py-2 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all duration-200 text-gray-900 dark:text-slate-100"
+                            style={{ fontFamily: "'Jost', sans-serif" }}
                           />
                         </div>
                         <button
@@ -1210,33 +1210,33 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                       </div>
                     )}
 
-                    <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-lg">
+                    <div className="bg-white dark:bg-slate-800 rounded-3xl border border-gray-100 dark:border-slate-700 overflow-hidden shadow-lg">
                       <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-100">
-                          <thead className="bg-gradient-to-r from-gray-50 to-white">
+                        <table className="min-w-full divide-y divide-gray-100 dark:divide-slate-700">
+                          <thead className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-700 dark:to-slate-800">
                             <tr>
-                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Time</th>
-                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">User</th>
-                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Action</th>
+                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-slate-100 uppercase tracking-wider">Time</th>
+                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-slate-100 uppercase tracking-wider">User</th>
+                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-slate-100 uppercase tracking-wider">Action</th>
                             </tr>
                           </thead>
-                          <tbody className="bg-white divide-y divide-gray-100">
+                          <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-100 dark:divide-slate-700">
                             {getFilteredLogs().length > 0 ? (
                               getFilteredLogs().map((log) => (
-                                <tr key={log.id} className="hover:bg-gray-50">
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-slate-700">
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-slate-100">
                                     {new Date(log.created_at).toLocaleString()}
                                   </td>
                                   <td className="px-6 py-4 whitespace-nowrap">
                                     <div className="flex items-center">
                                       <div className="flex-shrink-0 h-8 w-8">
-                                        <div className="h-8 w-8 rounded-full bg-yellow-100 flex items-center justify-center">
-                                          <Icon icon="mdi:account" className="w-4 h-4 text-yellow-600" />
+                                        <div className="h-8 w-8 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
+                                          <Icon icon="mdi:account" className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
                                         </div>
                                       </div>
                                       <div className="ml-4">
-                                        <div className="text-sm font-medium text-gray-900">{log.userName}</div>
-                                        <div className="text-sm text-gray-500">{log.userId}</div>
+                                        <div className="text-sm font-medium text-gray-900 dark:text-slate-100">{log.userName}</div>
+                                        <div className="text-sm text-gray-500 dark:text-slate-400">{log.userId}</div>
                                       </div>
                                     </div>
                                   </td>
@@ -1250,7 +1250,7 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                               ))
                             ) : (
                               <tr>
-                                <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
+                                <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500 dark:text-slate-400">
                                   No audit logs available
                                 </td>
                               </tr>
@@ -1265,19 +1265,19 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                 {/* Subscription Message Section */}
                 {activeTab === 'subscriptionMessage' && (
                   <div className="space-y-6 sm:space-y-8">
-                    <div className="bg-white rounded-3xl border border-gray-100 p-4 sm:p-6 shadow-lg">
+                    <div className="bg-white dark:bg-slate-800 rounded-3xl border border-gray-100 dark:border-slate-700 p-4 sm:p-6 shadow-lg">
                       <div className="mb-6">
-                        <h3 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2 mb-2">
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-slate-100 flex items-center gap-2 mb-2">
                           <Icon icon="mdi:email-newsletter" className="text-yellow-400" />
                           Subscription Welcome Message
                         </h3>
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-gray-600 dark:text-slate-400">
                             Set a custom message that will be automatically sent to all users who subscribe to your newsletter.
                             This message will be included in the subscription confirmation email.
                           </p>
                           {subscriberCount !== null && (
-                            <div className="text-sm text-gray-700 bg-gray-50 px-4 py-2 rounded-lg">
+                            <div className="text-sm text-gray-700 dark:text-slate-300 bg-gray-50 dark:bg-slate-700 px-4 py-2 rounded-lg">
                               <span className="font-semibold">{subscriberCount}</span> active subscribers
                             </div>
                           )}
@@ -1286,17 +1286,17 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
 
                       <form onSubmit={handleSaveSubscriptionMessage} className="space-y-6">
                         <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-gray-700">
+                          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300">
                             Message Content
                           </label>
                           <textarea
                             value={subscriptionMessage}
                             onChange={(e) => setSubscriptionMessage(e.target.value)}
                             rows={12}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-yellow-200 focus:border-yellow-400 transition-colors duration-200 resize-none"
+                            className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-yellow-200 focus:border-yellow-400 transition-colors duration-200 resize-none bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
                             placeholder="Enter your subscription welcome message here. This message will be sent to all new subscribers..."
                           />
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-500 dark:text-slate-400">
                             This message will be sent to all subscribers when you use the "Send to All" button.
                           </p>
                         </div>

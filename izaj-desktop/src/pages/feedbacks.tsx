@@ -124,16 +124,16 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
     <div className="flex-1 overflow-y-auto">
       <main className="flex-1 px-8 py-6">
         {/* Header Section */}
-        <div className="bg-gradient-to-r from-white via-gray-50 to-white rounded-2xl p-6 mb-8 border border-gray-100 shadow-sm">
+        <div className="bg-gradient-to-r from-white via-gray-50 to-white dark:from-slate-800 dark:via-slate-700 dark:to-slate-800 rounded-2xl p-6 mb-8 border border-gray-100 dark:border-slate-700 shadow-sm">
           <div className="flex items-center gap-4">
             <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-xl shadow-lg">
               <Icon icon="mdi:star-outline" className="text-2xl text-white" />
             </div>
             <div>
-              <h2 className="text-2xl lg:text-3xl font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
+              <h2 className="text-2xl lg:text-3xl font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
                 Feedbacks & Ratings
               </h2>
-              <p className="text-gray-600 text-base" style={{ fontFamily: "'Jost', sans-serif" }}>
+              <p className="text-gray-600 dark:text-slate-400 text-base" style={{ fontFamily: "'Jost', sans-serif" }}>
                 Manage customer feedback and view overall ratings
               </p>
             </div>
@@ -142,23 +142,23 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
 
         {/* Stats Cards */}
         <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 hover:shadow-xl transition-all duration-200">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-700 p-4 hover:shadow-xl transition-all duration-200">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-gray-600" style={{ fontFamily: "'Jost', sans-serif" }}>Total Reviews</span>
+              <span className="text-xs font-medium text-gray-600 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>Total Reviews</span>
               <div className="w-8 h-8 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-lg flex items-center justify-center shadow-md">
                 <Icon icon="mdi:star-outline" className="w-4 h-4 text-white" />
               </div>
             </div>
-            <div className="text-2xl font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>{summary.total}</div>
+            <div className="text-2xl font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{summary.total}</div>
           </div>
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 hover:shadow-xl transition-all duration-200">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-700 p-4 hover:shadow-xl transition-all duration-200">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-gray-600" style={{ fontFamily: "'Jost', sans-serif" }}>Overall Rating</span>
+              <span className="text-xs font-medium text-gray-600 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>Overall Rating</span>
               <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-500 rounded-lg flex items-center justify-center shadow-md">
                 <Icon icon="mdi:star" className="w-4 h-4 text-white" />
               </div>
             </div>
-            <div className="text-2xl font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
+            <div className="text-2xl font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
               {summary.average_rating || 'N/A'}
             </div>
           </div>
@@ -171,7 +171,7 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
             className={`px-4 py-2 rounded-xl font-semibold transition-all duration-200 ${
               activeFilter === 'All Feedbacks'
                 ? 'bg-yellow-500 text-white shadow-lg'
-                : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                : 'bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-600 border border-gray-200 dark:border-slate-600'
             }`}
             style={{ fontFamily: "'Jost', sans-serif" }}
           >
@@ -202,12 +202,12 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
         </div>
 
         {/* Feedback Table */}
-        <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden mx-auto"
+        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-700 overflow-hidden mx-auto"
           style={{
             boxShadow: '0 4px 32px 0 rgba(252, 211, 77, 0.07)',
           }}>
-          <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
-            <span className="font-semibold text-gray-700 text-lg" style={{ fontFamily: "'Jost', sans-serif" }}>Feedbacks Table</span>
+          <div className="p-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white dark:from-slate-700 dark:to-slate-800">
+            <span className="font-semibold text-gray-700 dark:text-slate-100 text-lg" style={{ fontFamily: "'Jost', sans-serif" }}>Feedbacks Table</span>
             <button
               onClick={() => fetchReviews()}
               className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition shadow-sm hover:shadow-md flex items-center gap-2"
@@ -220,37 +220,37 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
           <div className="overflow-x-auto">
             <table className="min-w-full">
               <thead>
-                <tr className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-200">
-                      <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap" style={{ fontFamily: "'Jost', sans-serif" }}>Product ID</th>
-                      <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap" style={{ fontFamily: "'Jost', sans-serif" }}>Product Name</th>
-                      <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap" style={{ fontFamily: "'Jost', sans-serif" }}>Status</th>
-                      <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap" style={{ fontFamily: "'Jost', sans-serif" }}>Ratings</th>
-                      <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap" style={{ fontFamily: "'Jost', sans-serif" }}>Date</th>
-                      <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap" style={{ fontFamily: "'Jost', sans-serif" }}>Feedback</th>
-                      <th className="px-6 py-4 text-left font-semibold text-gray-700 whitespace-nowrap" style={{ fontFamily: "'Jost', sans-serif" }}>Action</th>
+                <tr className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-700 dark:to-slate-800 border-b border-gray-200 dark:border-slate-700">
+                      <th className="px-6 py-4 text-left font-semibold text-gray-700 dark:text-slate-100 whitespace-nowrap" style={{ fontFamily: "'Jost', sans-serif" }}>Product ID</th>
+                      <th className="px-6 py-4 text-left font-semibold text-gray-700 dark:text-slate-100 whitespace-nowrap" style={{ fontFamily: "'Jost', sans-serif" }}>Product Name</th>
+                      <th className="px-6 py-4 text-left font-semibold text-gray-700 dark:text-slate-100 whitespace-nowrap" style={{ fontFamily: "'Jost', sans-serif" }}>Status</th>
+                      <th className="px-6 py-4 text-left font-semibold text-gray-700 dark:text-slate-100 whitespace-nowrap" style={{ fontFamily: "'Jost', sans-serif" }}>Ratings</th>
+                      <th className="px-6 py-4 text-left font-semibold text-gray-700 dark:text-slate-100 whitespace-nowrap" style={{ fontFamily: "'Jost', sans-serif" }}>Date</th>
+                      <th className="px-6 py-4 text-left font-semibold text-gray-700 dark:text-slate-100 whitespace-nowrap" style={{ fontFamily: "'Jost', sans-serif" }}>Feedback</th>
+                      <th className="px-6 py-4 text-left font-semibold text-gray-700 dark:text-slate-100 whitespace-nowrap" style={{ fontFamily: "'Jost', sans-serif" }}>Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                     {reviews.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-6 py-12 text-center text-gray-400">
-                          <Icon icon="mdi:comment-text-outline" className="w-16 h-16 text-gray-300 mx-auto mb-3" />
+                        <td colSpan={7} className="px-6 py-12 text-center text-gray-400 dark:text-slate-500">
+                          <Icon icon="mdi:comment-text-outline" className="w-16 h-16 text-gray-300 dark:text-slate-600 mx-auto mb-3" />
                           <p className="text-lg" style={{ fontFamily: "'Jost', sans-serif" }}>No reviews found</p>
                           <p className="text-sm mt-2" style={{ fontFamily: "'Jost', sans-serif" }}>Reviews will appear here when customers leave feedback</p>
                         </td>
                       </tr>
                     ) : (
                       reviews.map((review, idx) => (
-                        <tr key={idx} className="hover:bg-gray-50 transition-colors duration-200">
-                          <td className="px-6 py-4 font-mono text-yellow-700 whitespace-nowrap text-xs" style={{ fontFamily: "'Jost', sans-serif" }}>
+                        <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors duration-200">
+                          <td className="px-6 py-4 font-mono text-yellow-700 dark:text-yellow-400 whitespace-nowrap text-xs" style={{ fontFamily: "'Jost', sans-serif" }}>
                             {review.id.substring(0, 8)}...
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap" style={{ fontFamily: "'Jost', sans-serif" }}>{review.product_name}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{review.product_name}</td>
                           <td className="px-6 py-4">
                             <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                              review.status === 'published' ? 'bg-green-100 text-green-700' :
-                              review.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                              'bg-red-100 text-red-700'
+                              review.status === 'published' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' :
+                              review.status === 'pending' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300' :
+                              'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
                             }`} style={{ fontFamily: "'Jost', sans-serif" }}>
                               {review.status.toUpperCase()}
                             </span>
@@ -261,15 +261,15 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
                                 <Icon
                                   key={starIdx}
                                   icon={starIdx < review.rating ? 'mdi:star' : 'mdi:star-outline'}
-                                  className={`w-4 h-4 ${starIdx < review.rating ? 'text-yellow-400' : 'text-gray-300'}`}
+                                  className={`w-4 h-4 ${starIdx < review.rating ? 'text-yellow-400' : 'text-gray-300 dark:text-slate-600'}`}
                                 />
                               ))}
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-gray-500 whitespace-nowrap text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>
+                          <td className="px-6 py-4 text-gray-500 dark:text-slate-400 whitespace-nowrap text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>
                             {formatDate(review.created_at)}
                           </td>
-                          <td className="px-6 py-4 text-gray-600 max-w-[200px] truncate" style={{ fontFamily: "'Jost', sans-serif" }}>{review.comment}</td>
+                          <td className="px-6 py-4 text-gray-600 dark:text-slate-300 max-w-[200px] truncate" style={{ fontFamily: "'Jost', sans-serif" }}>{review.comment}</td>
                           <td className="px-6 py-4">
                             <button 
                               onClick={() => handleViewFeedback(review.id)}
@@ -299,7 +299,7 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
             onClick={closeModal}
           >
             <div
-              className=" bg-white rounded-3xl shadow-2xl border border-gray-100 max-w-6xl w-full max-h-[85vh] overflow-hidden transform transition-all relative flex flex-col my-4 sm:my-6"
+              className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 max-w-6xl w-full max-h-[85vh] overflow-hidden transform transition-all relative flex flex-col my-4 sm:my-6"
               style={{
                 boxShadow: '0 20px 60px 0 rgba(0, 0, 0, 0.15)',
               }}
@@ -309,23 +309,23 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 p-6 relative">
+              <div className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-800 dark:to-slate-900 border-b border-gray-100 dark:border-slate-800 p-6 relative">
                 <div className="flex items-center gap-4">
                   <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl shadow-lg">
                     <Icon icon="mdi:star" className="text-2xl text-white" />
                   </div>
                   <div>
-                    <h3 id="modal-title" className="text-2xl font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    <h3 id="modal-title" className="text-2xl font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
                       Feedback Details
                     </h3>
-                    <p className="text-gray-600 text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    <p className="text-gray-600 dark:text-slate-400 text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>
                       Review from {selectedFeedback.user_id.substring(0, 8)}...
                     </p>
                   </div>
                 </div>
                 {!isReplying && (
                   <button
-                    className="absolute top-4 right-4 p-2 rounded-full bg-white/90 hover:bg-gray-50 text-gray-500 hover:text-gray-700 shadow-lg"
+                    className="absolute top-4 right-4 p-2 rounded-full bg-white/90 dark:bg-slate-800/90 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-300 hover:text-gray-700 dark:hover:text-slate-100 shadow-lg transition-colors"
                     onClick={(e) => {
                       e.stopPropagation();
                       closeModal();
@@ -339,53 +339,53 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
               </div>
 
               {/* Content */}
-              <div className="p-5 space-y-5 overflow-y-auto flex-1">
+              <div className="p-5 space-y-5 overflow-y-auto flex-1 text-gray-900 dark:text-slate-100">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                   {/* LEFT: Product & Rating Details */}
                   <div className="space-y-5">
-                    <div className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
-                      <div className="bg-gradient-to-r from-blue-50 to-white p-4 border-b border-gray-100">
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-lg border border-gray-100 dark:border-slate-800 overflow-hidden">
+                      <div className="bg-gradient-to-r from-blue-50 to-white dark:from-slate-800 dark:to-slate-900 p-4 border-b border-gray-100 dark:border-slate-800">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
                             <Icon icon="mdi:account-circle" className="w-6 h-6 text-white" />
                           </div>
-                          <h4 className="text-lg font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Review Information</h4>
+                          <h4 className="text-lg font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Review Information</h4>
                         </div>
                       </div>
                       <div className="p-4 space-y-2">
                         <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center border border-blue-100">
+                          <div className="w-12 h-12 bg-blue-50 dark:bg-slate-800 rounded-xl flex items-center justify-center border border-blue-100 dark:border-slate-700">
                             <Icon icon="mdi:account-circle" className="w-8 h-8 text-blue-400" />
                           </div>
                           <div>
                             <div className="font-semibold text-base" style={{ fontFamily: "'Jost', sans-serif" }}>Customer Review</div>
-                            <div className="text-sm text-gray-500" style={{ fontFamily: "'Jost', sans-serif" }}>User ID: {selectedFeedback.user_id.substring(0, 8)}...</div>
+                            <div className="text-sm text-gray-500 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>User ID: {selectedFeedback.user_id.substring(0, 8)}...</div>
                             {selectedFeedback.order_number && (
-                              <div className="text-sm text-gray-500" style={{ fontFamily: "'Jost', sans-serif" }}>Order: {selectedFeedback.order_number}</div>
+                              <div className="text-sm text-gray-500 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>Order: {selectedFeedback.order_number}</div>
                             )}
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    <div className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
-                      <div className="bg-gradient-to-r from-purple-50 to-white p-4 border-b border-gray-100">
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-lg border border-gray-100 dark:border-slate-800 overflow-hidden">
+                      <div className="bg-gradient-to-r from-purple-50 to-white dark:from-slate-800 dark:to-slate-900 p-4 border-b border-gray-100 dark:border-slate-800">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
                             <Icon icon="mdi:lightbulb" className="w-6 h-6 text-white" />
                           </div>
-                          <h4 className="text-lg font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Product Information</h4>
+                          <h4 className="text-lg font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Product Information</h4>
                         </div>
                       </div>
                       <div className="p-4 space-y-2">
                         <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-xl overflow-hidden border border-yellow-100 bg-gray-100 flex items-center justify-center">
-                            <Icon icon="mdi:lightbulb" className="text-gray-400 w-8 h-8" />
+                          <div className="w-12 h-12 rounded-xl overflow-hidden border border-yellow-100 dark:border-slate-700 bg-gray-100 dark:bg-slate-800 flex items-center justify-center">
+                            <Icon icon="mdi:lightbulb" className="text-gray-400 dark:text-slate-500 w-8 h-8" />
                           </div>
                           <div>
-                            <div className="font-mono text-blue-700 text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>ID: {selectedFeedback.product_id.substring(0, 8)}...</div>
+                            <div className="font-mono text-blue-700 dark:text-blue-300 text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>ID: {selectedFeedback.product_id.substring(0, 8)}...</div>
                             <div className="font-semibold text-base" style={{ fontFamily: "'Jost', sans-serif" }}>{selectedFeedback.product_name}</div>
-                            <div className="text-sm text-gray-500 mt-1">
+                            <div className="text-sm text-gray-500 dark:text-slate-400 mt-1">
                               <span className={`inline-block px-2 py-0.5 rounded-full text-xs ${
                                 selectedFeedback.status === 'published' ? 'bg-green-100 text-green-700' :
                                 selectedFeedback.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
@@ -399,13 +399,13 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
                       </div>
                     </div>
 
-                    <div className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
-                      <div className="bg-gradient-to-r from-yellow-50 to-white p-4 border-b border-gray-100">
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-lg border border-gray-100 dark:border-slate-800 overflow-hidden">
+                      <div className="bg-gradient-to-r from-yellow-50 to-white dark:from-slate-800 dark:to-slate-900 p-4 border-b border-gray-100 dark:border-slate-800">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center shadow-lg">
                             <Icon icon="mdi:star" className="w-6 h-6 text-white" />
                           </div>
-                          <h4 className="text-lg font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Rating & Review</h4>
+                          <h4 className="text-lg font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Rating & Review</h4>
                         </div>
                       </div>
                       <div className="p-4 space-y-3">
@@ -417,22 +417,22 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
                               className={`w-6 h-6 ${starIdx < selectedFeedback.rating ? 'text-yellow-400' : 'text-gray-300'}`}
                             />
                           ))}
-                          <span className="ml-2 text-lg font-bold text-gray-700" style={{ fontFamily: "'Jost', sans-serif" }}>{selectedFeedback.rating}/5</span>
+                          <span className="ml-2 text-lg font-bold text-gray-700 dark:text-slate-200" style={{ fontFamily: "'Jost', sans-serif" }}>{selectedFeedback.rating}/5</span>
                         </div>
-                        <p className="text-sm text-gray-700 whitespace-pre-wrap" style={{ fontFamily: "'Jost', sans-serif" }}>{selectedFeedback.comment}</p>
+                        <p className="text-sm text-gray-700 dark:text-slate-200 whitespace-pre-wrap" style={{ fontFamily: "'Jost', sans-serif" }}>{selectedFeedback.comment}</p>
                       </div>
                     </div>
                   </div>
 
                   {/* RIGHT: Additional Details */}
                   <div className="space-y-5">
-                    <div className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
-                      <div className="bg-gradient-to-r from-green-50 to-white p-4 border-b border-gray-100">
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-lg border border-gray-100 dark:border-slate-800 overflow-hidden">
+                      <div className="bg-gradient-to-r from-green-50 to-white dark:from-slate-800 dark:to-slate-900 p-4 border-b border-gray-100 dark:border-slate-800">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
                             <Icon icon="mdi:calendar-check" className="w-6 h-6 text-white" />
                           </div>
-                          <h4 className="text-lg font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Review Timeline</h4>
+                          <h4 className="text-lg font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Review Timeline</h4>
                         </div>
                       </div>
                       <div className="p-4 space-y-3">
@@ -440,14 +440,14 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
                           <Icon icon="mdi:calendar-check" className="text-green-400 w-5 h-5" />
                           <div>
                             <div className="text-sm font-medium" style={{ fontFamily: "'Jost', sans-serif" }}>Submitted</div>
-                            <div className="text-xs text-gray-500" style={{ fontFamily: "'Jost', sans-serif" }}>{formatDate(selectedFeedback.created_at)}</div>
+                            <div className="text-xs text-gray-500 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>{formatDate(selectedFeedback.created_at)}</div>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
                           <Icon icon="mdi:clock-outline" className="text-blue-400 w-5 h-5" />
                           <div>
                             <div className="text-sm font-medium" style={{ fontFamily: "'Jost', sans-serif" }}>Review Time</div>
-                            <div className="text-xs text-gray-500" style={{ fontFamily: "'Jost', sans-serif" }}>{formatTime(selectedFeedback.created_at)}</div>
+                            <div className="text-xs text-gray-500 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>{formatTime(selectedFeedback.created_at)}</div>
                           </div>
                         </div>
                         {selectedFeedback.admin_reply_at && (
@@ -455,57 +455,57 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
                             <Icon icon="mdi:reply" className="text-purple-400 w-5 h-5" />
                             <div>
                               <div className="text-sm font-medium" style={{ fontFamily: "'Jost', sans-serif" }}>Admin Replied</div>
-                              <div className="text-xs text-gray-500" style={{ fontFamily: "'Jost', sans-serif" }}>{formatDate(selectedFeedback.admin_reply_at)}</div>
+                              <div className="text-xs text-gray-500 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>{formatDate(selectedFeedback.admin_reply_at)}</div>
                             </div>
                           </div>
                         )}
                       </div>
                     </div>
 
-                    <div className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
-                      <div className="bg-gradient-to-r from-orange-50 to-white p-4 border-b border-gray-100">
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-lg border border-gray-100 dark:border-slate-800 overflow-hidden">
+                      <div className="bg-gradient-to-r from-orange-50 to-white dark:from-slate-800 dark:to-slate-900 p-4 border-b border-gray-100 dark:border-slate-800">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
                             <Icon icon="mdi:information" className="w-6 h-6 text-white" />
                           </div>
-                          <h4 className="text-lg font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Review Info</h4>
+                          <h4 className="text-lg font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Review Info</h4>
                         </div>
                       </div>
                       <div className="p-4">
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <div className="text-xs text-gray-500" style={{ fontFamily: "'Jost', sans-serif" }}>Helpful Votes</div>
-                            <div className="text-base font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>{selectedFeedback.helpful_count || 0}</div>
+                            <div className="text-xs text-gray-500 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>Helpful Votes</div>
+                            <div className="text-base font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{selectedFeedback.helpful_count || 0}</div>
                           </div>
                           <div>
-                            <div className="text-xs text-gray-500" style={{ fontFamily: "'Jost', sans-serif" }}>Status</div>
-                            <div className="text-base font-bold text-gray-800 capitalize" style={{ fontFamily: "'Jost', sans-serif" }}>{selectedFeedback.status}</div>
+                            <div className="text-xs text-gray-500 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>Status</div>
+                            <div className="text-base font-bold text-gray-800 dark:text-slate-100 capitalize" style={{ fontFamily: "'Jost', sans-serif" }}>{selectedFeedback.status}</div>
                           </div>
                           <div>
-                            <div className="text-xs text-gray-500" style={{ fontFamily: "'Jost', sans-serif" }}>Rating</div>
-                            <div className="text-base font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>{selectedFeedback.rating}/5</div>
+                            <div className="text-xs text-gray-500 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>Rating</div>
+                            <div className="text-base font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{selectedFeedback.rating}/5</div>
                           </div>
                           <div>
-                            <div className="text-xs text-gray-500" style={{ fontFamily: "'Jost', sans-serif" }}>Review Length</div>
-                            <div className="text-base font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>{selectedFeedback.comment.length} chars</div>
+                            <div className="text-xs text-gray-500 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>Review Length</div>
+                            <div className="text-base font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{selectedFeedback.comment.length} chars</div>
                           </div>
                         </div>
                       </div>
                     </div>
 
                     {selectedFeedback.admin_reply && (
-                      <div className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
-                        <div className="bg-gradient-to-r from-blue-50 to-white p-4 border-b border-gray-100">
+                      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-lg border border-gray-100 dark:border-slate-800 overflow-hidden">
+                        <div className="bg-gradient-to-r from-blue-50 to-white dark:from-slate-800 dark:to-slate-900 p-4 border-b border-gray-100 dark:border-slate-800">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
                               <Icon icon="mdi:reply" className="w-6 h-6 text-white" />
                             </div>
-                            <h4 className="text-lg font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Admin Reply</h4>
+                            <h4 className="text-lg font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Admin Reply</h4>
                           </div>
                         </div>
                         <div className="p-4 space-y-2">
-                          <p className="text-sm text-gray-700 whitespace-pre-wrap" style={{ fontFamily: "'Jost', sans-serif" }}>{selectedFeedback.admin_reply}</p>
-                          <div className="text-xs text-gray-500" style={{ fontFamily: "'Jost', sans-serif" }}>
+                          <p className="text-sm text-gray-700 dark:text-slate-200 whitespace-pre-wrap" style={{ fontFamily: "'Jost', sans-serif" }}>{selectedFeedback.admin_reply}</p>
+                          <div className="text-xs text-gray-500 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>
                             Replied on {formatDate(selectedFeedback.admin_reply_at || '')}
                           </div>
                         </div>
@@ -516,7 +516,7 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
               </div>
 
               {/* Footer */}
-              <div className="bg-gradient-to-r from-gray-50 to-white border-t border-gray-100 p-6 mt-auto">
+              <div className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-800 dark:to-slate-900 border-t border-gray-100 dark:border-slate-800 p-6 mt-auto">
                 <div className="flex justify-between items-center">
                   <button
                     onClick={handleDeleteReview}

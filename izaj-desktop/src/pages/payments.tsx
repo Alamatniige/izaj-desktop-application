@@ -128,16 +128,16 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
     <div className="flex-1 overflow-y-auto">
       <main className="flex-1 px-8 py-6">
         {/* Header Section */}
-        <div className="bg-gradient-to-r from-white via-gray-50 to-white rounded-2xl p-6 mb-8 border border-gray-100 shadow-sm">
+        <div className="bg-gradient-to-r from-white via-gray-50 to-white dark:from-slate-800 dark:via-slate-700 dark:to-slate-800 rounded-2xl p-6 mb-8 border border-gray-100 dark:border-slate-700 shadow-sm">
           <div className="flex items-center gap-4">
             <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-pink-400 to-pink-500 rounded-xl shadow-lg">
               <Icon icon="mdi:credit-card-outline" className="text-2xl text-white" />
             </div>
             <div>
-              <h2 className="text-2xl lg:text-3xl font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
+              <h2 className="text-2xl lg:text-3xl font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
                 Payments
               </h2>
-              <p className="text-gray-600 text-base" style={{ fontFamily: "'Jost', sans-serif" }}>
+              <p className="text-gray-600 dark:text-slate-400 text-base" style={{ fontFamily: "'Jost', sans-serif" }}>
                 Monitor and manage payment transactions
               </p>
             </div>
@@ -146,50 +146,50 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
 
         {/* Stats Cards */}
         <div className="max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 hover:shadow-xl transition-all duration-200">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-700 p-4 hover:shadow-xl transition-all duration-200">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-gray-600" style={{ fontFamily: "'Jost', sans-serif" }}>Pending</span>
+              <span className="text-xs font-medium text-gray-600 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>Pending</span>
               <div className="w-8 h-8 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-lg flex items-center justify-center shadow-md">
                 <Icon icon="mdi:clock-outline" className="w-4 h-4 text-white" />
               </div>
             </div>
-            <div className="text-2xl font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>{stats?.pending || 0}</div>
+            <div className="text-2xl font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{stats?.pending || 0}</div>
           </div>
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 hover:shadow-xl transition-all duration-200">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-700 p-4 hover:shadow-xl transition-all duration-200">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-gray-600" style={{ fontFamily: "'Jost', sans-serif" }}>Paid</span>
+              <span className="text-xs font-medium text-gray-600 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>Paid</span>
               <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-green-500 rounded-lg flex items-center justify-center shadow-md">
                 <Icon icon="mdi:check-circle-outline" className="w-4 h-4 text-white" />
               </div>
             </div>
-            <div className="text-2xl font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>{stats?.paid || 0}</div>
+            <div className="text-2xl font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{stats?.paid || 0}</div>
           </div>
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 hover:shadow-xl transition-all duration-200">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-700 p-4 hover:shadow-xl transition-all duration-200">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-gray-600" style={{ fontFamily: "'Jost', sans-serif" }}>Failed</span>
+              <span className="text-xs font-medium text-gray-600 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>Failed</span>
               <div className="w-8 h-8 bg-gradient-to-br from-red-400 to-red-500 rounded-lg flex items-center justify-center shadow-md">
                 <Icon icon="mdi:close-circle-outline" className="w-4 h-4 text-white" />
               </div>
             </div>
-            <div className="text-2xl font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>{stats?.failed || 0}</div>
+            <div className="text-2xl font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{stats?.failed || 0}</div>
           </div>
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 hover:shadow-xl transition-all duration-200">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-700 p-4 hover:shadow-xl transition-all duration-200">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-gray-600" style={{ fontFamily: "'Jost', sans-serif" }}>Refunds</span>
+              <span className="text-xs font-medium text-gray-600 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>Refunds</span>
               <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-500 rounded-lg flex items-center justify-center shadow-md">
                 <Icon icon="mdi:cash-refund" className="w-4 h-4 text-white" />
               </div>
             </div>
-            <div className="text-2xl font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>{stats?.refunded || 0}</div>
+            <div className="text-2xl font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{stats?.refunded || 0}</div>
           </div>
         </div>
 
         {/* Filter Section */}
-        <div className="max-w-6xl mx-auto bg-white rounded-3xl shadow-2xl border border-white p-4 sm:p-8 mb-2 flex flex-col items-center"
+        <div className="max-w-6xl mx-auto bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-white dark:border-slate-700 p-4 sm:p-8 mb-2 flex flex-col items-center"
           style={{
             boxShadow: '0 4px 32px 0 rgba(252, 211, 77, 0.07)',
           }}>
-          <div className="bg-gradient-to-r from-gray-50 to-white rounded-2xl px-4 py-3 mb-1 border border-gray-100 shadow-sm -mt-12 w-full">
+          <div className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-700 dark:to-slate-800 rounded-2xl px-4 py-3 mb-1 border border-gray-100 dark:border-slate-700 shadow-sm -mt-12 w-full">
             {/* Status Filter Buttons */}
             <div className="flex flex-wrap lg:flex-nowrap items-center justify-between gap-4 mb-2 mt-2">
               <div className="flex flex-wrap gap-2 flex-1">
@@ -220,7 +220,7 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
                       className={`px-3 py-1.5 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
                         selectedFilters.includes(status)
                           ? `${colors[status]} text-white shadow-lg`
-                          : 'bg-white text-gray-700 hover:bg-gray-50 shadow-sm border border-gray-200'
+                          : 'bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-600 shadow-sm border border-gray-200 dark:border-slate-600'
                       }`}
                       style={{ fontFamily: "'Jost', sans-serif" }}
                       type="button"
@@ -242,7 +242,7 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
                   <input
                     type="text"
                     placeholder="Search payments..."
-                    className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all duration-200"
+                    className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all duration-200 text-gray-900 dark:text-slate-100"
                     style={{ fontFamily: "'Jost', sans-serif" }}
                     value={searchQuery}
                     onChange={handleSearch}
@@ -251,7 +251,7 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
 
                 {/* Advance Filter Button */}
                 <button
-                  className="px-3 py-2 bg-white border border-gray-200 text-gray-700 font-semibold rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
+                  className="px-3 py-2 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 font-semibold rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 dark:hover:bg-slate-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
                   style={{ fontFamily: "'Jost', sans-serif" }}
                   onClick={() => setShowAdvancedFilter(!showAdvancedFilter)}
                   type="button"
@@ -266,23 +266,23 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
 
         {/* Advanced Filter Panel */}
         {showAdvancedFilter && (
-          <div className="max-w-7xl mx-auto bg-white p-4 rounded-lg shadow-md mb-6 border border-gray-100">
-            <h3 className="text-lg font-semibold mb-4" style={{ fontFamily: "'Jost', sans-serif" }}>Advanced Filters</h3>
+          <div className="max-w-7xl mx-auto bg-white dark:bg-slate-800 p-4 rounded-lg shadow-md mb-6 border border-gray-100 dark:border-slate-700">
+            <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Advanced Filters</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Date Range</label>
-                <input type="date" className="w-full p-2 border rounded-lg" style={{ fontFamily: "'Jost', sans-serif" }} />
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Date Range</label>
+                <input type="date" className="w-full p-2 border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Amount Range</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Amount Range</label>
                 <div className="flex gap-2">
-                  <input type="number" placeholder="Min" className="w-full p-2 border rounded-lg" style={{ fontFamily: "'Jost', sans-serif" }} />
-                  <input type="number" placeholder="Max" className="w-full p-2 border rounded-lg" style={{ fontFamily: "'Jost', sans-serif" }} />
+                  <input type="number" placeholder="Min" className="w-full p-2 border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }} />
+                  <input type="number" placeholder="Max" className="w-full p-2 border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }} />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Payment Method</label>
-                <select className="w-full p-2 border rounded-lg" style={{ fontFamily: "'Jost', sans-serif" }}>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Payment Method</label>
+                <select className="w-full p-2 border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
                   <option value="">All Methods</option>
                   <option value="gcash">GCash</option>
                   <option value="maya">Maya</option>
@@ -295,12 +295,12 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
         )}
 
         {/* Payments Table */}
-        <div className="bg-white rounded-3xl shadow-2xl border border-white overflow-hidden mx-auto"
+        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-white dark:border-slate-700 overflow-hidden mx-auto"
           style={{
             boxShadow: '0 4px 32px 0 rgba(252, 211, 77, 0.07)',
           }}>
-          <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 bg-gradient-to-r from-gray-50 to-white">
-            <span className="font-semibold text-gray-700 text-lg" style={{ fontFamily: "'Jost', sans-serif" }}>Payments Table ({filteredData.length})</span>
+          <div className="p-4 border-b border-gray-100 dark:border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 bg-gradient-to-r from-gray-50 to-white dark:from-slate-700 dark:to-slate-800">
+            <span className="font-semibold text-gray-700 dark:text-slate-100 text-lg" style={{ fontFamily: "'Jost', sans-serif" }}>Payments Table ({filteredData.length})</span>
             <button 
               onClick={handleExport}
               disabled={selectedRows.size === 0}
@@ -317,8 +317,8 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
           <div className="overflow-x-auto">
             <table className="min-w-full">
               <thead>
-                <tr className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-200">
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700" style={{ fontFamily: "'Jost', sans-serif" }}>
+                <tr className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-700 dark:to-slate-800 border-b border-gray-200 dark:border-slate-700">
+                  <th className="px-6 py-4 text-left font-semibold text-gray-700 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
                     <input 
                       type="checkbox" 
                       checked={selectedRows.size === filteredData.length && filteredData.length > 0}
@@ -326,20 +326,20 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
                       className="accent-pink-400"
                     />
                   </th>
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700" style={{ fontFamily: "'Jost', sans-serif" }}>Order #</th>
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700 hidden sm:table-cell" style={{ fontFamily: "'Jost', sans-serif" }}>Customer</th>
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700 hidden md:table-cell" style={{ fontFamily: "'Jost', sans-serif" }}>Email</th>
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700 hidden lg:table-cell" style={{ fontFamily: "'Jost', sans-serif" }}>Phone</th>
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700" style={{ fontFamily: "'Jost', sans-serif" }}>Amount</th>
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700 hidden md:table-cell" style={{ fontFamily: "'Jost', sans-serif" }}>Method</th>
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700" style={{ fontFamily: "'Jost', sans-serif" }}>Status</th>
+                  <th className="px-6 py-4 text-left font-semibold text-gray-700 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Order #</th>
+                  <th className="px-6 py-4 text-left font-semibold text-gray-700 dark:text-slate-100 hidden sm:table-cell" style={{ fontFamily: "'Jost', sans-serif" }}>Customer</th>
+                  <th className="px-6 py-4 text-left font-semibold text-gray-700 dark:text-slate-100 hidden md:table-cell" style={{ fontFamily: "'Jost', sans-serif" }}>Email</th>
+                  <th className="px-6 py-4 text-left font-semibold text-gray-700 dark:text-slate-100 hidden lg:table-cell" style={{ fontFamily: "'Jost', sans-serif" }}>Phone</th>
+                  <th className="px-6 py-4 text-left font-semibold text-gray-700 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Amount</th>
+                  <th className="px-6 py-4 text-left font-semibold text-gray-700 dark:text-slate-100 hidden md:table-cell" style={{ fontFamily: "'Jost', sans-serif" }}>Method</th>
+                  <th className="px-6 py-4 text-left font-semibold text-gray-700 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                 {filteredData.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center text-gray-400">
-                      <Icon icon="mdi:cash-remove" className="w-16 h-16 mx-auto mb-3 text-gray-300" />
+                    <td colSpan={8} className="px-6 py-12 text-center text-gray-400 dark:text-slate-500">
+                      <Icon icon="mdi:cash-remove" className="w-16 h-16 mx-auto mb-3 text-gray-300 dark:text-slate-600" />
                       <p className="text-lg" style={{ fontFamily: "'Jost', sans-serif" }}>No payments found</p>
                     </td>
                   </tr>
@@ -347,7 +347,7 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
                   filteredData.map((payment, idx) => (
                     <tr 
                       key={idx} 
-                      className="hover:bg-gray-50 transition-colors duration-200 cursor-pointer" 
+                      className="hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors duration-200 cursor-pointer" 
                       onClick={() => handleRowClick(payment)}
                     >
                       <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
@@ -358,12 +358,12 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
                           className="accent-pink-400"
                         />
                       </td>
-                      <td className="px-6 py-4 font-mono text-pink-700" style={{ fontFamily: "'Jost', sans-serif" }}>{payment.order_number}</td>
-                      <td className="px-6 py-4 hidden sm:table-cell" style={{ fontFamily: "'Jost', sans-serif" }}>{payment.customer_name}</td>
-                      <td className="px-6 py-4 hidden md:table-cell text-xs" style={{ fontFamily: "'Jost', sans-serif" }}>{payment.customer_email}</td>
-                      <td className="px-6 py-4 hidden lg:table-cell" style={{ fontFamily: "'Jost', sans-serif" }}>{payment.customer_phone}</td>
-                      <td className="px-6 py-4 font-semibold" style={{ fontFamily: "'Jost', sans-serif" }}>{formatPrice(payment.total_amount)}</td>
-                      <td className="px-6 py-4 hidden md:table-cell" style={{ fontFamily: "'Jost', sans-serif" }}>{getPaymentMethodLabel(payment.payment_method)}</td>
+                      <td className="px-6 py-4 font-mono text-pink-700 dark:text-pink-400" style={{ fontFamily: "'Jost', sans-serif" }}>{payment.order_number}</td>
+                      <td className="px-6 py-4 hidden sm:table-cell text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{payment.customer_name}</td>
+                      <td className="px-6 py-4 hidden md:table-cell text-xs text-gray-700 dark:text-slate-300" style={{ fontFamily: "'Jost', sans-serif" }}>{payment.customer_email}</td>
+                      <td className="px-6 py-4 hidden lg:table-cell text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{payment.customer_phone}</td>
+                      <td className="px-6 py-4 font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{formatPrice(payment.total_amount)}</td>
+                      <td className="px-6 py-4 hidden md:table-cell text-gray-700 dark:text-slate-300" style={{ fontFamily: "'Jost', sans-serif" }}>{getPaymentMethodLabel(payment.payment_method)}</td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-3 py-1 rounded-xl text-xs font-bold text-white shadow-sm ${getPaymentStatusColor(payment.payment_status)}`} style={{ fontFamily: "'Jost', sans-serif" }}>
                           {payment.payment_status}
@@ -380,16 +380,11 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
         {/* Payment Details Modal */}
         {selectedPayment && (
           <div
-            className="fixed z-50 inset-0 flex items-center justify-center p-2 sm:p-6"
-            style={{
-              backdropFilter: 'blur(8px)',
-              WebkitBackdropFilter: 'blur(8px)',
-              background: 'rgba(255, 215, 0, 0.09)',
-            }}
+            className="fixed z-50 inset-0 flex items-center justify-center p-2 sm:p-6 bg-black/30 backdrop-blur-sm"
             onClick={closeModal}
           >
             <div
-              className="relative bg-gradient-to-br from-yellow-50 via-white to-blue-50 rounded-3xl shadow-2xl border border-yellow-100 flex flex-col"
+              className="relative bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 flex flex-col"
               style={{
                 maxWidth: '800px',
                 width: '100%',
@@ -401,17 +396,11 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
               aria-labelledby="modal-title"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="pointer-events-none absolute -inset-2 rounded-3xl z-0"
-                style={{
-                  background: "radial-gradient(ellipse at top left, rgba(252,211,77,0.15) 0%, rgba(59,130,246,0.10) 100%)",
-                  filter: "blur(8px)",
-                  zIndex: 0
-                }}
-              ></div>
+              
 
               {/* Close button */}
               <button
-                className="absolute top-4 right-4 sm:top-6 sm:right-6 text-gray-400 hover:text-yellow-500 text-2xl z-50 bg-white/70 rounded-full p-1.5 shadow-lg focus:outline-none border border-yellow-100 transition hover:scale-110 hover:rotate-90"
+                className="absolute top-4 right-4 sm:top-6 sm:right-6 text-gray-400 dark:text-slate-400 hover:text-yellow-500 dark:hover:text-yellow-400 text-2xl z-50 bg-white/70 dark:bg-slate-800/70 rounded-full p-1.5 shadow-lg focus:outline-none border border-yellow-100 dark:border-slate-700 transition hover:scale-110 hover:rotate-90"
                 onClick={closeModal}
                 aria-label="Close modal"
                 type="button"
@@ -420,12 +409,12 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
               </button>
 
               <div className="p-4 sm:p-10 pb-2 relative z-10 flex-1 w-full overflow-y-auto">
-                <h3 id="modal-title" className="text-2xl sm:text-3xl font-extrabold mb-5 text-gray-800 flex items-center gap-2" style={{ fontFamily: "'Jost', sans-serif" }}>
-                  <Icon icon="mdi:credit-card" className="text-yellow-400 text-xl sm:text-2xl" />
+                <h3 id="modal-title" className="text-2xl sm:text-3xl font-extrabold mb-5 text-gray-800 dark:text-slate-100 flex items-center gap-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  <Icon icon="mdi:credit-card" className="text-yellow-400 dark:text-yellow-500 text-xl sm:text-2xl" />
                   Payment Details
                 </h3>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8 text-gray-800">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8 text-gray-800 dark:text-slate-200">
                   {/* LEFT: Customer & Payment Details */}
                   <div className="space-y-4 sm:space-y-6">
                     <div>

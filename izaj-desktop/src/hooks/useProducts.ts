@@ -72,22 +72,39 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
     }
   }, [session]);
 
+  // Helper function to fetch products without managing isFetching state
+  // This is used internally to avoid state conflicts when called from handleFetchProducts
+  const fetchAllProductsFromDB = useCallback(async () => {
+    if (!session?.access_token) return [];
+    
+    try {
+      // Use fetchAdminProducts to get ALL products (including unpublished ones)
+      const products = await ProductService.fetchAdminProducts(session);
+      const merged = await mergeStockData(products);
+      console.log('📦 [useProducts] Fetched products from DB:', merged.length);
+      return merged;
+    } catch (error) {
+      console.error('Error fetching admin products:', error);
+      return [];
+    }
+  }, [session, mergeStockData]);
+
   const loadExistingProducts = useCallback(async () => {
     if (!session?.access_token) return;
     
     setIsFetching(true);
     try {
-      // Use fetchAdminProducts to get ALL products (including unpublished ones)
-      const products = await ProductService.fetchAdminProducts(session);
-      const merged = await mergeStockData(products);
-      setPublishedProducts(merged);
-      setHasLoadedFromDB(true);
+      const products = await fetchAllProductsFromDB();
+      if (products.length > 0) {
+        setPublishedProducts(products);
+        setHasLoadedFromDB(true);
+      }
     } catch (error) {
       console.error('Error loading admin products:', error);
     } finally {
       setIsFetching(false);
     }
-  }, [session, mergeStockData]);
+  }, [session, fetchAllProductsFromDB]);
 
   const checkStockStatus = useCallback(async () => {
     if (!session?.access_token) return;
@@ -126,19 +143,34 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
         setFetchSuccess(true);
         setSyncStats({ synced: data.synced || 0, skipped: data.skipped || 0 });
         
+        // Reload all products from client DB to ensure full product list is displayed
+        const reloadedProducts = await fetchAllProductsFromDB();
+        if (reloadedProducts.length > 0) {
+          setPublishedProducts(reloadedProducts);
+          setHasLoadedFromDB(true);
+          console.log('📦 [useProducts] Reloaded products after incremental sync (0 new):', reloadedProducts.length);
+        }
+        
         if (isManualSync) {
           toast.success(`Sync completed. No new products to fetch. (${data.synced || 0} synced, ${data.skipped || 0} skipped)`);
         }
         return;
       } else {
         // First sync returned 0 products - this is valid
-        setPublishedProducts([]);
         setLastFetchTime(data.timestamp);
         localStorage.setItem('lastFetchTime', data.timestamp);
         setFetchSuccess(true);
         setSyncStats({ synced: data.synced || 0, skipped: data.skipped || 0 });
         
         await fetchPendingCount();
+        
+        // Reload all products from client DB to ensure full product list is displayed
+        const reloadedProducts = await fetchAllProductsFromDB();
+        if (reloadedProducts.length > 0) {
+          setPublishedProducts(reloadedProducts);
+          setHasLoadedFromDB(true);
+          console.log('📦 [useProducts] Reloaded products after first sync (0 new):', reloadedProducts.length);
+        }
         
         if (isManualSync) {
           toast.success('Sync completed successfully. No products found in centralized database.');
@@ -169,6 +201,18 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
 
     await fetchPendingCount();
 
+    // Reload all products from client DB to ensure full product list is displayed
+    // This is critical for admin accounts to see all their products after sync
+    // Use fetchAllProductsFromDB instead of loadExistingProducts to avoid isFetching state conflict
+    const reloadedProducts = await fetchAllProductsFromDB();
+    if (reloadedProducts.length > 0) {
+      setPublishedProducts(reloadedProducts);
+      setHasLoadedFromDB(true);
+      console.log('📦 [useProducts] Reloaded products after sync:', reloadedProducts.length);
+    } else {
+      console.warn('⚠️ [useProducts] No products loaded from DB after sync');
+    }
+
     if (isManualSync) {
       const successMessage = generateSyncMessage(newProducts.length, data.synced, data.skipped);
       toast.success(successMessage);
@@ -188,7 +232,7 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
     setIsFetching(false);
     fetchingRef.current = false;
   }
-}, [session, lastFetchTime, fetchPendingCount, checkStockStatus, mergeStockData]);
+}, [session, lastFetchTime, fetchPendingCount, checkStockStatus, mergeStockData, fetchAllProductsFromDB]);
 
   const refreshProductsData = useCallback(async () => {
     // Reset fetchSuccess when refreshing after adding products

@@ -22,15 +22,22 @@ export const DarkModeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return false;
   });
 
+  // Apply dark class on initial mount based on state
   useEffect(() => {
-    // Apply or remove dark class to html element
-    console.log('Dark mode state:', isDarkMode);
+    // Apply or remove dark class to html element immediately
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
-      console.log('Added dark class to html');
     } else {
       document.documentElement.classList.remove('dark');
-      console.log('Removed dark class from html');
+    }
+  }, []); // Run once on mount
+
+  useEffect(() => {
+    // Apply or remove dark class to html element when state changes
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
     }
     
     // Save preference to localStorage

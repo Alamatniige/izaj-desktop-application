@@ -30,14 +30,14 @@ export default function ForgotPass({ onLogin, handleNavigation }: ForgotPassProp
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 via-slate-50 to-gray-100 relative overflow-hidden">
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 via-slate-50 to-gray-100 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 relative overflow-hidden">
       {/* Background decorative elements */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-100/20 to-indigo-100/20 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-slate-100/20 to-gray-100/20 rounded-full blur-3xl"></div>
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-100/20 to-indigo-100/20 dark:from-blue-900/10 dark:to-indigo-900/10 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-slate-100/20 to-gray-100/20 dark:from-slate-800/10 dark:to-gray-800/10 rounded-full blur-3xl"></div>
       </div>
       
-      <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl border border-gray-200/50 px-12 py-8 w-full max-w-lg flex flex-col items-center relative z-10">
+      <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-gray-200/50 dark:border-slate-700/50 px-12 py-8 w-full max-w-lg flex flex-col items-center relative z-10">
         {/* Logo */}
         <div className="absolute -top-12 left-1/2 -translate-x-1/2">
           <img
@@ -49,7 +49,7 @@ export default function ForgotPass({ onLogin, handleNavigation }: ForgotPassProp
 
         <div className="mt-12 mb-3 flex flex-col items-center">
           <h2
-            className="text-4xl font-bold mb-1 text-gray-800"
+            className="text-4xl font-bold mb-1 text-gray-800 dark:text-slate-100"
             style={{
               fontFamily: "'Playfair Display', serif",
               letterSpacing: '8px',
@@ -58,13 +58,13 @@ export default function ForgotPass({ onLogin, handleNavigation }: ForgotPassProp
           >
             IZAJ
           </h2>
-          <span className="text-gray-600 font-semibold tracking-[0.3em] text-xs mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>
+          <span className="text-gray-600 dark:text-slate-400 font-semibold tracking-[0.3em] text-xs mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>
             ADMIN PANEL
           </span>
-          <div className="w-16 h-0.5 bg-gradient-to-r from-gray-300 to-slate-300 rounded-full"></div>
+          <div className="w-16 h-0.5 bg-gradient-to-r from-gray-300 to-slate-300 dark:from-slate-600 dark:to-slate-500 rounded-full"></div>
         </div>
 
-        <div className="text-gray-600 mb-6 text-sm font-medium" style={{ fontFamily: "'Jost', sans-serif" }}>Forgot Your Password?</div>
+        <div className="text-gray-600 dark:text-slate-400 mb-6 text-sm font-medium" style={{ fontFamily: "'Jost', sans-serif" }}>Forgot Your Password?</div>
 
         <form onSubmit={onSubmit} className="w-full space-y-4">
           {error && (
@@ -88,7 +88,7 @@ export default function ForgotPass({ onLogin, handleNavigation }: ForgotPassProp
               <input
                 type="email"
                 disabled={loading}
-                className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-400 bg-gray-50/50 shadow-sm hover:shadow-md transition-all duration-200 placeholder-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full pl-12 pr-4 py-3 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-amber-500 focus:border-gray-400 dark:focus:border-amber-500 bg-gray-50/50 dark:bg-slate-700/50 shadow-sm hover:shadow-md transition-all duration-200 placeholder-gray-400 dark:placeholder-slate-400 text-gray-900 dark:text-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ fontFamily: "'Jost', sans-serif" }}
                 value={email}
                 onChange={e => setEmail(e.target.value)}
@@ -101,7 +101,7 @@ export default function ForgotPass({ onLogin, handleNavigation }: ForgotPassProp
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gray-800 text-white py-3 rounded-xl font-semibold hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 active:translate-y-0 mt-4 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            className="w-full bg-gray-800 dark:bg-amber-600 text-white py-3 rounded-xl font-semibold hover:bg-gray-700 dark:hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-amber-500 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 active:translate-y-0 mt-4 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             style={{ fontFamily: "'Jost', sans-serif" }}
           >
             {loading ? (
@@ -131,12 +131,12 @@ export default function ForgotPass({ onLogin, handleNavigation }: ForgotPassProp
           </button>
         </div>
 
-        <div className="mt-6 pt-4 border-t border-gray-200">
-          <div className="text-xs text-gray-500 text-center">
+        <div className="mt-6 pt-4 border-t border-gray-200 dark:border-slate-700">
+          <div className="text-xs text-gray-500 dark:text-slate-400 text-center">
             <div className="flex items-center justify-center space-x-2 mb-2">
-              <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+              <div className="w-2 h-2 bg-gray-400 dark:bg-slate-500 rounded-full"></div>
               <span className="font-medium" style={{ fontFamily: "'Jost', sans-serif" }}>Secure Admin Access</span>
-              <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+              <div className="w-2 h-2 bg-gray-400 dark:bg-slate-500 rounded-full"></div>
             </div>
             <div style={{ fontFamily: "'Jost', sans-serif" }}>© {new Date().getFullYear()} IZAJ Lighting Centre. All rights reserved.</div>
           </div>
