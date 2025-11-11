@@ -21,7 +21,6 @@ import {
 } from '../utils/productUtils';
 import { useFilter } from '../hooks/useFilter';
 import { FetchedProduct } from '../types/product';
-import { ProductService } from '../services/productService';
 import { useEffect } from 'react';
 
 interface ProductsProps {
@@ -36,7 +35,6 @@ export function Products({ showAddProductModal, setShowAddProductModal, session,
   const [view, setView] = useState<ViewType>('products');
   const [selectedProductForView, setSelectedProductForView] = useState<FetchedProduct | null>(null);
   const [showAddSaleModal, setShowAddSaleModal] = useState(false);
-  const [isBulkPublishing, setIsBulkPublishing] = useState(false);
   
   const {
     publishedProducts,
@@ -109,7 +107,8 @@ const handleViewChange = (newView: ViewType) => {
     if (hasLoadedFromDB) {
       updatePublishedProducts();
     }
-  }, [hasLoadedFromDB, updatePublishedProducts]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasLoadedFromDB]); // Only run when hasLoadedFromDB changes, not when updatePublishedProducts changes
 
   // Helper: get latest stock using normalized product_id from stock-status
   const getLatestDisplayQty = useCallback((p: FetchedProduct): number => {
@@ -133,31 +132,6 @@ const handleViewChange = (newView: ViewType) => {
     const base = p.display_quantity ?? 0;
     return latest === 0 && base > 0 ? base : latest;
   }, [getLatestDisplayQty]);
-
-  // Count products ready to publish to website (is_published = true, publish_status = false)
-  const productsReadyToPublish = publishedProducts.filter(
-    p => p.is_published === true && p.publish_status === false
-  ).length;
-
-  const handleBulkPublishToWebsite = useCallback(async () => {
-    if (productsReadyToPublish === 0) {
-      toast.error('No products ready to publish');
-      return;
-    }
-
-    setIsBulkPublishing(true);
-    try {
-      const result = await ProductService.bulkPublishToWebsite(session);
-      toast.success(result.message || `Successfully published ${result.count} products to website`);
-      await refreshProductsData();
-      await updatePublishedProducts();
-    } catch (error) {
-      console.error('Error bulk publishing products:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to publish products to website');
-    } finally {
-      setIsBulkPublishing(false);
-    }
-  }, [session, productsReadyToPublish, refreshProductsData, updatePublishedProducts]);
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -263,26 +237,6 @@ const handleViewChange = (newView: ViewType) => {
                     />
                     <span className="text-sm">{isFetching ? 'Syncing...' : fetchSuccess ? 'Synced' : 'Sync Products'}</span>
                   </button>
-
-                  
-
-                  {/* Bulk Publish to Website Button */}
-                  {productsReadyToPublish > 0 && (
-                    <button
-                      onClick={handleBulkPublishToWebsite}
-                      disabled={isBulkPublishing}
-                      className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:bg-blue-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                      style={{ fontFamily: "'Jost', sans-serif" }}
-                    >
-                      <Icon 
-                        icon={isBulkPublishing ? "mdi:loading" : "mdi:web"} 
-                        className={`text-lg ${isBulkPublishing ? 'animate-spin' : ''}`} 
-                      />
-                      <span className="text-sm">
-                        {isBulkPublishing ? 'Publishing...' : `Publish to Website (${productsReadyToPublish})`}
-                      </span>
-                    </button>
-                  )}
 
                   {/* Add Product button */}
                   <button

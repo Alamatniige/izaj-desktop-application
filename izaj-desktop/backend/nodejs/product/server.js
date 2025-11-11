@@ -276,10 +276,30 @@ router.get('/products', authenticate, async (req, res) => {
   });
 
 // GET /api/client-products - Get published products for client app with pagination and filters
+// Supports optional authentication for role-based filtering
 router.get('/client-products', async (req, res) => {
   try {
     const { page = 1, limit = 100, status, category, search } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    // Check if user is authenticated (for role-based filtering)
+    // Try to authenticate if Authorization header is present
+    let adminContext = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+        
+        if (!authError && user) {
+          // User is authenticated, get admin context for role-based filtering
+          adminContext = await getAdminContext(user.id);
+        }
+      } catch (err) {
+        // If authentication fails, proceed without role-based filtering (for client app)
+        console.warn('Optional auth failed, proceeding without role-based filter:', err.message);
+      }
+    }
 
     let query = supabase
       .from('products')
@@ -304,6 +324,26 @@ router.get('/client-products', async (req, res) => {
         )
       `)
       .order('inserted_at', { ascending: false });
+
+    // Apply role-based filtering if user is authenticated and not SuperAdmin
+    if (adminContext && !adminContext.isSuperAdmin) {
+      if (!adminContext.assignedCategories || adminContext.assignedCategories.length === 0) {
+        // No categories assigned - return empty result
+        return res.json({
+          success: true,
+          products: [],
+          pagination: {
+            page: parseInt(page),
+            limit: parseInt(limit),
+            total: 0,
+            totalPages: 0
+          },
+          timestamp: new Date().toISOString()
+        });
+      }
+      // Filter by assigned categories
+      query = query.in('category', adminContext.assignedCategories);
+    }
 
     // Filter by publish_status when status is 'active' (for Stock page)
     if (status === 'active') {
@@ -349,6 +389,16 @@ router.get('/client-products', async (req, res) => {
     let countQuery = supabase
       .from('products')
       .select('*', { count: 'exact', head: true });
+
+    // Apply role-based filtering to count query if user is authenticated and not SuperAdmin
+    if (adminContext && !adminContext.isSuperAdmin) {
+      if (adminContext.assignedCategories && adminContext.assignedCategories.length > 0) {
+        countQuery = countQuery.in('category', adminContext.assignedCategories);
+      } else {
+        // No categories assigned - count is 0
+        countQuery = countQuery.eq('id', -1); // Impossible condition to return 0
+      }
+    }
 
     if (status === 'active') {
       countQuery = countQuery.eq('publish_status', true);
@@ -494,12 +544,47 @@ router.get('/products/:productId/media', async (req, res) => {
 // GET /api/client-products/categories - Get unique product categories for filters
 router.get('/client-products/categories', async (req, res) => {
   try {
-    const { data: categories, error } = await supabase
+    // Check if user is authenticated (for role-based filtering)
+    let adminContext = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+        
+        if (!authError && user) {
+          // User is authenticated, get admin context for role-based filtering
+          adminContext = await getAdminContext(user.id);
+        }
+      } catch (err) {
+        // If authentication fails, proceed without role-based filtering (for client app)
+        console.warn('Optional auth failed, proceeding without role-based filter:', err.message);
+      }
+    }
+
+    let query = supabase
       .from('products')
       .select('category')
       .eq('publish_status', true)
-      .not('category', 'is', null)
-      .order('category');
+      .not('category', 'is', null);
+
+    // Apply role-based filtering if user is authenticated and not SuperAdmin
+    if (adminContext && !adminContext.isSuperAdmin) {
+      if (!adminContext.assignedCategories || adminContext.assignedCategories.length === 0) {
+        // No categories assigned - return empty array
+        return res.json({
+          success: true,
+          categories: [],
+          timestamp: new Date().toISOString()
+        });
+      }
+      // Filter by assigned categories
+      query = query.in('category', adminContext.assignedCategories);
+    }
+
+    query = query.order('category');
+
+    const { data: categories, error } = await query;
 
     if (error) {
       return res.status(500).json({
@@ -602,7 +687,39 @@ router.get('/active-client-products', async (req, res) => {
   const normalizedStatus = rawStatus.toString().trim().toLowerCase();
     
   try {
+    // Check if user is authenticated (for role-based filtering)
+    let adminContext = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+        
+        if (!authError && user) {
+          // User is authenticated, get admin context for role-based filtering
+          adminContext = await getAdminContext(user.id);
+        }
+      } catch (err) {
+        // If authentication fails, proceed without role-based filtering (for client app)
+        console.warn('Optional auth failed, proceeding without role-based filter:', err.message);
+      }
+    }
+
     let query = supabase.from('products').select('*');
+
+    // Apply role-based filtering if user is authenticated and not SuperAdmin
+    if (adminContext && !adminContext.isSuperAdmin) {
+      if (!adminContext.assignedCategories || adminContext.assignedCategories.length === 0) {
+        // No categories assigned - return empty array
+        return res.json({
+          success: true,
+          products: [],
+          timestamp: new Date().toISOString()
+        });
+      }
+      // Filter by assigned categories
+      query = query.in('category', adminContext.assignedCategories);
+    }
 
     if (normalizedStatus === 'active') {
       query = query.eq('publish_status', true);

@@ -8,6 +8,8 @@ const router = express.Router();
 
 
 // POST - Create new admin desktop side user (SuperAdmin only)
+// IMPORTANT: Admin users are ONLY stored in adminUser table, NOT in profiles table
+// Any profile entries that might be auto-created by database triggers are immediately deleted
 router.post('/addUsers', authenticate, async (req, res) => {
   try {
     // Check if requester is SuperAdmin
@@ -35,6 +37,8 @@ router.post('/addUsers', authenticate, async (req, res) => {
     // Use admin.createUser instead of signUp to ensure the user is immediately
     // available in auth.users for the foreign key constraint
     // email_confirm: false means they still need to confirm their email before logging in
+    // NOTE: This might trigger a database function that auto-creates a profile entry,
+    // but we will immediately delete it to ensure admin users only exist in adminUser table
     const { data, error } = await supabase.auth.admin.createUser({
       email,
       password: defaultPassword,
@@ -74,6 +78,9 @@ router.post('/addUsers', authenticate, async (req, res) => {
     // Insert into adminUser table
     // The user_id references auth.users(id) which was created by admin.createUser above
     // admin.createUser ensures the user is immediately available in auth.users
+    // Set initial status to false (inactive) - will be set to true when user accepts invite
+    adminUserData.status = false;
+    
     const { error: dbError } = await supabase
       .from('adminUser')
       .insert([adminUserData]);
@@ -88,17 +95,113 @@ router.post('/addUsers', authenticate, async (req, res) => {
       return res.status(500).json({ error: dbError.message });
     }
 
+    // CRITICAL: Clean up any profile entry that might have been auto-created for this admin user
+    // Admin users should ONLY exist in adminUser table, NOT in profiles table
+    // This prevents admin users from being counted as customers in dashboard stats
+    try {
+      // Wait a brief moment in case there's a database trigger that creates the profile asynchronously
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Delete from profiles table
+      const { error: profileDeleteError, data: deletedProfiles } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userId)
+        .select();
+
+      if (profileDeleteError) {
+        console.error(`❌ [Admin User] Failed to delete profile for admin user ${userId}:`, profileDeleteError.message);
+        // Try one more time after a short delay
+        await new Promise(resolve => setTimeout(resolve, 200));
+        const { error: retryError } = await supabase
+          .from('profiles')
+          .delete()
+          .eq('id', userId);
+        
+        if (retryError) {
+          console.error(`❌ [Admin User] Retry also failed for ${userId}:`, retryError.message);
+        } else {
+          console.log(`✅ [Admin User] Successfully deleted profile on retry for admin user ${userId}`);
+        }
+      } else {
+        const deletedCount = deletedProfiles ? deletedProfiles.length : 0;
+        if (deletedCount > 0) {
+          console.log(`✅ [Admin User] Cleaned up ${deletedCount} profile entry/entries for admin user ${userId}`);
+        } else {
+          console.log(`ℹ️ [Admin User] No profile entry found for admin user ${userId} (already clean)`);
+        }
+      }
+
+      // Also try to delete from user_profiles table if it exists (might be a view/alias)
+      try {
+        const { error: userProfilesDeleteError } = await supabase
+          .from('user_profiles')
+          .delete()
+          .eq('id', userId);
+
+        if (userProfilesDeleteError && !userProfilesDeleteError.message.includes('does not exist')) {
+          console.warn(`⚠️ [Admin User] Could not delete from user_profiles for ${userId}:`, userProfilesDeleteError.message);
+        }
+      } catch (userProfilesErr) {
+        // Non-fatal: user_profiles might not exist or might be a view
+        console.log(`ℹ️ [Admin User] user_profiles cleanup skipped for ${userId}`);
+      }
+
+      // Final verification: Check if profile still exists
+      const { data: remainingProfile, error: checkError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (!checkError && remainingProfile) {
+        console.error(`❌ [Admin User] WARNING: Profile still exists for admin user ${userId} after cleanup attempt!`);
+        // Try one final deletion
+        await supabase
+          .from('profiles')
+          .delete()
+          .eq('id', userId);
+      } else {
+        console.log(`✅ [Admin User] Verified: No profile entry exists for admin user ${userId}`);
+      }
+    } catch (cleanupError) {
+      console.error(`❌ [Admin User] Exception during profile cleanup for ${userId}:`, cleanupError);
+      // Non-fatal error, but log it for monitoring
+    }
+
     // Send invitation email via Supabase (uses your configured SMTP — set Gmail in Supabase Auth settings)
     try {
-      const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
-        redirectTo: 'izaj://login'
+      // Determine the redirect URL based on environment
+      // For development, use localhost. For production, use the production URL
+      const isDevelopment = process.env.NODE_ENV !== 'production';
+      const redirectUrl = isDevelopment 
+        ? 'http://localhost:3000/accept-invite'
+        : (process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/accept-invite` : 'http://localhost:3000/accept-invite');
+      
+      console.log(`📧 [Invite] Sending invite to ${email} with redirect URL: ${redirectUrl}`);
+      console.log(`📧 [Invite] IMPORTANT: Make sure "${redirectUrl}" is added to Supabase Dashboard > Authentication > URL Configuration > Redirect URLs`);
+      console.log(`📧 [Invite] Also check: Site URL should be set to your frontend URL (e.g., http://localhost:3000)`);
+      
+      // Use data parameter to get the invite link if needed
+      const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
+        redirectTo: redirectUrl,
+        data: {
+          redirect_url: redirectUrl // Additional data that might be used
+        }
       });
+      
       if (inviteError) {
         // Non-fatal: user is created; frontend can offer manual resend later
-        console.warn('Failed to send invite email:', inviteError.message);
+        console.error('❌ [Invite] Failed to send invite email:', inviteError.message);
+        console.error('❌ [Invite] Error details:', JSON.stringify(inviteError, null, 2));
+      } else {
+        console.log(`✅ [Invite] Invite email sent successfully to ${email}`);
+        if (inviteData) {
+          console.log(`📧 [Invite] Invite data:`, JSON.stringify(inviteData, null, 2));
+        }
       }
     } catch (inviteEx) {
-      console.warn('Exception sending invite email:', inviteEx);
+      console.error('❌ [Invite] Exception sending invite email:', inviteEx);
     }
 
     await logAuditEvent(req.user.id, AuditActions.CREATE_USER, {
@@ -406,6 +509,72 @@ router.put('/users/:id/assignments', authenticate, async (req, res) => {
   }
 });
 
+// POST - Activate user when they accept invite (no auth required, uses tokens from invite)
+router.post('/activate-invite', async (req, res) => {
+  try {
+    const { access_token, refresh_token } = req.body;
+
+    if (!access_token || !refresh_token) {
+      return res.status(400).json({ error: 'Access token and refresh token are required' });
+    }
+
+    // Set session using the tokens from invite
+    const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+      access_token: access_token,
+      refresh_token: refresh_token
+    });
+
+    if (sessionError || !sessionData.session) {
+      console.error('Invalid invite tokens:', sessionError?.message);
+      return res.status(400).json({ 
+        error: sessionError?.message || 'Invalid or expired invite tokens. Please request a new invitation.' 
+      });
+    }
+
+    const userId = sessionData.session.user.id;
+
+    // Check if user exists in adminUser table
+    const { data: adminUser, error: fetchError } = await supabase
+      .from('adminUser')
+      .select('user_id, name, role, status')
+      .eq('user_id', userId)
+      .single();
+
+    if (fetchError || !adminUser) {
+      console.error('Admin user not found:', fetchError?.message);
+      return res.status(404).json({ error: 'User not found. Please contact administrator.' });
+    }
+
+    // Update status to true (active) if not already active
+    if (adminUser.status !== true) {
+      const { error: updateError } = await supabase
+        .from('adminUser')
+        .update({ status: true })
+        .eq('user_id', userId);
+
+      if (updateError) {
+        console.error('Error updating user status:', updateError.message);
+        return res.status(500).json({ error: 'Failed to activate account. Please contact administrator.' });
+      }
+
+      console.log(`✅ User ${adminUser.name} (${userId}) activated after accepting invite`);
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Account activated successfully',
+      user: {
+        id: userId,
+        name: adminUser.name,
+        role: adminUser.role
+      }
+    });
+  } catch (error) {
+    console.error('Error activating invite:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+});
+
 // GET - Get current user's admin context (for frontend)
 router.get('/me', authenticate, async (req, res) => {
   try {
@@ -444,6 +613,83 @@ router.get('/me', authenticate, async (req, res) => {
     });
   } catch (error) {
     console.error('❌ [Admin Context] Exception:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+});
+
+// POST - Cleanup: Remove admin users from profiles table (SuperAdmin only)
+router.post('/cleanup-profiles', authenticate, async (req, res) => {
+  try {
+    // Check if requester is SuperAdmin
+    const requesterIsSuperAdmin = await isSuperAdmin(req.user.id);
+    if (!requesterIsSuperAdmin) {
+      return res.status(403).json({ error: 'Access denied. Only SuperAdmin can cleanup profiles.' });
+    }
+
+    // Get all admin user IDs
+    const { data: adminUsers, error: adminUsersError } = await supabase
+      .from('adminUser')
+      .select('user_id');
+
+    if (adminUsersError) {
+      return res.status(500).json({ error: `Failed to fetch admin users: ${adminUsersError.message}` });
+    }
+
+    if (!adminUsers || adminUsers.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No admin users found. Nothing to cleanup.',
+        deleted: 0
+      });
+    }
+
+    const adminUserIds = adminUsers.map(admin => admin.user_id);
+    
+    // Delete profiles for all admin users from 'profiles' table
+    const { data: deletedProfiles, error: deleteError } = await supabase
+      .from('profiles')
+      .delete()
+      .in('id', adminUserIds)
+      .select();
+
+    if (deleteError) {
+      console.error('Error deleting admin user profiles:', deleteError);
+      return res.status(500).json({ error: `Failed to delete profiles: ${deleteError.message}` });
+    }
+
+    const deletedCount = deletedProfiles ? deletedProfiles.length : 0;
+
+    // Also try to delete from 'user_profiles' table if it exists (might be a view/alias)
+    try {
+      const { error: userProfilesDeleteError } = await supabase
+        .from('user_profiles')
+        .delete()
+        .in('id', adminUserIds);
+
+      if (userProfilesDeleteError) {
+        // Non-fatal: user_profiles might not exist or might be a view
+        console.log('Note: Could not delete from user_profiles (might be a view or not exist)');
+      }
+    } catch (err) {
+      // Non-fatal error
+      console.log('Note: user_profiles cleanup skipped');
+    }
+
+    await logAuditEvent(req.user.id, AuditActions.DELETE_USER, {
+      action: 'cleanup_profiles',
+      adminUserIds: adminUserIds,
+      deletedCount: deletedCount,
+      success: true
+    }, req);
+
+    res.json({
+      success: true,
+      message: `Successfully removed ${deletedCount} admin user profile(s) from profiles table.`,
+      deleted: deletedCount,
+      adminUserIds: adminUserIds
+    });
+  } catch (error) {
+    console.error('Error cleaning up admin user profiles:', error);
     res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 });

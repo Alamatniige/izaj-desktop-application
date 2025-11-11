@@ -44,11 +44,22 @@ export function DeepLinkHandler() {
     if (__pendingDeepLinkUrl) {
       const parsed = parseDeepLink(__pendingDeepLinkUrl);
       __pendingDeepLinkUrl = null;
-      if (parsed && parsed.route && parsed.route.startsWith('update-password')) {
-        const search = new URLSearchParams();
-        if (parsed.accessToken) search.set('access_token', parsed.accessToken);
-        if (parsed.refreshToken) search.set('refresh_token', parsed.refreshToken);
-        navigate(`/update-password?${search.toString()}`, { replace: true });
+      if (parsed && parsed.route) {
+        if (parsed.route.startsWith('update-password')) {
+          const search = new URLSearchParams();
+          if (parsed.accessToken) search.set('access_token', parsed.accessToken);
+          if (parsed.refreshToken) search.set('refresh_token', parsed.refreshToken);
+          // Use replace: true to prevent back navigation and ensure it happens immediately
+          navigate(`/update-password?${search.toString()}`, { replace: true });
+          return; // Exit early to prevent setting up listener if we're already handling a deep link
+        } else if (parsed.route === 'login') {
+          const search = new URLSearchParams();
+          if (parsed.accessToken) search.set('access_token', parsed.accessToken);
+          if (parsed.refreshToken) search.set('refresh_token', parsed.refreshToken);
+          // Navigate to login page with tokens (for invite acceptance)
+          navigate(`/?${search.toString()}`, { replace: true });
+          return;
+        }
       }
     }
 
@@ -56,11 +67,20 @@ export function DeepLinkHandler() {
       const url = typeof payload === 'string' ? payload : payload?.url ?? '';
       const parsed = parseDeepLink(url);
       if (!parsed) return;
-      if (parsed.route && parsed.route.startsWith('update-password')) {
-        const search = new URLSearchParams();
-        if (parsed.accessToken) search.set('access_token', parsed.accessToken);
-        if (parsed.refreshToken) search.set('refresh_token', parsed.refreshToken);
-        navigate(`/update-password?${search.toString()}`, { replace: true });
+      if (parsed.route) {
+        if (parsed.route.startsWith('update-password')) {
+          const search = new URLSearchParams();
+          if (parsed.accessToken) search.set('access_token', parsed.accessToken);
+          if (parsed.refreshToken) search.set('refresh_token', parsed.refreshToken);
+          // Immediately navigate to update-password page
+          navigate(`/update-password?${search.toString()}`, { replace: true });
+        } else if (parsed.route === 'login') {
+          const search = new URLSearchParams();
+          if (parsed.accessToken) search.set('access_token', parsed.accessToken);
+          if (parsed.refreshToken) search.set('refresh_token', parsed.refreshToken);
+          // Navigate to login page with tokens (for invite acceptance)
+          navigate(`/?${search.toString()}`, { replace: true });
+        }
       }
     });
 

@@ -24,9 +24,13 @@ export const useFilter = (session: Session | null, options: UseFilterOptions = {
   const normalizedStatus = statusFilter.toLowerCase();
   const { enabled = true, initialProducts } = options;
 
-  // Apply filters to products
-  const applyFilters = useCallback((products: FetchedProduct[]) => {
-    let filtered = [...products];
+  // Compute filtered products using useMemo to prevent flickering
+  const computedFilteredProducts = useMemo(() => {
+    if (!initialProducts || initialProducts.length === 0) {
+      return [];
+    }
+    
+    let filtered = [...initialProducts];
     
     // Apply status filter
     if (statusFilter === 'All') {
@@ -48,13 +52,17 @@ export const useFilter = (session: Session | null, options: UseFilterOptions = {
       });
     }
     
-    setFilteredProducts(filtered);
-  }, [statusFilter, selectedCategory]);
+    return filtered;
+  }, [initialProducts, statusFilter, selectedCategory]);
   
-  // Seed with provided products when present
+  // Update filtered products state when computed products change
   useEffect(() => {
-    if (initialProducts) {
-      // Extract categories from initial products (normalize to string)
+    setFilteredProducts(computedFilteredProducts);
+  }, [computedFilteredProducts]);
+  
+  // Extract categories from initial products
+  useEffect(() => {
+    if (initialProducts && initialProducts.length > 0) {
       const productCategories = Array.from(
         new Set(
           initialProducts
@@ -63,15 +71,8 @@ export const useFilter = (session: Session | null, options: UseFilterOptions = {
         )
       );
       setCategories(['All', ...productCategories]);
-      
-      // Filter products based on status filter
-      if (initialProducts.length > 0) {
-        applyFilters(initialProducts);
-      } else {
-        setFilteredProducts([]);
-      }
     }
-  }, [initialProducts, statusFilter, selectedCategory, applyFilters]);
+  }, [initialProducts]);
 
     const fetchCategories = useCallback(async () => {
     if (!enabled || !session?.access_token) return;

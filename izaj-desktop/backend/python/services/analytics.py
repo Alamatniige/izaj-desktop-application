@@ -25,13 +25,23 @@ class AnalyticsService:
         else:  # month
             start_date = now - timedelta(days=30)
         
-        # Get total customers count (all profiles)
-        customer_response = self.supabase.table('profiles').select('*', count='exact').execute()
-        total_customers = customer_response.count or 0
+        # Get all admin user IDs to exclude from customer count
+        admin_users_response = self.supabase.table('adminUser').select('user_id').execute()
+        admin_user_ids = [admin['user_id'] for admin in (admin_users_response.data or [])]
         
-        # Get period customers count (in date range and non-admin)
-        period_customer_response = self.supabase.table('profiles').select('*', count='exact').gte('created_at', start_date.isoformat()).execute()
-        period_customers = period_customer_response.count or 0
+        # Get all customer profiles (excluding admin users)
+        customer_response = self.supabase.table('profiles').select('id').execute()
+        customer_profiles = customer_response.data or []
+        
+        # Filter out admin users
+        total_customers = len([p for p in customer_profiles if p.get('id') not in admin_user_ids])
+        
+        # Get period customers count (in date range, excluding admin users)
+        period_customer_response = self.supabase.table('profiles').select('id').gte('created_at', start_date.isoformat()).execute()
+        period_customer_profiles = period_customer_response.data or []
+        
+        # Filter out admin users
+        period_customers = len([p for p in period_customer_profiles if p.get('id') not in admin_user_ids])
         
         # Get order statistics
         orders_response = self.supabase.table('orders').select('status, total_amount, created_at').execute()
