@@ -47,6 +47,7 @@ export interface UpdateOrderOptions {
   tracking_number?: string;
   courier?: string;
   admin_notes?: string;
+  shipping_fee?: number;
 }
 
 export class OrderService {

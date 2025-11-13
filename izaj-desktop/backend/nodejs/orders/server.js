@@ -133,7 +133,7 @@ router.get('/orders/:id', authenticate, async (req, res) => {
 router.put('/orders/:id/status', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, tracking_number, courier, admin_notes } = req.body;
+    const { status, tracking_number, courier, admin_notes, shipping_fee } = req.body;
 
     // Removed verbose log to reduce terminal noise
 
@@ -174,6 +174,13 @@ router.put('/orders/:id/status', authenticate, async (req, res) => {
     if (tracking_number) updateData.tracking_number = tracking_number;
     if (courier) updateData.courier = courier;
     if (admin_notes) updateData.admin_notes = admin_notes;
+    // Always update shipping_fee if provided (including 0 for free shipping)
+    if (shipping_fee !== undefined && shipping_fee !== null) {
+      const parsedFee = parseFloat(shipping_fee);
+      if (!isNaN(parsedFee)) {
+        updateData.shipping_fee = parsedFee;
+      }
+    }
     
     // Set delivered_at timestamp when marking as complete
     if (status === 'complete') {

@@ -20,6 +20,8 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [adminNotes, setAdminNotes] = useState('');
+  const [shippingFee, setShippingFee] = useState<string>('');
+  const [isShippingFeeSet, setIsShippingFeeSet] = useState(false);
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
   const [showDateRangeModal, setShowDateRangeModal] = useState(false);
   const [startDate, setStartDate] = useState('');
@@ -30,6 +32,18 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
   const handleStatusChange = (order: Order) => {
     setSelectedOrder(order);
     setAdminNotes('');
+    // For pending orders, always show shipping fee input form first
+    // Pre-fill with existing shipping fee if available, but don't mark as set
+    if (order.status === 'pending') {
+      const hasShippingFee = order.shipping_fee !== undefined && order.shipping_fee !== null;
+      setShippingFee(hasShippingFee ? order.shipping_fee.toString() : '');
+      setIsShippingFeeSet(false); // Always start with false for pending orders
+    } else {
+      // For other statuses, show existing shipping fee if available
+      const hasShippingFee = order.shipping_fee !== undefined && order.shipping_fee !== null;
+      setShippingFee(hasShippingFee ? order.shipping_fee.toString() : '');
+      setIsShippingFeeSet(hasShippingFee);
+    }
     setShowStatusModal(true);
     setIsOverlayOpen(true);
   };
@@ -37,8 +51,18 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
   const confirmStatusUpdate = async (newStatus: string) => {
     if (!selectedOrder) return;
 
+    // Always send shipping_fee if it's been set (even if 0 for free shipping)
+    let shippingFeeValue: number | undefined = undefined;
+    if (isShippingFeeSet && shippingFee !== '' && !isNaN(parseFloat(shippingFee))) {
+      shippingFeeValue = parseFloat(shippingFee);
+    } else if (selectedOrder.shipping_fee !== undefined && selectedOrder.shipping_fee !== null) {
+      // Keep existing shipping fee if not changed
+      shippingFeeValue = selectedOrder.shipping_fee;
+    }
+
     const result = await updateStatus(selectedOrder.id, newStatus, {
-      admin_notes: adminNotes || undefined
+      admin_notes: adminNotes || undefined,
+      shipping_fee: shippingFeeValue
     });
 
     if (result.success) {
@@ -46,13 +70,29 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
       setIsOverlayOpen(false);
       setSelectedOrder(null);
       setAdminNotes('');
+      setShippingFee('');
+      setIsShippingFeeSet(false);
     }
+  };
+
+  const handleSetShippingFee = () => {
+    const fee = parseFloat(shippingFee);
+    if (!isNaN(fee) && fee >= 0) {
+      setIsShippingFeeSet(true);
+    }
+  };
+
+  const handleSetFreeShipping = () => {
+    setShippingFee('0');
+    setIsShippingFeeSet(true);
   };
 
   const closeModal = () => {
     setShowStatusModal(false);
     setIsOverlayOpen(false);
     setSelectedOrder(null);
+    setShippingFee('');
+    setIsShippingFeeSet(false);
   };
 
   const filteredOrders = orders.filter((order) => {
@@ -139,7 +179,7 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
         escapeCsvValue(order.order_number),
         escapeCsvValue(order.recipient_name),
         escapeCsvValue(order.shipping_phone),
-        escapeCsvValue(formatPrice(order.total_amount)),
+        escapeCsvValue(formatPrice(order.total_amount + (order.shipping_fee || 0))),
         escapeCsvValue(order.payment_method.replace('_', ' ')),
         escapeCsvValue(order.status.toUpperCase()),
         escapeCsvValue(address),
@@ -433,7 +473,9 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
                            })()} items
                          </div>
                        </td>
-                      <td className="px-6 py-4 font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{formatPrice(order.total_amount)}</td>
+                      <td className="px-6 py-4 font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
+                        {formatPrice(order.total_amount + (order.shipping_fee || 0))}
+                      </td>
                       <td className="px-6 py-4">
                         <span className="text-xs text-gray-600 dark:text-slate-300 capitalize" style={{ fontFamily: "'Jost', sans-serif" }}>{order.payment_method.replace('_', ' ')}</span>
                       </td>
@@ -569,39 +611,240 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
 
             <div className="p-6 space-y-3 mb-6 text-gray-900 dark:text-slate-100">
               {selectedOrder.status === 'pending' && (
-                <button
-                  onClick={() => confirmStatusUpdate('approved')}
-                  className="w-full px-4 py-3 bg-blue-500 text-white rounded-xl shadow-lg hover:shadow-xl hover:bg-blue-600 transition-all font-semibold flex items-center justify-center gap-2"
-                  style={{ fontFamily: "'Jost', sans-serif" }}
-                  type="button"
-                >
-                  <Icon icon="mdi:check-circle" className="w-5 h-5" />
-                  Approve Order
-                </button>
+                <>
+                  {!isShippingFeeSet ? (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                          Shipping Fee (₱)
+                        </label>
+                        <input
+                          type="number"
+                          value={shippingFee}
+                          onChange={(e) => setShippingFee(e.target.value)}
+                          min="0"
+                          step="0.01"
+                          placeholder="Enter shipping fee amount"
+                          className="w-full px-4 py-3 border border-gray-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-200 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
+                          style={{ fontFamily: "'Jost', sans-serif" }}
+                        />
+                      </div>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={handleSetFreeShipping}
+                          className="flex-1 px-4 py-3 bg-green-500 text-white rounded-xl shadow-lg hover:shadow-xl hover:bg-green-600 transition-all font-semibold flex items-center justify-center gap-2"
+                          style={{ fontFamily: "'Jost', sans-serif" }}
+                          type="button"
+                        >
+                          <Icon icon="mdi:truck-delivery" className="w-5 h-5" />
+                          FREE
+                        </button>
+                        <button
+                          onClick={handleSetShippingFee}
+                          disabled={!shippingFee || isNaN(parseFloat(shippingFee)) || parseFloat(shippingFee) < 0}
+                          className="flex-1 px-4 py-3 bg-blue-500 text-white rounded-xl shadow-lg hover:shadow-xl hover:bg-blue-600 transition-all font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                          style={{ fontFamily: "'Jost', sans-serif" }}
+                          type="button"
+                        >
+                          <Icon icon="mdi:check" className="w-5 h-5" />
+                          Set Shipping Fee
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-gray-600 dark:text-slate-400 mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>
+                              Shipping Fee
+                            </p>
+                            <p className="text-lg font-bold text-blue-600 dark:text-blue-400" style={{ fontFamily: "'Jost', sans-serif" }}>
+                              {parseFloat(shippingFee) === 0 ? 'FREE' : formatPrice(parseFloat(shippingFee))}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => setIsShippingFeeSet(false)}
+                            className="px-3 py-2 text-sm bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-600 transition-all flex items-center gap-2"
+                            style={{ fontFamily: "'Jost', sans-serif" }}
+                            type="button"
+                          >
+                            <Icon icon="mdi:pencil" className="w-4 h-4" />
+                            Edit
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {/* Total with Shipping Fee */}
+                      <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-200 dark:border-green-800 rounded-xl p-4">
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <p className="text-sm text-gray-600 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>
+                              Items Total
+                            </p>
+                            <p className="text-sm font-semibold text-gray-800 dark:text-slate-200" style={{ fontFamily: "'Jost', sans-serif" }}>
+                              {formatPrice(selectedOrder.total_amount)}
+                            </p>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <p className="text-sm text-gray-600 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>
+                              Shipping Fee
+                            </p>
+                            <p className="text-sm font-semibold text-gray-800 dark:text-slate-200" style={{ fontFamily: "'Jost', sans-serif" }}>
+                              {parseFloat(shippingFee) === 0 ? 'FREE' : formatPrice(parseFloat(shippingFee))}
+                            </p>
+                          </div>
+                          <div className="border-t-2 border-green-300 dark:border-green-700 pt-2 mt-2">
+                            <div className="flex justify-between items-center">
+                              <p className="text-base font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
+                                Grand Total
+                              </p>
+                              <p className="text-xl font-bold text-green-600 dark:text-green-400" style={{ fontFamily: "'Jost', sans-serif" }}>
+                                {formatPrice(selectedOrder.total_amount + parseFloat(shippingFee || '0'))}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => confirmStatusUpdate('approved')}
+                        className="w-full px-4 py-3 bg-blue-500 text-white rounded-xl shadow-lg hover:shadow-xl hover:bg-blue-600 transition-all font-semibold flex items-center justify-center gap-2"
+                        style={{ fontFamily: "'Jost', sans-serif" }}
+                        type="button"
+                      >
+                        <Icon icon="mdi:check-circle" className="w-5 h-5" />
+                        Approve Order
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
               
               {selectedOrder.status === 'approved' && (
-                <button
-                  onClick={() => confirmStatusUpdate('in_transit')}
-                  className="w-full px-4 py-3 bg-purple-500 text-white rounded-xl shadow-lg hover:shadow-xl hover:bg-purple-600 transition-all font-semibold flex items-center justify-center gap-2"
-                  style={{ fontFamily: "'Jost', sans-serif" }}
-                  type="button"
-                >
-                  <Icon icon="mdi:truck-fast" className="w-5 h-5" />
-                  Mark as In Transit
-                </button>
+                <div className="space-y-4">
+                  {/* Total with Shipping Fee */}
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-200 dark:border-green-800 rounded-xl p-4">
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm text-gray-600 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>
+                          Items Total
+                        </p>
+                        <p className="text-sm font-semibold text-gray-800 dark:text-slate-200" style={{ fontFamily: "'Jost', sans-serif" }}>
+                          {formatPrice(selectedOrder.total_amount)}
+                        </p>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm text-gray-600 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>
+                          Shipping Fee
+                        </p>
+                        <p className="text-sm font-semibold text-gray-800 dark:text-slate-200" style={{ fontFamily: "'Jost', sans-serif" }}>
+                          {selectedOrder.shipping_fee === 0 ? 'FREE' : formatPrice(selectedOrder.shipping_fee || 0)}
+                        </p>
+                      </div>
+                      <div className="border-t-2 border-green-300 dark:border-green-700 pt-2 mt-2">
+                        <div className="flex justify-between items-center">
+                          <p className="text-base font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
+                            Grand Total
+                          </p>
+                          <p className="text-xl font-bold text-green-600 dark:text-green-400" style={{ fontFamily: "'Jost', sans-serif" }}>
+                            {formatPrice(selectedOrder.total_amount + (selectedOrder.shipping_fee || 0))}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => confirmStatusUpdate('in_transit')}
+                    className="w-full px-4 py-3 bg-purple-500 text-white rounded-xl shadow-lg hover:shadow-xl hover:bg-purple-600 transition-all font-semibold flex items-center justify-center gap-2"
+                    style={{ fontFamily: "'Jost', sans-serif" }}
+                    type="button"
+                  >
+                    <Icon icon="mdi:truck-fast" className="w-5 h-5" />
+                    Mark as In Transit
+                  </button>
+                </div>
               )}
               
               {selectedOrder.status === 'in_transit' && (
-                <button
-                  onClick={() => confirmStatusUpdate('complete')}
-                  className="w-full px-4 py-3 bg-green-500 text-white rounded-xl shadow-lg hover:shadow-xl hover:bg-green-600 transition-all font-semibold flex items-center justify-center gap-2"
-                  style={{ fontFamily: "'Jost', sans-serif" }}
-                  type="button"
-                >
-                  <Icon icon="mdi:check-all" className="w-5 h-5" />
-                  Mark as Complete
-                </button>
+                <div className="space-y-4">
+                  {/* Total with Shipping Fee */}
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-200 dark:border-green-800 rounded-xl p-4">
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm text-gray-600 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>
+                          Items Total
+                        </p>
+                        <p className="text-sm font-semibold text-gray-800 dark:text-slate-200" style={{ fontFamily: "'Jost', sans-serif" }}>
+                          {formatPrice(selectedOrder.total_amount)}
+                        </p>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm text-gray-600 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>
+                          Shipping Fee
+                        </p>
+                        <p className="text-sm font-semibold text-gray-800 dark:text-slate-200" style={{ fontFamily: "'Jost', sans-serif" }}>
+                          {selectedOrder.shipping_fee === 0 ? 'FREE' : formatPrice(selectedOrder.shipping_fee || 0)}
+                        </p>
+                      </div>
+                      <div className="border-t-2 border-green-300 dark:border-green-700 pt-2 mt-2">
+                        <div className="flex justify-between items-center">
+                          <p className="text-base font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
+                            Grand Total
+                          </p>
+                          <p className="text-xl font-bold text-green-600 dark:text-green-400" style={{ fontFamily: "'Jost', sans-serif" }}>
+                            {formatPrice(selectedOrder.total_amount + (selectedOrder.shipping_fee || 0))}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => confirmStatusUpdate('complete')}
+                    className="w-full px-4 py-3 bg-green-500 text-white rounded-xl shadow-lg hover:shadow-xl hover:bg-green-600 transition-all font-semibold flex items-center justify-center gap-2"
+                    style={{ fontFamily: "'Jost', sans-serif" }}
+                    type="button"
+                  >
+                    <Icon icon="mdi:check-all" className="w-5 h-5" />
+                    Mark as Complete
+                  </button>
+                </div>
+              )}
+
+              {selectedOrder.status === 'complete' && (
+                <div className="space-y-4">
+                  {/* Total with Shipping Fee */}
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-200 dark:border-green-800 rounded-xl p-4">
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm text-gray-600 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>
+                          Items Total
+                        </p>
+                        <p className="text-sm font-semibold text-gray-800 dark:text-slate-200" style={{ fontFamily: "'Jost', sans-serif" }}>
+                          {formatPrice(selectedOrder.total_amount)}
+                        </p>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm text-gray-600 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>
+                          Shipping Fee
+                        </p>
+                        <p className="text-sm font-semibold text-gray-800 dark:text-slate-200" style={{ fontFamily: "'Jost', sans-serif" }}>
+                          {selectedOrder.shipping_fee === 0 ? 'FREE' : formatPrice(selectedOrder.shipping_fee || 0)}
+                        </p>
+                      </div>
+                      <div className="border-t-2 border-green-300 dark:border-green-700 pt-2 mt-2">
+                        <div className="flex justify-between items-center">
+                          <p className="text-base font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
+                            Grand Total
+                          </p>
+                          <p className="text-xl font-bold text-green-600 dark:text-green-400" style={{ fontFamily: "'Jost', sans-serif" }}>
+                            {formatPrice(selectedOrder.total_amount + (selectedOrder.shipping_fee || 0))}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               )}
 
               {selectedOrder.status !== 'cancelled' && selectedOrder.status !== 'complete' && (
@@ -617,19 +860,21 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
               )}
             </div>
 
-            <div className="px-6 pb-6">
-              <label className="block text-sm font-semibold text-gray-700 mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>
-                Admin Notes (Optional)
-              </label>
-              <textarea
-                value={adminNotes}
-                onChange={(e) => setAdminNotes(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-200"
-                style={{ fontFamily: "'Jost', sans-serif" }}
-                rows={3}
-                placeholder="Add notes about this status change..."
-              />
-            </div>
+            {!(selectedOrder.status === 'pending' && !isShippingFeeSet) && (
+              <div className="px-6 pb-6">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  Admin Notes (Optional)
+                </label>
+                <textarea
+                  value={adminNotes}
+                  onChange={(e) => setAdminNotes(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-200 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
+                  style={{ fontFamily: "'Jost', sans-serif" }}
+                  rows={3}
+                  placeholder="Add notes about this status change..."
+                />
+              </div>
+            )}
           </div>
         </div>
       )}
