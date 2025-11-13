@@ -12,7 +12,7 @@ interface ViewProductModalProps {
   onClose: () => void;
   onDelete?: (productId: string | number) => void;
   onEdit?: (product: FetchedProduct) => void;
-  onProductUpdate?: (productId: string, updates: Partial<FetchedProduct>) => void;
+  onProductUpdate?: (productId: string, updates: Partial<FetchedProduct>) => void | Promise<void>;
 }
 
 export function ViewProductModal({ 
@@ -28,14 +28,25 @@ export function ViewProductModal({
   const [currentProduct, setCurrentProduct] = useState(product);
   const [isUpdatingPickup, setIsUpdatingPickup] = useState(false);
   const [isUpdatingPublish, setIsUpdatingPublish] = useState(false);
+  const [isMounted, setIsMounted] = useState(true);
 
   const mediaUrls = currentProduct.mediaUrl || [];
   const hasMultipleMedia = mediaUrls.length > 1;
 
   const { updatePublishStatus, updatePickupAvailability, setDeleteProduct } = useProducts(session);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    setIsMounted(true);
+    return () => {
+      setIsMounted(false);
+    };
+  }, []);
   
   // Update currentProduct when product prop changes  
   useEffect(() => {
+    if (!product || !currentProduct) return;
+    
     console.log('🔄 ViewProductModal useEffect triggered:', {
       productPickup: product.pickup_available,
       currentPickup: currentProduct.pickup_available,
@@ -44,11 +55,11 @@ export function ViewProductModal({
     
     // Only update if product ID changed (different product), not if just pickup status changed
     // This prevents overwriting local changes when user is editing
-    if (product.id !== currentProduct.id) {
+    if (product.id && currentProduct.id && product.id !== currentProduct.id) {
       console.log('✅ ViewProductModal: Product ID changed, updating currentProduct');
       setCurrentProduct(product);
     }
-  }, [product.id]);
+  }, [product?.id, currentProduct?.id]);
 
   // Ensure display_quantity is up-to-date from stock-status
   useEffect(() => {
@@ -114,47 +125,133 @@ export function ViewProductModal({
 
   const handleUpdatePickupAvailability = async (pickupAvailable: boolean) => {
     // Prevent double-clicks
-    if (isUpdatingPickup) return;
+    if (isUpdatingPickup) {
+      console.log('⚠️ Update already in progress, skipping');
+      return;
+    }
+    
+    // Check if component is still mounted
+    if (!isMounted) {
+      console.log('⚠️ Component unmounted, skipping update');
+      return;
+    }
+    
+    // Validate current product
+    if (!currentProduct || !currentProduct.id) {
+      console.error('❌ Invalid product data');
+      toast.error('Invalid product data');
+      return;
+    }
     
     // Don't update if already in the same state
-    if (currentProduct.pickup_available === pickupAvailable) {
+    const currentPickup = currentProduct?.pickup_available;
+    if (currentPickup === pickupAvailable) {
       console.log('⚠️ Already in the same state, skipping update');
       return;
     }
     
     console.log('🔄 ViewProductModal: Updating pickup availability:', {
-      from: currentProduct.pickup_available,
+      from: currentPickup,
       to: pickupAvailable,
-      productId: currentProduct.id
+      productId: currentProduct?.id,
+      productIdType: typeof currentProduct?.id
     });
     
     setIsUpdatingPickup(true);
     
+    // Store original state for potential rollback
+    const originalState = currentPickup;
+    const productId = String(currentProduct.id).trim();
+    
     try {
-      // Update immediately in database
-      await updatePickupAvailability(String(currentProduct.id), pickupAvailable);
-      
-      // Update local state
-      const updatedProduct = { ...currentProduct, pickup_available: pickupAvailable };
-      setCurrentProduct(updatedProduct);
-      
-      // Update parent component
-      if (onProductUpdate) {
-        onProductUpdate(String(currentProduct.id), { pickup_available: pickupAvailable });
+      // Optimistically update local state first (only if mounted)
+      if (isMounted) {
+        // Create a safe copy to avoid mutation issues
+        const updatedProduct: FetchedProduct = {
+          ...currentProduct,
+          pickup_available: pickupAvailable
+        };
+        // Validate before setting
+        if (updatedProduct.id || updatedProduct.product_id) {
+          setCurrentProduct(updatedProduct);
+        } else {
+          console.error('Invalid product structure, cannot update');
+          throw new Error('Invalid product structure');
+        }
       }
       
-      // Show success toast
-      const status = pickupAvailable ? 'Available for Pickup' : 'Unavailable for Pickup';
-      toast.success(`Product marked as ${status}!`, {
-        icon: pickupAvailable ? '✅' : '❌',
-      });
+      // Update in database
+      try {
+        await updatePickupAvailability(productId, pickupAvailable);
+        console.log('✅ Database update successful');
+      } catch (dbError) {
+        console.error('❌ Database update failed:', dbError);
+        // Revert optimistic update only if still mounted
+        if (isMounted) {
+          setCurrentProduct(prev => ({ ...prev, pickup_available: originalState }));
+        }
+        throw dbError;
+      }
+      
+      // Update parent component - use a longer delay to ensure state is stable
+      if (onProductUpdate && isMounted) {
+        // Use a longer delay to ensure React has finished all state updates
+        setTimeout(() => {
+          try {
+            // Wrap in requestAnimationFrame for extra safety
+            requestAnimationFrame(() => {
+              try {
+                // Don't await - make it completely fire and forget
+                const updatePromise = onProductUpdate(productId, { pickup_available: pickupAvailable });
+                if (updatePromise && typeof updatePromise === 'object' && 'then' in updatePromise && typeof updatePromise.catch === 'function') {
+                  (updatePromise as Promise<void>).catch((err: unknown) => {
+                    console.error('⚠️ Error in onProductUpdate callback (non-fatal, ignored):', err);
+                    // Completely ignore - database update already succeeded
+                  });
+                }
+              } catch (syncError) {
+                console.error('⚠️ Synchronous error in onProductUpdate (non-fatal, ignored):', syncError);
+                // Completely ignore - database update already succeeded
+              }
+            });
+          } catch (outerError) {
+            console.error('⚠️ Error scheduling onProductUpdate (non-fatal, ignored):', outerError);
+            // Completely ignore - database update already succeeded
+          }
+        }, 100); // 100ms delay to ensure React state is stable
+      }
+      
+      // Show success toast only if still mounted
+      if (isMounted) {
+        const status = pickupAvailable ? 'Available for Pickup' : 'Unavailable for Pickup';
+        toast.success(`Product marked as ${status}!`, {
+          icon: pickupAvailable ? '✅' : '❌',
+          duration: 3000,
+        });
+      }
       
       console.log('✅ ViewProductModal: Pickup availability saved successfully');
     } catch (error) {
       console.error('❌ Error saving pickup availability:', error);
-      toast.error('Failed to save pickup status');
+      
+      // Ensure we revert to original state only if still mounted
+      if (isMounted) {
+        setCurrentProduct(prev => ({ ...prev, pickup_available: originalState }));
+      }
+      
+      // Show user-friendly error message
+      if (isMounted) {
+        const errorMessage = error instanceof Error 
+          ? error.message 
+          : 'Failed to save pickup status. Please try again.';
+        toast.error(errorMessage, {
+          duration: 4000,
+        });
+      }
     } finally {
-      setIsUpdatingPickup(false);
+      if (isMounted) {
+        setIsUpdatingPickup(false);
+      }
     }
   };
 
@@ -187,7 +284,12 @@ export function ViewProductModal({
       
       // Update parent component
       if (onProductUpdate) {
-        onProductUpdate(String(currentProduct.id), { publish_status: status });
+        try {
+          await onProductUpdate(String(currentProduct.id), { publish_status: status });
+        } catch (error) {
+          console.error('Error in onProductUpdate callback:', error);
+          // Don't throw - the update already succeeded in the database
+        }
       }
       
       // Show success toast
@@ -206,7 +308,12 @@ export function ViewProductModal({
       setCurrentProduct(updatedProduct);
       
       if (onProductUpdate) {
-        onProductUpdate(String(currentProduct.id), { publish_status: status });
+        try {
+          await onProductUpdate(String(currentProduct.id), { publish_status: status });
+        } catch (error) {
+          console.error('Error in onProductUpdate callback (error case):', error);
+          // Don't throw - continue with UI update
+        }
       }
       
       toast.success(`Product ${status ? 'Published' : 'Unpublished'} (may need refresh)!`, {
@@ -257,6 +364,60 @@ export function ViewProductModal({
                 Delete
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Safety check - if product is invalid, show error and close
+  if (!currentProduct) {
+    console.error('Invalid product in ViewProductModal: currentProduct is null/undefined');
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center backdrop-blur-sm z-50 p-4 sm:p-6" onClick={handleClose}>
+        <div
+          className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 p-6"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="text-center">
+            <Icon icon="mdi:alert-circle" className="text-5xl text-red-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-slate-100 mb-2">Invalid Product</h3>
+            <p className="text-gray-600 dark:text-slate-400 mb-6">
+              The product data is invalid. Please close and try again.
+            </p>
+            <button
+              onClick={handleClose}
+              className="px-6 py-2.5 rounded-xl bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Additional safety check for required properties
+  if (!currentProduct.id && !currentProduct.product_id) {
+    console.error('Invalid product in ViewProductModal: missing ID');
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center backdrop-blur-sm z-50 p-4 sm:p-6" onClick={handleClose}>
+        <div
+          className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 p-6"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="text-center">
+            <Icon icon="mdi:alert-circle" className="text-5xl text-red-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-slate-100 mb-2">Invalid Product</h3>
+            <p className="text-gray-600 dark:text-slate-400 mb-6">
+              The product is missing required information. Please close and try again.
+            </p>
+            <button
+              onClick={handleClose}
+              className="px-6 py-2.5 rounded-xl bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors"
+            >
+              Close
+            </button>
           </div>
         </div>
       </div>
@@ -415,17 +576,17 @@ export function ViewProductModal({
                   
                   {/* Pickup Status */}
                   <div className={`bg-gradient-to-br rounded-2xl p-5 border ${
-                    currentProduct.pickup_available 
+                    (currentProduct?.pickup_available === true)
                       ? 'from-teal-50 to-cyan-50 border-teal-100' 
                       : 'from-red-50 to-pink-50 border-red-100'
                   }`}>
                     <div className="flex items-center gap-2 mb-2">
                       <Icon 
-                        icon={currentProduct.pickup_available ? "mdi:checkbox-marked-circle" : "mdi:close-circle"} 
-                        className={`text-lg ${currentProduct.pickup_available ? 'text-teal-600' : 'text-red-600'}`} 
+                        icon={(currentProduct?.pickup_available === true) ? "mdi:checkbox-marked-circle" : "mdi:close-circle"} 
+                        className={`text-lg ${(currentProduct?.pickup_available === true) ? 'text-teal-600' : 'text-red-600'}`} 
                       />
                       <span className={`text-sm font-semibold uppercase tracking-wide ${
-                        currentProduct.pickup_available ? 'text-teal-600' : 'text-red-600'
+                        (currentProduct?.pickup_available === true) ? 'text-teal-600' : 'text-red-600'
                       }`}>
                         Pickup Status
                       </span>
@@ -435,11 +596,11 @@ export function ViewProductModal({
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={`text-xl font-bold ${
-                        currentProduct.pickup_available ? 'text-teal-700' : 'text-red-700'
+                        (currentProduct?.pickup_available === true) ? 'text-teal-700' : 'text-red-700'
                       }`} style={{ fontFamily: "'Jost', sans-serif" }}>
-                        {currentProduct.pickup_available ? 'Available' : 'Unavailable'}
+                        {(currentProduct?.pickup_available === true) ? 'Available' : 'Unavailable'}
                       </span>
-                      {currentProduct.pickup_available && (
+                      {(currentProduct?.pickup_available === true) && (
                         <span className="ml-2 px-2 py-0.5 bg-green-500 text-white text-xs rounded-full">
                           Active
                         </span>
@@ -505,24 +666,39 @@ export function ViewProductModal({
 
             {/* Pickup Availability Toggle Button */}
             <button 
-              onClick={() => handleUpdatePickupAvailability(!currentProduct.pickup_available)}
-              disabled={isUpdatingPickup}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                try {
+                  const pickupValue = currentProduct?.pickup_available;
+                  if (currentProduct && typeof pickupValue === 'boolean') {
+                    handleUpdatePickupAvailability(!pickupValue);
+                  } else {
+                    console.error('Invalid product state for pickup toggle', { currentProduct, pickupValue });
+                    toast.error('Invalid product state');
+                  }
+                } catch (error) {
+                  console.error('Error in pickup button click handler:', error);
+                  toast.error('An error occurred. Please try again.');
+                }
+              }}
+              disabled={isUpdatingPickup || !currentProduct}
               className={`flex items-center justify-center gap-2 px-6 py-3 font-semibold rounded-xl shadow-lg transition-all duration-200 ${
-                currentProduct.pickup_available
+                (currentProduct?.pickup_available === true)
                   ? 'bg-orange-500 text-white hover:shadow-xl hover:bg-orange-600'
                   : 'bg-teal-500 text-white hover:shadow-xl hover:bg-teal-600'
-              } ${isUpdatingPickup ? 'opacity-50 cursor-not-allowed' : ''}`}
+              } ${isUpdatingPickup || !currentProduct ? 'opacity-50 cursor-not-allowed' : ''}`}
               style={{ fontFamily: "'Jost', sans-serif" }}
             >
               {isUpdatingPickup ? (
                 <Icon icon="mdi:loading" className="text-lg animate-spin" />
               ) : (
                 <Icon 
-                  icon={currentProduct.pickup_available ? "mdi:close-circle" : "mdi:checkbox-marked-circle"} 
+                  icon={(currentProduct?.pickup_available === true) ? "mdi:close-circle" : "mdi:checkbox-marked-circle"} 
                   className="text-lg" 
                 />
               )}
-              {currentProduct.pickup_available ? 'Unavailable for Pickup' : 'Available for Pickup'}
+              {(currentProduct?.pickup_available === true) ? 'Unavailable for Pickup' : 'Available for Pickup'}
             </button>
 
             {/* Publish/Unpublish Toggle Button */}

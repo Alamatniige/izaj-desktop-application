@@ -215,21 +215,48 @@ export class ProductService {
   }
 
   static async updatePickupAvailability(session: Session | null, productId: string, pickupAvailable: boolean): Promise<void> {
+    if (!session?.access_token) {
+      throw new Error('No session available');
+    }
+
+    if (!productId || productId.trim() === '') {
+      throw new Error('Invalid product ID');
+    }
 
     console.log('🔄 Updating pickup availability:', { productId, pickupAvailable });
     
-    return fetch(`${API_URL}/api/products/${productId}/pickup-status`, {
-      method: 'PUT',
-      headers: this.getHeaders(session),
-      body: JSON.stringify({ pickup_available: pickupAvailable })
-    }).then(async (response) => {
+    try {
+      const response = await fetch(`${API_URL}/api/products/${productId}/pickup-status`, {
+        method: 'PUT',
+        headers: this.getHeaders(session),
+        body: JSON.stringify({ pickup_available: pickupAvailable })
+      });
+
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Failed to update pickup status:', errorText);
-        throw new Error(`Failed to update pickup status for product ${productId}`);
+        let errorText = 'Unknown error';
+        try {
+          errorText = await response.text();
+        } catch (e) {
+          console.error('Failed to read error response:', e);
+        }
+        console.error('❌ Failed to update pickup status:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorText
+        });
+        throw new Error(`Failed to update pickup status: ${response.status} ${response.statusText}`);
       }
+      
       console.log('✅ Pickup status updated successfully');
-    });
+    } catch (error) {
+      console.error('❌ Error in updatePickupAvailability:', error);
+      // Re-throw with more context
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(`Failed to update pickup status: ${String(error)}`);
+      }
+    }
   }
 
   static async deleteProduct(session: Session | null, productId: string): Promise<void> {

@@ -4,6 +4,7 @@ import { Session } from '@supabase/supabase-js';
 import { FetchedProduct, SyncStats, StockStatus, FilterType } from '../types/product';
 import { StockService } from '../services/stockService';
 import { ProductService } from '../services/productService';
+import { supabase } from '../lib/supabase';
 
 export const useStock = (session: Session | null) => {
   const [stockProducts, setStockProducts] = useState<FetchedProduct[]>([]);
@@ -102,16 +103,59 @@ export const useStock = (session: Session | null) => {
       fetchStockStatus();
   }, [fetchStockProducts, fetchStockStatus]);
 
-  // Auto-refresh every 30 seconds to show latest stock changes from orders
+  // Real-time stock updates via Supabase subscriptions
   useEffect(() => {
+    if (!session?.access_token) return;
+
+    // Subscribe to product_stock table changes for real-time updates
+    const channel = supabase
+      .channel('stock_page_stock_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all changes (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'product_stock'
+        },
+        (payload) => {
+          // When stock changes, refresh the stock page data
+          console.log('🔄 [useStock] Stock updated in real-time:', payload);
+          fetchStockProducts();
+          fetchStockStatus();
+        }
+      )
+      .subscribe();
+
+    // Also subscribe to order_items changes
+    const orderItemsChannel = supabase
+      .channel('stock_page_order_items_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'order_items'
+        },
+        () => {
+          console.log('🔄 [useStock] Order items changed, refreshing stock');
+          fetchStockProducts();
+          fetchStockStatus();
+        }
+      )
+      .subscribe();
+
+    // Fallback: Auto-refresh every 30 seconds
     const intervalId = setInterval(() => {
-      // Removed verbose log to reduce terminal noise
       fetchStockProducts();
       fetchStockStatus();
     }, 30000); // 30 seconds
 
-    return () => clearInterval(intervalId);
-  }, [fetchStockProducts, fetchStockStatus]);
+    return () => {
+      supabase.removeChannel(channel);
+      supabase.removeChannel(orderItemsChannel);
+      clearInterval(intervalId);
+    };
+  }, [session?.access_token, fetchStockProducts, fetchStockStatus]);
 
   const filteredProducts = useMemo(() => {
     return stockProducts.filter(product => {

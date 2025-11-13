@@ -211,30 +211,30 @@ router.put('/orders/:id/status', authenticate, async (req, res) => {
       });
     }
 
-    // Update stock when order is approved
-    if (status === 'approved' && currentOrder.status !== 'approved') {
+    // Update stock when order status changes
+    // Use syncStockFromAllOrders to ensure consistency across all products
+    if ((status === 'approved' && currentOrder.status !== 'approved') ||
+        (status === 'cancelled' && currentOrder.status !== 'cancelled') ||
+        (status === 'in_transit' && currentOrder.status !== 'in_transit') ||
+        (status === 'complete' && currentOrder.status !== 'complete')) {
       try {
-        const stockResult = await updateStockFromOrder(id);
+        console.log(`🔄 [Orders] Order ${id} status changed to ${status}, syncing stock...`);
+        // Sync all stock based on all approved orders to ensure consistency
+        // This recalculates display_quantity and reserved_quantity for all products
+        const stockResult = await syncStockFromAllOrders();
+        console.log(`📊 [Orders] Stock sync result:`, {
+          success: stockResult.success,
+          updated: stockResult.updated,
+          errors: stockResult.errors?.length || 0,
+          results: stockResult.results?.slice(0, 3) // Show first 3 results
+        });
         if (!stockResult.success) {
-          console.error('⚠️ [Orders] Stock update had errors:', stockResult.errors);
+          console.error('⚠️ [Orders] Stock sync had errors:', stockResult.errors);
           // Don't fail the request, but log it
         }
-        // Removed success log to reduce terminal noise
       } catch (stockError) {
-        console.error('⚠️ [Orders] Error updating stock (non-critical):', stockError);
-      }
-    }
-
-    // Reverse stock when order is cancelled
-    if (status === 'cancelled' && currentOrder.status !== 'cancelled' && currentOrder.status === 'approved') {
-      try {
-        const stockResult = await reverseStockFromOrder(id);
-        if (!stockResult.success) {
-          console.error('⚠️ [Orders] Stock reversal had errors:', stockResult.errors);
-        }
-        // Removed success log to reduce terminal noise
-      } catch (stockError) {
-        console.error('⚠️ [Orders] Error reversing stock (non-critical):', stockError);
+        console.error('⚠️ [Orders] Error syncing stock (non-critical):', stockError);
+        console.error('⚠️ [Orders] Stock error stack:', stockError.stack);
       }
     }
 

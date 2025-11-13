@@ -26,38 +26,45 @@ export const useFilter = (session: Session | null, options: UseFilterOptions = {
 
   // Compute filtered products using useMemo to prevent flickering
   const computedFilteredProducts = useMemo(() => {
-    if (!initialProducts || initialProducts.length === 0) {
+    try {
+      if (!initialProducts || !Array.isArray(initialProducts) || initialProducts.length === 0) {
+        return [];
+      }
+      
+      let filtered = [...initialProducts];
+      
+      // Apply status filter
+      if (statusFilter === 'All') {
+        // Show only products that have been added via admin (is_published = true)
+        filtered = filtered.filter(p => p && p.is_published === true);
+      } else if (statusFilter === 'Active') {
+        // Published products: both is_published AND publish_status must be true
+        filtered = filtered.filter(p => p && p.is_published === true && p.publish_status === true);
+      } else if (statusFilter === 'Inactive') {
+        // Unpublished products: must have been published before (is_published = true) but now unpublished (publish_status = false)
+        filtered = filtered.filter(p => p && p.is_published === true && p.publish_status === false);
+      }
+      
+      // Apply category filter
+      if (selectedCategory !== 'All') {
+        filtered = filtered.filter(p => {
+          if (!p) return false;
+          const categoryName = typeof p.category === 'string' ? p.category : p.category?.category_name;
+          return categoryName === selectedCategory;
+        });
+      }
+      
+      return Array.isArray(filtered) ? filtered : [];
+    } catch (error) {
+      console.error('Error computing filtered products:', error);
       return [];
     }
-    
-    let filtered = [...initialProducts];
-    
-    // Apply status filter
-    if (statusFilter === 'All') {
-      // Show only products that have been added via admin (is_published = true)
-      filtered = filtered.filter(p => p.is_published === true);
-    } else if (statusFilter === 'Active') {
-      // Published products: both is_published AND publish_status must be true
-      filtered = filtered.filter(p => p.is_published === true && p.publish_status === true);
-    } else if (statusFilter === 'Inactive') {
-      // Unpublished products: must have been published before (is_published = true) but now unpublished (publish_status = false)
-      filtered = filtered.filter(p => p.is_published === true && p.publish_status === false);
-    }
-    
-    // Apply category filter
-    if (selectedCategory !== 'All') {
-      filtered = filtered.filter(p => {
-        const categoryName = typeof p.category === 'string' ? p.category : p.category?.category_name;
-        return categoryName === selectedCategory;
-      });
-    }
-    
-    return filtered;
   }, [initialProducts, statusFilter, selectedCategory]);
   
   // Update filtered products state when computed products change
   useEffect(() => {
-    setFilteredProducts(computedFilteredProducts);
+    // Ensure we always set an array, never undefined or null
+    setFilteredProducts(Array.isArray(computedFilteredProducts) ? computedFilteredProducts : []);
   }, [computedFilteredProducts]);
   
   // Extract categories from initial products

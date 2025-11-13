@@ -350,7 +350,7 @@ const handleViewChange = (newView: ViewType) => {
               )}
 
               {/* Empty state */}
-              {!isFetching && filteredProducts.length === 0 && hasLoadedFromDB && (
+              {!isFetching && (!filteredProducts || filteredProducts.length === 0) && hasLoadedFromDB && (
                 <div className="flex flex-col items-center justify-center py-12">
                   <Icon icon="mdi:package-variant-closed" className="text-6xl text-gray-300 dark:text-slate-600 mb-4" />
                   <h3 className="text-lg font-medium text-gray-500 dark:text-slate-400 mb-2">No products found</h3>
@@ -359,7 +359,7 @@ const handleViewChange = (newView: ViewType) => {
               )}
 
               {/* Products grid */}
-              {filteredProducts.length > 0 && (
+              {filteredProducts && Array.isArray(filteredProducts) && filteredProducts.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
                   {filteredProducts.map((product) => (
                     <div 
@@ -477,26 +477,148 @@ const handleViewChange = (newView: ViewType) => {
                 setSelectedProductForView(null);
                 toast.success('Product deleted successfully');
               }}
-              onProductUpdate={(productId, updates) => {
-                
-                // Update publishedProducts immediately
-                setPublishedProducts(prev => prev.map(p => 
-                  p.id === productId ? { ...p, ...updates } : p
-                ));
-                
-                // Update selectedProductForView immediately with the new values
-                setSelectedProductForView(prev => {
-                  if (!prev) return null;
-                  const updated = { ...prev, ...updates };
-                  return updated;
-                });
-                
-                
-                // If publish status changed, refresh the products list
-                if (updates.publish_status !== undefined) {
-                  setTimeout(() => {
-                    refreshProductsData();
-                  }, 500);
+              onProductUpdate={async (productId, updates) => {
+                // Wrap everything in a try-catch to prevent white screen
+                try {
+                  if (!productId) {
+                    console.error('onProductUpdate: Invalid productId');
+                    return;
+                  }
+
+                  const productIdStr = String(productId).trim();
+                  if (!productIdStr) {
+                    console.error('onProductUpdate: Empty productId after trim');
+                    return;
+                  }
+
+                  console.log('🔄 onProductUpdate called:', { productIdStr, updates });
+                  
+                  // Update publishedProducts immediately and deduplicate
+                  try {
+                    setPublishedProducts(prev => {
+                      if (!Array.isArray(prev)) {
+                        console.warn('onProductUpdate: publishedProducts is not an array');
+                        return prev;
+                      }
+                      
+                      const updated = prev.map(p => {
+                        try {
+                          // Compare as strings to handle type mismatches
+                          const pIdStr = String(p?.id || p?.product_id || '').trim();
+                          if (pIdStr === productIdStr) {
+                            return { ...p, ...updates };
+                          }
+                          return p;
+                        } catch (mapError) {
+                          console.error('Error mapping product:', mapError, p);
+                          return p;
+                        }
+                      });
+                      
+                      // Deduplicate to prevent duplicates
+                      try {
+                        const seen = new Map<string, typeof updated[0]>();
+                        for (const p of updated) {
+                          if (!p) continue;
+                          const key = String(p.id || p.product_id || '').trim();
+                          if (key && !seen.has(key)) {
+                            seen.set(key, p);
+                          }
+                        }
+                        return Array.from(seen.values());
+                      } catch (dedupeError) {
+                        console.error('Error deduplicating:', dedupeError);
+                        return updated;
+                      }
+                    });
+                  } catch (stateError) {
+                    console.error('Error updating publishedProducts state:', stateError);
+                    // Don't throw - continue with other updates
+                  }
+                  
+                  // If publish status changed, close modal immediately and refresh
+                  if (updates.publish_status !== undefined) {
+                    try {
+                      // Close the modal immediately to prevent state conflicts
+                      setSelectedProductForView(null);
+                      
+                      // Small delay to ensure modal closes before refresh
+                      setTimeout(async () => {
+                        try {
+                          await refreshProductsData();
+                        } catch (error) {
+                          console.error('Error refreshing products after publish status change:', error);
+                          // Don't throw - UI should continue working with existing data
+                        }
+                      }, 100);
+                    } catch (publishError) {
+                      console.error('Error handling publish status update:', publishError);
+                    }
+                  } else {
+                    // For other updates (like pickup), just update the selected product view
+                    // Use requestAnimationFrame to ensure state update happens after render
+                    requestAnimationFrame(() => {
+                      try {
+                        setSelectedProductForView(prev => {
+                          if (!prev) {
+                            console.warn('onProductUpdate: No previous product to update');
+                            return null;
+                          }
+                          
+                          // Only update if it's the same product
+                          const prevIdStr = String(prev.id || prev.product_id || '').trim();
+                          if (prevIdStr !== productIdStr) {
+                            console.warn('Product ID mismatch in onProductUpdate:', { prevIdStr, productIdStr });
+                            return prev;
+                          }
+                          
+                          try {
+                            // Create a safe copy of the product with only valid updates
+                            const safeUpdates: Partial<FetchedProduct> = {};
+                            
+                            // Only include valid properties from updates
+                            if ('pickup_available' in updates && typeof updates.pickup_available === 'boolean') {
+                              safeUpdates.pickup_available = updates.pickup_available;
+                            }
+                            if ('publish_status' in updates && typeof updates.publish_status === 'boolean') {
+                              safeUpdates.publish_status = updates.publish_status;
+                            }
+                            
+                            // Create new object with spread to avoid mutation
+                            const updated = {
+                              ...prev,
+                              ...safeUpdates
+                            };
+                            
+                            // Validate the updated object
+                            if (!updated.id && !updated.product_id) {
+                              console.error('Updated product has no ID, returning previous');
+                              return prev;
+                            }
+                            
+                            return updated;
+                          } catch (mergeError) {
+                            console.error('Error merging updates:', mergeError);
+                            return prev;
+                          }
+                        });
+                      } catch (viewError) {
+                        console.error('Error updating selectedProductForView:', viewError);
+                        // Don't throw - modal should still work
+                      }
+                    });
+                  }
+                  
+                  console.log('✅ onProductUpdate completed successfully');
+                } catch (error) {
+                  console.error('❌ Critical error in onProductUpdate:', error);
+                  // Log the full error for debugging
+                  if (error instanceof Error) {
+                    console.error('Error stack:', error.stack);
+                  }
+                  // Don't throw - we want to prevent white screen
+                  // Show toast instead
+                  toast.error('An error occurred while updating the product. Please refresh the page.');
                 }
               }}
               session={session}

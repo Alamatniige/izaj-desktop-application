@@ -137,10 +137,10 @@ export function AddProductModal({
   useEffect(() => {
     if (selectedCategory) {
       fetchProductsByCategory(selectedCategory);
-      // Reset selected products when category changes
-      setSaleData(prev => ({ ...prev, selectedProductIds: [] }));
+      // Keep selected products when switching categories - don't reset
     } else {
       setCategoryProducts([]);
+      // Only clear selections when category is explicitly cleared
       setSaleData(prev => ({ ...prev, selectedProductIds: [] }));
     }
   }, [selectedCategory, fetchProductsByCategory]);
@@ -216,210 +216,320 @@ export function AddProductModal({
 
 
   const renderSaleForm = () => (
-    <div className="space-y-6">
-      <form onSubmit={handleSubmit} className="space-y-6">
+    <div className="space-y-8">
+      <form onSubmit={handleSubmit} className="space-y-8">
         {/* Category Selection */}
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
-          <div className="flex items-center gap-3 mb-4">
-            <Icon icon="mdi:tag-outline" className="text-2xl text-blue-600" />
-            <span className="text-sm text-blue-600 font-semibold uppercase tracking-wide">Category Selection</span>
+        <div className="bg-white rounded-3xl shadow-lg border border-gray-200 overflow-hidden">
+          <div className="bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-4">
+            <div className="flex items-center gap-3">
+              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-2">
+                <Icon icon="mdi:tag-outline" className="text-2xl text-white" />
+              </div>
+              <div>
+                <h3 className="text-white font-bold text-lg" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  Select Category
+                </h3>
+                <p className="text-blue-100 text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  Choose a category to view available products
+                </p>
+              </div>
+            </div>
           </div>
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-blue-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white"
-            style={{ fontFamily: "'Jost', sans-serif" }}
-          >
-            <option value="">Select Category</option>
-            {categories.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
+          <div className="p-6">
+            <div className="relative">
+              <Icon 
+                icon="mdi:chevron-down" 
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xl"
+              />
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full px-4 py-4 pr-12 rounded-xl border-2 border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white appearance-none cursor-pointer"
+                style={{ fontFamily: "'Jost', sans-serif" }}
+              >
+                <option value="">Select a category...</option>
+                {categories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
 
         {/* Product Cards */}
         {selectedCategory && (
-          <div className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-2xl p-6 border border-purple-100">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <Icon icon="mdi:package-variant" className="text-2xl text-purple-600" />
-                <span className="text-sm text-purple-600 font-semibold uppercase tracking-wide">
-                  Products in {selectedCategory}
-                </span>
-                {saleData.selectedProductIds.length > 0 && (
-                  <span className="px-3 py-1 bg-purple-500 text-white text-xs font-semibold rounded-full">
-                    {saleData.selectedProductIds.length} selected
-                  </span>
-                )}
-              </div>
-              {categoryProducts.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={selectAllProducts}
-                    className="px-3 py-1.5 text-xs font-semibold bg-white border border-purple-300 text-purple-600 rounded-lg hover:bg-purple-50 transition-all duration-200 flex items-center gap-1"
-                    style={{ fontFamily: "'Jost', sans-serif" }}
-                  >
-                    <Icon icon="mdi:select-all" className="text-sm" />
-                    Select All
-                  </button>
+          <div className="bg-white rounded-3xl shadow-lg border border-gray-200 overflow-hidden">
+            <div className="bg-gradient-to-r from-purple-500 to-violet-600 px-6 py-4">
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="bg-white/20 backdrop-blur-sm rounded-xl p-2">
+                    <Icon icon="mdi:package-variant" className="text-2xl text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-bold text-lg" style={{ fontFamily: "'Jost', sans-serif" }}>
+                      Products in {selectedCategory}
+                    </h3>
+                    <p className="text-purple-100 text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>
+                      Select products to include in the sale
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
                   {saleData.selectedProductIds.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={clearSelection}
-                      className="px-3 py-1.5 text-xs font-semibold bg-white border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-all duration-200 flex items-center gap-1"
-                      style={{ fontFamily: "'Jost', sans-serif" }}
-                    >
-                      <Icon icon="mdi:close-circle" className="text-sm" />
-                      Clear
-                    </button>
+                    <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-xl">
+                      <span className="text-white font-bold text-sm flex items-center gap-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                        <Icon icon="mdi:check-circle" className="text-lg" />
+                        {saleData.selectedProductIds.length} Selected
+                      </span>
+                    </div>
+                  )}
+                  {categoryProducts.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={selectAllProducts}
+                        className="px-4 py-2 text-sm font-semibold bg-white/20 backdrop-blur-sm border border-white/30 text-white rounded-xl hover:bg-white/30 transition-all duration-200 flex items-center gap-2"
+                        style={{ fontFamily: "'Jost', sans-serif" }}
+                      >
+                        <Icon icon="mdi:select-all" className="text-lg" />
+                        Select All
+                      </button>
+                      {saleData.selectedProductIds.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={clearSelection}
+                          className="px-4 py-2 text-sm font-semibold bg-white/20 backdrop-blur-sm border border-white/30 text-white rounded-xl hover:bg-white/30 transition-all duration-200 flex items-center gap-2"
+                          style={{ fontFamily: "'Jost', sans-serif" }}
+                        >
+                          <Icon icon="mdi:close-circle" className="text-lg" />
+                          Clear
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
+              </div>
             </div>
             
-            {categoryProductsLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="flex items-center gap-3">
-                  <Icon icon="mdi:loading" className="text-2xl animate-spin text-purple-600" />
-                  <span className="text-purple-600" style={{ fontFamily: "'Jost', sans-serif" }}>
-                    Loading products...
-                  </span>
+            <div className="p-6">
+              {categoryProductsLoading ? (
+                <div className="flex items-center justify-center py-16">
+                  <div className="flex flex-col items-center gap-4">
+                    <Icon icon="mdi:loading" className="text-4xl animate-spin text-purple-600" />
+                    <span className="text-gray-600 font-medium" style={{ fontFamily: "'Jost', sans-serif" }}>
+                      Loading products...
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ) : categoryProducts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <Icon icon="mdi:package-variant-closed" className="text-6xl text-gray-300 mb-4" />
-                <p className="text-gray-500" style={{ fontFamily: "'Jost', sans-serif" }}>
-                  No published products found in this category
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[400px] overflow-y-auto">
-                {categoryProducts.map((product) => {
-                  const isSelected = saleData.selectedProductIds.includes(product.product_id);
-                  const productImage = productMediaMap[product.id]?.[0] || productMediaMap[product.product_id]?.[0] || '/placeholder.png';
-                  
-                  return (
-                    <div
-                      key={product.id}
-                      onClick={() => toggleProductSelection(product.product_id)}
-                      className={`group relative bg-white rounded-2xl shadow-lg hover:shadow-2xl border-2 transition-all duration-300 cursor-pointer overflow-hidden ${
-                        isSelected 
-                          ? 'border-purple-500 ring-4 ring-purple-200' 
-                          : 'border-gray-100 hover:border-purple-300'
-                      }`}
-                    >
-                      {/* Selected indicator */}
-                      {isSelected && (
-                        <div className="absolute top-2 right-2 z-10 bg-purple-500 text-white rounded-full p-1.5 shadow-lg">
-                          <Icon icon="mdi:check-circle" className="text-lg" />
-                        </div>
-                      )}
+              ) : categoryProducts.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <div className="bg-gray-100 rounded-full p-6 mb-4">
+                    <Icon icon="mdi:package-variant-closed" className="text-6xl text-gray-400" />
+                  </div>
+                  <h4 className="text-gray-700 font-semibold text-lg mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    No products found
+                  </h4>
+                  <p className="text-gray-500 text-sm max-w-md" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    No published products found in this category. Try selecting a different category.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                  {categoryProducts.map((product) => {
+                    const isSelected = saleData.selectedProductIds.includes(product.product_id);
+                    const productImage = productMediaMap[product.id]?.[0] || productMediaMap[product.product_id]?.[0] || '/placeholder.png';
+                    
+                    return (
+                      <div
+                        key={product.id}
+                        onClick={() => toggleProductSelection(product.product_id)}
+                        className={`group relative bg-white rounded-2xl shadow-md hover:shadow-xl border-2 transition-all duration-300 cursor-pointer overflow-hidden transform hover:-translate-y-1 ${
+                          isSelected 
+                            ? 'border-purple-500 ring-4 ring-purple-200 shadow-purple-200' 
+                            : 'border-gray-200 hover:border-purple-400'
+                        }`}
+                      >
+                        {/* Selected indicator */}
+                        {isSelected && (
+                          <div className="absolute top-3 right-3 z-10 bg-gradient-to-br from-purple-500 to-violet-600 text-white rounded-full p-2 shadow-lg">
+                            <Icon icon="mdi:check-circle" className="text-xl" />
+                          </div>
+                        )}
 
-                      {/* Product Image */}
-                      <div className="relative w-full aspect-[4/3] overflow-hidden bg-gray-100">
-                        <img
-                          src={productImage}
-                          alt={product.product_name}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                          onError={(e) => {
-                            e.currentTarget.src = '/placeholder.png';
-                          }}
-                        />
-                        {/* Overlay on hover */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
-                          <span className="text-white font-semibold text-sm flex items-center gap-2" style={{ fontFamily: "'Jost', sans-serif" }}>
-                            <Icon icon="mdi:tag" className="w-5 h-5" />
-                            {isSelected ? 'Selected' : 'Click to Select'}
-                          </span>
+                        {/* Product Image */}
+                        <div className="relative w-full aspect-[4/3] overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
+                          <img
+                            src={productImage}
+                            alt={product.product_name}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                            onError={(e) => {
+                              e.currentTarget.src = '/placeholder.png';
+                            }}
+                          />
+                          {/* Overlay on hover */}
+                          <div className={`absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent transition-opacity duration-300 flex items-end justify-center pb-4 ${
+                            isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                          }`}>
+                            <span className="text-white font-semibold text-sm flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-lg" style={{ fontFamily: "'Jost', sans-serif" }}>
+                              <Icon icon={isSelected ? "mdi:check-circle" : "mdi:tag"} className="text-lg" />
+                              {isSelected ? 'Selected' : 'Click to Select'}
+                            </span>
+                          </div>
                         </div>
-                      </div>
 
-                      {/* Product Info */}
-                      <div className="p-4">
-                        <h3 className="font-bold text-base text-gray-900 mb-2 line-clamp-2" style={{ fontFamily: "'Jost', sans-serif" }}>
-                          {product.product_name}
-                        </h3>
-                        <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-                          <div>
-                            <p className="text-xs text-gray-500 mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Price</p>
-                            <p className="text-xl font-bold text-gray-900" style={{ fontFamily: "'Jost', sans-serif" }}>
-                              ₱{product.price?.toLocaleString() || '0'}
-                            </p>
+                        {/* Product Info */}
+                        <div className="p-5">
+                          <h3 className="font-bold text-base text-gray-900 mb-3 line-clamp-2 min-h-[3rem]" style={{ fontFamily: "'Jost', sans-serif" }}>
+                            {product.product_name}
+                          </h3>
+                          <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                            <div>
+                              <p className="text-xs text-gray-500 mb-1 font-medium" style={{ fontFamily: "'Jost', sans-serif" }}>
+                                Price
+                              </p>
+                              <p className="text-2xl font-bold text-gray-900" style={{ fontFamily: "'Jost', sans-serif" }}>
+                                ₱{product.price?.toLocaleString() || '0'}
+                              </p>
+                            </div>
+                            {isSelected && (
+                              <div className="bg-purple-100 rounded-lg px-3 py-1.5">
+                                <Icon icon="mdi:tag" className="text-purple-600 text-xl" />
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
-        {/* Discount Configuration */}
-        <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-100">
-          <div className="flex items-center gap-3 mb-4">
-            <Icon icon="mdi:percent" className="text-2xl text-green-600" />
-            <span className="text-sm text-green-600 font-semibold uppercase tracking-wide">Discount Configuration</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>Discount Type</label>
-              <select
-                value={saleData.discountType}
-                onChange={(e) => setSaleData({ ...saleData, discountType: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl border border-green-200 focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white"
-                style={{ fontFamily: "'Jost', sans-serif" }}
-              >
-                <option value="percentage">Percentage</option>
-              </select>
+        {/* Discount Configuration & Date Range - Combined Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Discount Configuration */}
+          <div className="bg-white rounded-3xl shadow-lg border border-gray-200 overflow-hidden">
+            <div className="bg-gradient-to-r from-green-500 to-emerald-600 px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="bg-white/20 backdrop-blur-sm rounded-xl p-2">
+                  <Icon icon="mdi:percent" className="text-2xl text-white" />
+                </div>
+                <div>
+                  <h3 className="text-white font-bold text-lg" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    Discount Settings
+                  </h3>
+                  <p className="text-green-100 text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    Configure discount details
+                  </p>
+                </div>
+              </div>
             </div>
+            <div className="p-6 space-y-5">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  <Icon icon="mdi:tag-multiple" className="text-gray-500" />
+                  Discount Type
+                </label>
+                <div className="relative">
+                  <Icon 
+                    icon="mdi:chevron-down" 
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xl"
+                  />
+                  <select
+                    value={saleData.discountType}
+                    onChange={(e) => setSaleData({ ...saleData, discountType: e.target.value })}
+                    className="w-full px-4 py-4 pr-12 rounded-xl border-2 border-gray-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-gray-50 hover:bg-white appearance-none cursor-pointer"
+                    style={{ fontFamily: "'Jost', sans-serif" }}
+                  >
+                    <option value="percentage">Percentage (%)</option>
+                  </select>
+                </div>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>Discount Value</label>
-              <input
-                type="number"
-                value={saleData.discountValue}
-                onChange={(e) => setSaleData({ ...saleData, discountValue: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl border border-green-200 focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white"
-                placeholder="Enter value"
-                style={{ fontFamily: "'Jost', sans-serif" }}
-              />
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  <Icon icon="mdi:currency-usd" className="text-gray-500" />
+                  Discount Value
+                </label>
+                <div className="relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">%</div>
+                  <input
+                    type="number"
+                    value={saleData.discountValue}
+                    onChange={(e) => setSaleData({ ...saleData, discountValue: e.target.value })}
+                    className="w-full pl-10 pr-4 py-4 rounded-xl border-2 border-gray-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-gray-50 hover:bg-white"
+                    placeholder="Enter discount percentage"
+                    min="0"
+                    max="100"
+                    style={{ fontFamily: "'Jost', sans-serif" }}
+                  />
+                </div>
+                {saleData.discountValue && (
+                  <p className="mt-2 text-xs text-gray-500 flex items-center gap-1" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    <Icon icon="mdi:information-outline" className="text-sm" />
+                    Products will be discounted by {saleData.discountValue}%
+                  </p>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Date Range */}
-        <div className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-2xl p-6 border border-purple-100">
-          <div className="flex items-center gap-3 mb-4">
-            <Icon icon="mdi:calendar-range" className="text-2xl text-purple-600" />
-            <span className="text-sm text-purple-600 font-semibold uppercase tracking-wide">Sale Period</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>Start Date</label>
-              <input
-                type="date"
-                value={saleData.startDate}
-                onChange={(e) => setSaleData({ ...saleData, startDate: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl border border-purple-200 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white"
-                style={{ fontFamily: "'Jost', sans-serif" }}
-              />
+          {/* Date Range */}
+          <div className="bg-white rounded-3xl shadow-lg border border-gray-200 overflow-hidden">
+            <div className="bg-gradient-to-r from-purple-500 to-violet-600 px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="bg-white/20 backdrop-blur-sm rounded-xl p-2">
+                  <Icon icon="mdi:calendar-range" className="text-2xl text-white" />
+                </div>
+                <div>
+                  <h3 className="text-white font-bold text-lg" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    Sale Period
+                  </h3>
+                  <p className="text-purple-100 text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    Set start and end dates
+                  </p>
+                </div>
+              </div>
             </div>
+            <div className="p-6 space-y-5">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  <Icon icon="mdi:calendar-start" className="text-gray-500" />
+                  Start Date
+                </label>
+                <input
+                  type="date"
+                  value={saleData.startDate}
+                  onChange={(e) => setSaleData({ ...saleData, startDate: e.target.value })}
+                  className="w-full px-4 py-4 rounded-xl border-2 border-gray-200 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 bg-gray-50 hover:bg-white cursor-pointer"
+                  style={{ fontFamily: "'Jost', sans-serif" }}
+                />
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>End Date</label>
-              <input
-                type="date"
-                value={saleData.endDate}
-                onChange={(e) => setSaleData({ ...saleData, endDate: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl border border-purple-200 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white"
-                style={{ fontFamily: "'Jost', sans-serif" }}
-              />
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  <Icon icon="mdi:calendar-end" className="text-gray-500" />
+                  End Date
+                </label>
+                <input
+                  type="date"
+                  value={saleData.endDate}
+                  onChange={(e) => setSaleData({ ...saleData, endDate: e.target.value })}
+                  min={saleData.startDate || undefined}
+                  className="w-full px-4 py-4 rounded-xl border-2 border-gray-200 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 bg-gray-50 hover:bg-white cursor-pointer"
+                  style={{ fontFamily: "'Jost', sans-serif" }}
+                />
+                {saleData.startDate && saleData.endDate && (
+                  <p className="mt-2 text-xs text-gray-500 flex items-center gap-1" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    <Icon icon="mdi:information-outline" className="text-sm" />
+                    Sale will run for {Math.ceil((new Date(saleData.endDate).getTime() - new Date(saleData.startDate).getTime()) / (1000 * 60 * 60 * 24))} day(s)
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -598,22 +708,24 @@ export function AddProductModal({
           <Icon icon="mdi:close" className="text-xl" />
         </button>
 
-        {/* Header */}
-        <div className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-800 dark:to-slate-900 border-b border-gray-100 dark:border-slate-800 p-6">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg">
-              <Icon icon={mode === 'sale' ? "mdi:tag-outline" : "mdi:plus-circle"} className="text-2xl text-white" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
-                {mode === 'sale' ? 'Create Sale' : 'Add Product'}
-              </h2>
-              <p className="text-gray-600 dark:text-slate-400 text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>
-                {mode === 'sale' ? 'Set up product discounts and promotions' : 'Add new products to your inventory'}
-              </p>
+        {/* Header - Hide when showing fetched products slide */}
+        {!(mode === 'product' && !showFullForm) && (
+          <div className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-800 dark:to-slate-900 border-b border-gray-100 dark:border-slate-800 p-6">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg">
+                <Icon icon={mode === 'sale' ? "mdi:tag-outline" : "mdi:plus-circle"} className="text-2xl text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  {mode === 'sale' ? 'Create Sale' : 'Add Product'}
+                </h2>
+                <p className="text-gray-600 dark:text-slate-400 text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  {mode === 'sale' ? 'Set up product discounts and promotions' : 'Add new products to your inventory'}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Content */}
         <div className={`p-5 space-y-5 overflow-y-auto flex-1 text-gray-900 dark:text-slate-100 ${mode === 'product' && !showFullForm ? 'flex flex-col justify-center' : ''}`}>
