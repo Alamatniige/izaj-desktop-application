@@ -118,7 +118,359 @@ class EmailService {
     return htmlTagPattern.test(text);
   }
 
-  async sendSubscriptionMessage(email, customMessage, webAppUrl = 'https://izaj.com') {
+  // Create beautiful product notification template (matching izaj-web email design exactly)
+  createProductNotificationTemplate(productName, productImageUrl, webAppUrl, productId) {
+    // Ensure webAppUrl has a value
+    const baseUrl = webAppUrl || process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://izaj-lighting-centre.netlify.app';
+    const productLink = productId ? `${baseUrl}/item-description/${productId}` : baseUrl;
+    const unsubscribeLink = `${baseUrl}/unsubscribe`;
+    
+    // Log to verify new template is being used
+    console.log('📧 [Email Template] Using NEW product notification template');
+    console.log('   Product:', productName);
+    console.log('   Base URL:', baseUrl);
+    console.log('   Product ID:', productId);
+    console.log('   Product Link:', productLink);
+    console.log('   Unsubscribe Link:', unsubscribeLink);
+    
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>New Product Available - IZAJ</title>
+        <style>
+          body { 
+            font-family: 'Jost', sans-serif; 
+            line-height: 1.6; 
+            color: #000000; 
+            background: #ffffff; 
+            padding: 20px; 
+          }
+          .email-container { 
+            max-width: 640px; 
+            margin: 0 auto; 
+            background: #ffffff; 
+            border: 1px solid #e5e5e5; 
+          }
+          .header { 
+            background: #000000; 
+            color: white; 
+            padding: 36px 28px; 
+            text-align: center; 
+          }
+          .header h1 { 
+            font-family: 'Jost', sans-serif; 
+            font-size: 28px; 
+            font-weight: 700; 
+            margin: 0 0 6px; 
+          }
+          .header p { 
+            font-family: 'Jost', sans-serif; 
+            margin: 0; 
+            opacity: 0.9; 
+          }
+          .content { 
+            padding: 28px; 
+            background: #ffffff; 
+          }
+          .content p { 
+            font-family: 'Jost', sans-serif; 
+            color: #333333; 
+            margin: 0 0 16px; 
+          }
+          .product-card {
+            margin: 20px 0;
+            padding: 20px;
+            background: #ffffff;
+            border: 1px solid #e5e5e5;
+          }
+          .product-image {
+            width: 100%;
+            max-width: 560px;
+            display: block;
+            margin: 0 auto 12px;
+            height: auto;
+          }
+          .product-name {
+            font-family: 'Jost', sans-serif;
+            color: #000000;
+            margin: 0 0 6px;
+            font-size: 18px;
+            font-weight: 600;
+          }
+          .product-description {
+            font-family: 'Jost', sans-serif;
+            color: #333333;
+            font-size: 14px;
+            margin: 0 0 10px;
+          }
+          .button { 
+            display: inline-block; 
+            background: #000000; 
+            color: white !important; 
+            padding: 14px 28px; 
+            text-decoration: none !important; 
+            font-family: 'Jost', sans-serif; 
+            font-weight: 600; 
+            border: 2px solid #000000; 
+            border-radius: 4px;
+          }
+          .button:hover { 
+            background: #ffffff; 
+            color: #000000 !important; 
+          }
+          a.button {
+            color: white !important;
+            text-decoration: none !important;
+          }
+          .button-container {
+            text-align: center;
+            margin-top: 20px;
+          }
+          .footer { 
+            background: #f8f8f8; 
+            padding: 24px; 
+            text-align: center; 
+            border-top: 1px solid #e5e5e5; 
+          }
+          .footer p, .footer a { 
+            font-family: 'Jost', sans-serif; 
+            color: #666666; 
+            font-size: 13px; 
+          }
+          .footer a {
+            color: #000000 !important;
+            text-decoration: underline !important;
+          }
+          @media (max-width: 600px) { 
+            .content, .header, .footer { 
+              padding: 20px; 
+            } 
+            .header h1 { 
+              font-size: 22px; 
+            } 
+          }
+        </style>
+      </head>
+      <body>
+        <div class="email-container">
+          <div class="header">
+            <h1>New Product at IZAJ</h1>
+            <p>Carefully curated for your space</p>
+          </div>
+          <div class="content">
+            <p>We just added a new item to our collection:</p>
+            <div class="product-card">
+              ${productImageUrl ? `
+                <img src="${productImageUrl}" alt="${productName}" class="product-image" />
+              ` : ''}
+              <h3 class="product-name">${productName}</h3>
+              <p class="product-description">
+                Discover this amazing new product in our collection. Quality lighting solutions for your home and business.
+              </p>
+            </div>
+            <div class="button-container">
+              <a href="${productLink}" class="button" style="color: white !important; text-decoration: none !important; display: inline-block; background: #000000; padding: 14px 28px; border: 2px solid #000000; border-radius: 4px;">Shop Now</a>
+            </div>
+          </div>
+          <div class="footer">
+            <p>© ${new Date().getFullYear()} IZAJ Lighting Centre. All rights reserved. · <a href="${unsubscribeLink}" style="color: #000000 !important; text-decoration: underline !important;">Unsubscribe</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  // Create beautiful sale notification template (matching izaj-web email design exactly)
+  createSaleNotificationTemplate(productName, discountText, startDate, endDate, productImageUrl, webAppUrl, productId) {
+    // Ensure webAppUrl has a value
+    const baseUrl = webAppUrl || process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://izaj-lighting-centre.netlify.app';
+    const productLink = productId ? `${baseUrl}/item-description/${productId}` : baseUrl;
+    const unsubscribeLink = `${baseUrl}/unsubscribe`;
+    
+    // Log to verify new template is being used
+    console.log('📧 [Email Template] Using NEW sale notification template');
+    console.log('   Product:', productName);
+    console.log('   Discount:', discountText);
+    console.log('   Base URL:', baseUrl);
+    console.log('   Product ID:', productId);
+    console.log('   Product Link:', productLink);
+    console.log('   Unsubscribe Link:', unsubscribeLink);
+    
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Special Sale - IZAJ</title>
+        <style>
+          body { 
+            font-family: 'Jost', sans-serif; 
+            line-height: 1.6; 
+            color: #000000; 
+            background: #ffffff; 
+            padding: 20px; 
+          }
+          .email-container { 
+            max-width: 640px; 
+            margin: 0 auto; 
+            background: #ffffff; 
+            border: 1px solid #e5e5e5; 
+          }
+          .header { 
+            background: #000000; 
+            color: white; 
+            padding: 36px 28px; 
+            text-align: center; 
+          }
+          .header h1 { 
+            font-family: 'Jost', sans-serif; 
+            font-size: 28px; 
+            font-weight: 700; 
+            margin: 0 0 6px; 
+          }
+          .header p { 
+            font-family: 'Jost', sans-serif; 
+            margin: 0; 
+            opacity: 0.9; 
+          }
+          .content { 
+            padding: 28px; 
+            background: #ffffff; 
+          }
+          .title { 
+            font-family: 'Jost', sans-serif; 
+            color: #000000; 
+            font-size: 20px; 
+            margin: 0 0 8px; 
+            font-weight: 600;
+          }
+          .desc { 
+            font-family: 'Jost', sans-serif; 
+            color: #333333; 
+            font-size: 16px; 
+            margin: 0 0 12px; 
+          }
+          .date { 
+            font-family: 'Jost', sans-serif; 
+            color: #666666; 
+            font-size: 13px; 
+            margin: 0 0 16px; 
+          }
+          .product-card {
+            margin: 20px 0;
+            padding: 20px;
+            background: #ffffff;
+            border: 1px solid #e5e5e5;
+          }
+          .product-image {
+            width: 100%;
+            max-width: 560px;
+            display: block;
+            margin: 0 auto 12px;
+            height: auto;
+          }
+          .product-name {
+            font-family: 'Jost', sans-serif;
+            color: #000000;
+            margin: 0 0 6px;
+            font-size: 18px;
+            font-weight: 600;
+          }
+          .discount-text {
+            font-family: 'Jost', sans-serif;
+            color: #dc2626;
+            font-size: 24px;
+            font-weight: 700;
+            margin: 12px 0;
+          }
+          .button { 
+            display: inline-block; 
+            background: #000000; 
+            color: white !important; 
+            padding: 14px 28px; 
+            text-decoration: none !important; 
+            font-family: 'Jost', sans-serif; 
+            font-weight: 600; 
+            border: 2px solid #000000; 
+            border-radius: 4px;
+          }
+          .button:hover { 
+            background: #ffffff; 
+            color: #000000 !important; 
+          }
+          a.button {
+            color: white !important;
+            text-decoration: none !important;
+          }
+          .button-container {
+            text-align: center;
+            margin-top: 20px;
+          }
+          .footer { 
+            background: #f8f8f8; 
+            padding: 24px; 
+            text-align: center; 
+            border-top: 1px solid #e5e5e5; 
+          }
+          .footer p, .footer a { 
+            font-family: 'Jost', sans-serif; 
+            color: #666666; 
+            font-size: 13px; 
+          }
+          .footer a {
+            color: #000000 !important;
+            text-decoration: underline !important;
+          }
+          @media (max-width: 600px) { 
+            .content, .header, .footer { 
+              padding: 20px; 
+            } 
+            .header h1 { 
+              font-size: 22px; 
+            } 
+          }
+        </style>
+      </head>
+      <body>
+        <div class="email-container">
+          <div class="header">
+            <h1>IZAJ Sale</h1>
+            <p>Exclusive offers for a limited time</p>
+          </div>
+          <div class="content">
+            <h2 class="title">Special Sale: ${productName}</h2>
+            <p class="desc">Don't miss out on this amazing deal!</p>
+            <div class="discount-text">${discountText}</div>
+            ${productImageUrl ? `
+              <div class="product-card">
+                <img src="${productImageUrl}" alt="${productName}" class="product-image" />
+                <h3 class="product-name">${productName}</h3>
+              </div>
+            ` : `
+              <div class="product-card">
+                <h3 class="product-name">${productName}</h3>
+              </div>
+            `}
+            <p class="date">Valid from ${startDate} to ${endDate}</p>
+            <div class="button-container">
+              <a href="${productLink}" class="button" style="color: white !important; text-decoration: none !important; display: inline-block; background: #000000; padding: 14px 28px; border: 2px solid #000000; border-radius: 4px;">Shop Now</a>
+            </div>
+          </div>
+          <div class="footer">
+            <p>© ${new Date().getFullYear()} IZAJ Lighting Centre. All rights reserved. · <a href="${unsubscribeLink}" style="color: #000000 !important; text-decoration: underline !important;">Unsubscribe</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  async sendSubscriptionMessage(email, customMessage, webAppUrl = 'https://izaj-lighting-centre.netlify.app') {
     // Check if message is HTML formatted
     const isHtml = customMessage ? this.isHtmlContent(customMessage) : false;
     

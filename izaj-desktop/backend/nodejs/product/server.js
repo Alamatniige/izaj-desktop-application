@@ -4,6 +4,28 @@ import { supabase as productSupabase } from '../supabaseProduct.js';
 import authenticate from '../util/middlerware.js';
 import { getAdminContext, getAdminCategories } from '../util/adminContext.js';
 import multer from 'multer';
+import { emailService } from '../util/emailService.js';
+import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+// Create notification Supabase client (same as Settings)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+dotenv.config({ path: join(__dirname, '..', '..', '.env') });
+
+const notificationSupabaseUrl = process.env.SUPABASE_URL;
+const notificationSupabaseKey = process.env.SUPABASE_SERVICE_KEY;
+
+const notificationSupabase = createClient(notificationSupabaseUrl, notificationSupabaseKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+});
+
+console.log('✅ Product routes module loaded - Notification system ready');
 
 const router = express.Router();
 const storage = multer.memoryStorage();
@@ -1077,6 +1099,10 @@ router.post('/products/publish', authenticate, async (req, res) => {
 
 //PUT - Update Publish Status of a Product (Make it visible to client app)
 router.put('/products/:id/status', authenticate, async (req, res) => {
+  console.log('\n🔵 [ENDPOINT HIT] PUT /products/:id/status');
+  console.log('Request params:', req.params);
+  console.log('Request body:', req.body);
+  
   const { id } = req.params;
   const { publish_status } = req.body;
 
@@ -1113,6 +1139,7 @@ router.put('/products/:id/status', authenticate, async (req, res) => {
       }
       
       const finalId = productById.id;
+      const previousStatus = productById.publish_status;
       
       // Update using the found id
       const { data, error } = await supabase
@@ -1125,6 +1152,77 @@ router.put('/products/:id/status', authenticate, async (req, res) => {
       if (error) {
         console.error('❌ Error updating publish status:', error);
         return res.status(500).json({ error: error.message });
+      }
+      
+      // Send notification if product was just published (fallback path)
+      if (publish_status === true && (previousStatus === false || !previousStatus)) {
+        const timestamp = new Date().toISOString();
+        console.log('\n========================================');
+        console.log(`📧 [${timestamp}] PRODUCT PUBLISH NOTIFICATION (Fallback Path)`);
+        console.log(`========================================`);
+        console.log(`Product ID: ${data.id}`);
+        console.log(`Product Name: ${data.product_name}`);
+        console.log(`Previous Status: ${previousStatus}`);
+        console.log(`New Status: ${publish_status}`);
+        console.log('Checking subscribers...\n');
+        
+        try {
+          // Get all active subscribers (using same client and query as Settings)
+          const { data: subscribers, error: subscribersError } = await notificationSupabase
+            .from('newsletter_subscribers')
+            .select('email, is_active, id', { count: 'exact' })
+            .eq('is_active', true);
+          
+          if (subscribersError) {
+            console.error('❌ [Notification] ERROR fetching active subscribers:', subscribersError);
+          } else if (!subscribers || subscribers.length === 0) {
+            console.log('⚠️ [Notification] WARNING: No active subscribers found');
+          } else {
+            console.log(`✅ [Notification] Found ${subscribers.length} active subscriber(s)`);
+            const webAppUrl = process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://izaj-lighting-centre.netlify.app';
+            const productName = data.product_name || 'New Product';
+            const productImageUrl = data.image_url || data.media_urls?.[0] || null;
+            // Use product_id (Shopify ID) for the URL, not the database UUID
+            // The website expects numeric product_id in the URL
+            const productId = data.product_id || data.id;
+            console.log('📧 [Product Notification] Product ID for email link:', {
+              product_id: data.product_id,
+              database_id: data.id,
+              using: productId,
+              type: typeof productId
+            });
+            
+            // Create beautiful product notification template
+            const notificationHtml = emailService.createProductNotificationTemplate(
+              productName,
+              productImageUrl,
+              webAppUrl,
+              productId
+            );
+            
+            console.log('📤 Starting to send email notifications...');
+            Promise.all(
+              subscribers.map(async (subscriber) => {
+                try {
+                  const normalizedEmail = subscriber.email.toLowerCase().trim();
+                  await emailService.sendEmail({
+                    to: normalizedEmail,
+                    subject: '🎉 New Product Available at IZAJ Lighting Centre',
+                    html: notificationHtml,
+                    text: `New Product Available: ${productName}\n\nVisit our website: ${webAppUrl}`
+                  });
+                  console.log(`   ✅ Sent to: ${normalizedEmail}`);
+                } catch (error) {
+                  console.error(`   ❌ Failed to send to: ${subscriber.email}:`, error.message);
+                }
+              })
+            ).catch(err => console.error('Error sending notifications:', err));
+            
+            console.log(`📧 [Notification] Started sending notifications to ${subscribers.length} subscribers`);
+          }
+        } catch (notificationError) {
+          console.error('❌ [Notification] Error in notification process:', notificationError);
+        }
       }
       
       return res.json({ success: true, product: data });
@@ -1186,6 +1284,133 @@ router.put('/products/:id/status', authenticate, async (req, res) => {
         expected: publish_status,
         got: data.publish_status
       });
+    }
+    
+    // Debug: Log current status values
+    console.log(`\n🔍 [Debug] Product publish status check:`);
+    console.log(`   Product ID: ${currentProduct.id}`);
+    console.log(`   Current publish_status: ${currentProduct.publish_status} (type: ${typeof currentProduct.publish_status})`);
+    console.log(`   New publish_status: ${publish_status} (type: ${typeof publish_status})`);
+    console.log(`   Condition check: publish_status === true: ${publish_status === true}`);
+    console.log(`   Condition check: currentProduct.publish_status === false: ${currentProduct.publish_status === false}`);
+    console.log(`   Condition check: !currentProduct.publish_status: ${!currentProduct.publish_status}`);
+    console.log(`   Will trigger notification: ${publish_status === true && (currentProduct.publish_status === false || !currentProduct.publish_status)}\n`);
+    
+    // Send notification to subscribers if product was just published
+    if (publish_status === true && (currentProduct.publish_status === false || !currentProduct.publish_status)) {
+      const timestamp = new Date().toISOString();
+      console.log('\n========================================');
+      console.log(`📧 [${timestamp}] PRODUCT PUBLISH NOTIFICATION`);
+      console.log(`========================================`);
+      console.log(`Product ID: ${data.id}`);
+      console.log(`Product Name: ${data.product_name}`);
+      console.log(`Previous Status: ${currentProduct.publish_status}`);
+      console.log(`New Status: ${publish_status}`);
+      console.log('Checking subscribers...\n');
+      
+      try {
+        // First, let's check ALL subscribers to see what's in the table (using notification client)
+        const { data: allSubscribers, error: allError } = await notificationSupabase
+          .from('newsletter_subscribers')
+          .select('email, is_active, id')
+          .limit(10);
+        
+        console.log('🔍 [Debug] Checking newsletter_subscribers table...');
+        if (allError) {
+          console.error('❌ [Debug] Error fetching all subscribers:', allError);
+        } else {
+          console.log(`📊 [Debug] Total subscribers in table: ${allSubscribers?.length || 0}`);
+          if (allSubscribers && allSubscribers.length > 0) {
+            console.log('📋 [Debug] Sample subscribers:');
+            allSubscribers.forEach((sub, idx) => {
+              console.log(`   ${idx + 1}. Email: ${sub.email}, is_active: ${sub.is_active}, id: ${sub.id}`);
+            });
+          }
+        }
+        console.log('');
+        
+        // Get all active subscribers (using same client and query as Settings)
+        const { data: subscribers, error: subscribersError } = await notificationSupabase
+          .from('newsletter_subscribers')
+          .select('email, is_active, id', { count: 'exact' })
+          .eq('is_active', true);
+        
+        if (subscribersError) {
+          console.error('❌ [Notification] ERROR fetching active subscribers:', subscribersError);
+          console.error('Error details:', JSON.stringify(subscribersError, null, 2));
+        } else if (!subscribers || subscribers.length === 0) {
+          console.log('⚠️ [Notification] WARNING: No active subscribers found in database');
+          console.log('   Make sure you have subscribers with is_active = true in newsletter_subscribers table');
+          console.log(`   Found ${allSubscribers?.length || 0} total subscriber(s) in table`);
+          if (allSubscribers && allSubscribers.length > 0) {
+            const activeCount = allSubscribers.filter(s => s.is_active === true).length;
+            const inactiveCount = allSubscribers.filter(s => s.is_active === false || s.is_active === null).length;
+            console.log(`   Active: ${activeCount}, Inactive/Null: ${inactiveCount}`);
+          }
+          console.log('');
+        } else {
+          console.log(`✅ [Notification] Found ${subscribers.length} active subscriber(s)`);
+          console.log('Subscriber emails:', subscribers.map(s => s.email).join(', '));
+          console.log('');
+          
+          const webAppUrl = process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://izaj-lighting-centre.netlify.app';
+          const productName = data.product_name || 'New Product';
+          const productImageUrl = data.image_url || data.media_urls?.[0] || null;
+          // Use product_id (Shopify ID) for the URL, not the database UUID
+          // The website expects numeric product_id in the URL
+          const productId = data.product_id || data.id;
+          
+          // Create beautiful product notification template
+          const notificationHtml = emailService.createProductNotificationTemplate(
+            productName,
+            productImageUrl,
+            webAppUrl,
+            productId
+          );
+          
+          console.log('📤 Starting to send email notifications...');
+          let successCount = 0;
+          let failCount = 0;
+          
+          // Send emails to all subscribers (async, don't wait)
+          Promise.all(
+            subscribers.map(async (subscriber) => {
+              try {
+                const normalizedEmail = subscriber.email.toLowerCase().trim();
+                await emailService.sendEmail({
+                  to: normalizedEmail,
+                  subject: '🎉 New Product Available at IZAJ Lighting Centre',
+                  html: notificationHtml,
+                  text: `New Product Available: ${productName}\n\nVisit our website: ${webAppUrl}`
+                });
+                successCount++;
+                console.log(`   ✅ Sent to: ${normalizedEmail}`);
+              } catch (error) {
+                failCount++;
+                console.error(`   ❌ Failed to send to: ${subscriber.email}`);
+                console.error(`      Error: ${error.message}`);
+              }
+            })
+          ).then(() => {
+            console.log('\n📊 Notification Summary:');
+            console.log(`   Total: ${subscribers.length}`);
+            console.log(`   Success: ${successCount}`);
+            console.log(`   Failed: ${failCount}`);
+            console.log('========================================\n');
+          }).catch(err => {
+            console.error('❌ [Notification] CRITICAL ERROR in notification process:', err);
+            console.error('Error stack:', err.stack);
+            console.log('========================================\n');
+          });
+        }
+      } catch (notificationError) {
+        // Don't fail the request if notification fails
+        console.error('❌ [Notification] EXCEPTION in notification process:', notificationError);
+        console.error('Error stack:', notificationError.stack);
+        console.log('========================================\n');
+      }
+    } else {
+      console.log(`ℹ️ [Notification] Product ${data.id} - Status unchanged (${currentProduct.publish_status} -> ${publish_status}), no notification sent`);
     }
     
     res.json({ success: true, product: data });
@@ -1288,6 +1513,10 @@ router.delete('/products/:id', authenticate, async (req, res) => {
 
 // POST /api/products/publish-all - Publish all products with is_published=true to website (set publish_status=true)
 router.post('/products/publish-all', authenticate, async (req, res) => {
+  console.log('\n🔵 [ENDPOINT HIT] POST /products/publish-all');
+  console.log('Request body:', req.body);
+  console.log('User ID:', req.user?.id);
+  
   try {
     // Get admin context to check SuperAdmin status and categories
     const adminContext = await getAdminContext(req.user.id);
@@ -1348,6 +1577,123 @@ router.post('/products/publish-all', authenticate, async (req, res) => {
         error: 'Failed to publish products',
         details: updateError.message
       });
+    }
+
+    // Send notifications to subscribers for newly published products
+    if (updatedProducts && updatedProducts.length > 0) {
+      const timestamp = new Date().toISOString();
+      console.log('\n========================================');
+      console.log(`📧 [${timestamp}] PUBLISH ALL - NOTIFICATION`);
+      console.log(`========================================`);
+      console.log(`Total Products Published: ${updatedProducts.length}`);
+      console.log(`Product Names: ${updatedProducts.map(p => p.product_name || 'New Product').join(', ')}`);
+      console.log('Checking subscribers...\n');
+      
+      try {
+        // First, let's check ALL subscribers to see what's in the table (using notification client)
+        const { data: allSubscribers, error: allError } = await notificationSupabase
+          .from('newsletter_subscribers')
+          .select('email, is_active, id')
+          .limit(10);
+        
+        console.log('🔍 [Debug] Checking newsletter_subscribers table...');
+        if (allError) {
+          console.error('❌ [Debug] Error fetching all subscribers:', allError);
+        } else {
+          console.log(`📊 [Debug] Total subscribers in table: ${allSubscribers?.length || 0}`);
+          if (allSubscribers && allSubscribers.length > 0) {
+            console.log('📋 [Debug] Sample subscribers:');
+            allSubscribers.forEach((sub, idx) => {
+              console.log(`   ${idx + 1}. Email: ${sub.email}, is_active: ${sub.is_active}, id: ${sub.id}`);
+            });
+          }
+        }
+        console.log('');
+        
+        // Get all active subscribers (using same client and query as Settings)
+        const { data: subscribers, error: subscribersError } = await notificationSupabase
+          .from('newsletter_subscribers')
+          .select('email, is_active, id', { count: 'exact' })
+          .eq('is_active', true);
+        
+        if (subscribersError) {
+          console.error('❌ [Notification] ERROR fetching active subscribers:', subscribersError);
+          console.error('Error details:', JSON.stringify(subscribersError, null, 2));
+        } else if (!subscribers || subscribers.length === 0) {
+          console.log('⚠️ [Notification] WARNING: No active subscribers found in database');
+          console.log('   Make sure you have subscribers with is_active = true in newsletter_subscribers table');
+          console.log(`   Found ${allSubscribers?.length || 0} total subscriber(s) in table`);
+          if (allSubscribers && allSubscribers.length > 0) {
+            const activeCount = allSubscribers.filter(s => s.is_active === true).length;
+            const inactiveCount = allSubscribers.filter(s => s.is_active === false || s.is_active === null).length;
+            console.log(`   Active: ${activeCount}, Inactive/Null: ${inactiveCount}`);
+          }
+          console.log('');
+        } else {
+          console.log(`✅ [Notification] Found ${subscribers.length} active subscriber(s)`);
+          console.log('Subscriber emails:', subscribers.map(s => s.email).join(', '));
+          console.log('');
+          
+          const webAppUrl = process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://izaj-lighting-centre.netlify.app';
+          
+          // For multiple products, use the first product for the template or create a combined message
+          const firstProduct = updatedProducts[0];
+          const productName = updatedProducts.length === 1 
+            ? firstProduct.product_name || 'New Product'
+            : `${updatedProducts.length} New Products`;
+          const productImageUrl = firstProduct?.image_url || firstProduct?.media_urls?.[0] || null;
+          // Use product_id (Shopify ID) for the URL, not the database UUID
+          // The website expects numeric product_id in the URL
+          const productId = firstProduct?.product_id || firstProduct?.id;
+          
+          // Create beautiful product notification template
+          const notificationHtml = emailService.createProductNotificationTemplate(
+            productName,
+            productImageUrl,
+            webAppUrl,
+            productId
+          );
+          
+          console.log('📤 Starting to send email notifications...');
+          let successCount = 0;
+          let failCount = 0;
+          
+          // Send emails to all subscribers (async, don't wait)
+          Promise.all(
+            subscribers.map(async (subscriber) => {
+              try {
+                const normalizedEmail = subscriber.email.toLowerCase().trim();
+                await emailService.sendEmail({
+                  to: normalizedEmail,
+                  subject: `🎉 ${updatedProducts.length} New Product${updatedProducts.length > 1 ? 's' : ''} Available at IZAJ Lighting Centre`,
+                  html: notificationHtml,
+                  text: `${updatedProducts.length} New Product${updatedProducts.length > 1 ? 's' : ''} Available\n\nVisit our website: ${webAppUrl}`
+                });
+                successCount++;
+                console.log(`   ✅ Sent to: ${normalizedEmail}`);
+              } catch (error) {
+                failCount++;
+                console.error(`   ❌ Failed to send to: ${subscriber.email}`);
+                console.error(`      Error: ${error.message}`);
+              }
+            })
+          ).then(() => {
+            console.log('\n📊 Notification Summary:');
+            console.log(`   Total: ${subscribers.length}`);
+            console.log(`   Success: ${successCount}`);
+            console.log(`   Failed: ${failCount}`);
+            console.log('========================================\n');
+          }).catch(err => {
+            console.error('❌ [Notification] CRITICAL ERROR in notification process:', err);
+            console.error('Error stack:', err.stack);
+            console.log('========================================\n');
+          });
+        }
+      } catch (notificationError) {
+        console.error('❌ [Notification] EXCEPTION in notification process:', notificationError);
+        console.error('Error stack:', notificationError.stack);
+        console.log('========================================\n');
+      }
     }
 
     res.json({

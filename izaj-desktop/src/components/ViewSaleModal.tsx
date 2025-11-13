@@ -1,5 +1,7 @@
 import { Icon } from '@iconify/react';
 import { useState } from 'react';
+import { toast } from 'react-hot-toast';
+import API_URL from '../../config/api';
 
 export interface SaleData {
   id: string;
@@ -25,19 +27,105 @@ export interface SaleData {
 interface ViewSaleModalProps {
   sale: SaleData | null;
   onClose: () => void;
+  onDelete?: () => void;
 }
 
 export function ViewSaleModal({ 
   sale, 
-  onClose
+  onClose,
+  onDelete
 }: ViewSaleModalProps) {
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   if (!sale) return null;
 
+  const saleDetails = sale.sale?.[0];
+
+  const handleDelete = async () => {
+    if (!saleDetails) {
+      toast.error('No sale details found');
+      return;
+    }
+
+    if (!saleDetails.id) {
+      toast.error('Sale ID is missing');
+      console.error('Sale details:', saleDetails);
+      return;
+    }
+
+    setIsDeleting(true);
+    const saleId = String(saleDetails.id);
+    const deleteUrl = `${API_URL}/api/sales/${saleId}`;
+    
+    console.log('🗑️ [Delete Sale] Attempting to delete sale:', {
+      saleId,
+      saleDetails,
+      url: deleteUrl
+    });
+
+    try {
+      const response = await fetch(deleteUrl, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('🗑️ [Delete Sale] Response status:', response.status);
+      
+      const responseText = await response.text();
+      console.log('🗑️ [Delete Sale] Response text:', responseText);
+      
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('🗑️ [Delete Sale] Failed to parse JSON:', parseError);
+        if (!response.ok) {
+          throw new Error(responseText || `Server error: ${response.status}`);
+        }
+        throw new Error('Invalid response from server');
+      }
+
+      console.log('🗑️ [Delete Sale] Response data:', data);
+
+      if (!response.ok) {
+        throw new Error(data.error || data.details || `Failed to delete sale (${response.status})`);
+      }
+
+      toast.success('Sale deleted successfully');
+      setShowDeleteConfirm(false);
+      
+      // Close modal first
+      onClose();
+      
+      // Wait a bit for database to update, then refresh
+      // Increased delay to ensure database update completes
+      setTimeout(async () => {
+        console.log('🔄 [Delete Sale] Refreshing sale list...');
+        if (onDelete) {
+          await onDelete();
+          console.log('✅ [Delete Sale] Sale list refreshed');
+        }
+      }, 1000);
+    } catch (error: any) {
+      console.error('🗑️ [Delete Sale] Error:', error);
+      console.error('🗑️ [Delete Sale] Error details:', {
+        message: error.message,
+        stack: error.stack,
+        saleId,
+        url: deleteUrl
+      });
+      toast.error(error.message || 'Failed to delete sale');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const mediaUrls = sale.mediaUrl || [];
   const hasMultipleMedia = mediaUrls.length > 1;
-  const saleDetails = sale.sale?.[0];
 
   const handlePrevMedia = () => {
     setCurrentMediaIndex((prev) => (prev - 1 + mediaUrls.length) % mediaUrls.length);
@@ -357,7 +445,21 @@ export function ViewSaleModal({
 
         {/* Footer */}
         <div className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-800 dark:to-slate-900 border-t border-gray-100 dark:border-slate-800 p-6">
-          <div className="flex justify-end">
+          <div className="flex justify-between items-center">
+            {/* Delete Button */}
+            {saleDetails && (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                disabled={isDeleting}
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ fontFamily: "'Jost', sans-serif" }}
+              >
+                <Icon icon="mdi:delete-outline" className="text-lg" />
+                Delete Sale
+              </button>
+            )}
+            
+            {/* Close Button */}
             <button
               onClick={onClose}
               className="flex items-center justify-center gap-2 px-6 py-3 bg-white dark:bg-slate-800 border-2 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 font-semibold rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 dark:hover:bg-slate-700 transition-all duration-200"
@@ -368,6 +470,63 @@ export function ViewSaleModal({
             </button>
           </div>
         </div>
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center backdrop-blur-sm z-[60] p-4">
+            <div
+              className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-700 p-6 max-w-md w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-4 mb-4">
+                <div className="flex items-center justify-center w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full">
+                  <Icon icon="mdi:alert-circle" className="text-2xl text-red-600 dark:text-red-400" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    Delete Sale
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    This action cannot be undone
+                  </p>
+                </div>
+              </div>
+              
+              <p className="text-gray-700 dark:text-slate-300 mb-6" style={{ fontFamily: "'Jost', sans-serif" }}>
+                Are you sure you want to delete the sale for <strong>{sale.product_name}</strong>? This will remove the sale and may update the product's sale status.
+              </p>
+              
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={isDeleting}
+                  className="px-4 py-2 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200 font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+                  style={{ fontFamily: "'Jost', sans-serif" }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  style={{ fontFamily: "'Jost', sans-serif" }}
+                >
+                  {isDeleting ? (
+                    <>
+                      <Icon icon="mdi:loading" className="text-lg animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Icon icon="mdi:delete" className="text-lg" />
+                      Delete
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

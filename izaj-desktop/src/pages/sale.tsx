@@ -384,6 +384,14 @@ export default function Sale({
               setShowViewSaleModal(false);
               setSelectedSaleForView(null);
             }}
+            onDelete={async () => {
+              console.log('🔄 [Sale Page] Refreshing after sale deletion...');
+              // Force refresh on-sale products
+              await fetchOnSaleProducts();
+              // Also refresh general products data
+              await refreshProductsData();
+              console.log('✅ [Sale Page] Refresh complete');
+            }}
           />
         )}
       </main>
