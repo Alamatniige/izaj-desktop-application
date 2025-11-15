@@ -25,14 +25,21 @@ const Dashboard = ({ session, isActive = true }: DashboardProps) => {
   } = useDashboard(session);
   
   const prevActiveRef = useRef<boolean>(false);
+  const prevSessionRef = useRef<Session | null>(null);
   
   // Refresh dashboard when it becomes active (when navigating back to it)
+  // Also refresh if session changes
   useEffect(() => {
-    // If dashboard just became active (was inactive, now active), refresh data
-    if (isActive && !prevActiveRef.current && session) {
+    const sessionChanged = session?.user?.id !== prevSessionRef.current?.user?.id;
+    const justBecameActive = isActive && !prevActiveRef.current;
+    
+    // If dashboard just became active or session changed, refresh data
+    if ((justBecameActive || sessionChanged) && session) {
       refreshDashboard();
     }
+    
     prevActiveRef.current = isActive;
+    prevSessionRef.current = session;
   }, [isActive, session, refreshDashboard]);
   
   const [salesExpanded, setSalesExpanded] = useState(false);

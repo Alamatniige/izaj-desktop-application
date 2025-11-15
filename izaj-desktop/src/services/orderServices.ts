@@ -14,6 +14,7 @@ interface OrderStats {
   in_transit: number;
   complete: number;
   cancelled: number;
+  pending_cancellation?: number;
 }
 
 export const useOrders = (session: Session | null) => {
@@ -42,6 +43,7 @@ export const useOrders = (session: Session | null) => {
           in_transit: result.data.filter((o: { status: string; }) => o.status === 'in_transit').length,
           complete: result.data.filter((o: { status: string; }) => o.status === 'complete').length,
           cancelled: result.data.filter((o: { status: string; }) => o.status === 'cancelled').length,
+          pending_cancellation: result.data.filter((o: { status: string; }) => o.status === 'pending_cancellation').length,
         };
         setStats(newStats);
       } else {
@@ -129,13 +131,51 @@ export const useOrderActions = (session: Session | null, onSuccess?: () => void)
     }
   }, [session, onSuccess]);
 
+  const approveCancellation = useCallback(async (orderId: string, reason: string) => {
+    setIsUpdating(true);
+    try {
+      const result = await OrderService.approveCancellation(session, orderId, reason);
+      
+      if (result.success) {
+        onSuccess?.();
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Error approving cancellation:', error);
+      return { success: false, error: 'Failed to approve cancellation' };
+    } finally {
+      setIsUpdating(false);
+    }
+  }, [session, onSuccess]);
+
+  const declineCancellation = useCallback(async (orderId: string) => {
+    setIsUpdating(true);
+    try {
+      const result = await OrderService.declineCancellation(session, orderId);
+      
+      if (result.success) {
+        onSuccess?.();
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Error declining cancellation:', error);
+      return { success: false, error: 'Failed to decline cancellation' };
+    } finally {
+      setIsUpdating(false);
+    }
+  }, [session, onSuccess]);
+
   return {
     isUpdating,
     updateStatus,
     approveOrder,
     markAsInTransit,
     markAsComplete,
-    cancelOrder
+    cancelOrder,
+    approveCancellation,
+    declineCancellation
   };
 };
 

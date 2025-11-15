@@ -10,16 +10,19 @@ export interface OrderItem {
   id: string;
   product_name: string;
   product_image: string | null;
+  category?: string | null;
+  category_name?: string | null;
   quantity: number;
   unit_price: number;
   total: number;
+  original_price?: number;
 }
 
 export interface Order {
   id: string;
   order_number: string;
   user_id: string;
-  status: 'pending' | 'approved' | 'in_transit' | 'complete' | 'cancelled';
+  status: 'pending' | 'approved' | 'in_transit' | 'complete' | 'cancelled' | 'pending_cancellation';
   total_amount: number;
   shipping_fee: number;
   payment_method: string;
@@ -30,6 +33,8 @@ export interface Order {
   shipping_address_line2: string | null;
   shipping_city: string;
   shipping_province: string;
+  shipping_barangay?: string | null;
+  shipping_postal_code?: string | null;
   tracking_number: string | null;
   courier: string | null;
   customer_notes: string | null;
@@ -189,6 +194,56 @@ export class OrderService {
       return await response.json();
     } catch (error) {
       console.error('Error cancelling order:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Approve cancellation request
+   */
+  static async approveCancellation(session: Session | null, orderId: string, reason: string) {
+    try {
+      const response = await fetch(`${API_URL}/api/orders/${orderId}/approve-cancellation`, {
+        method: 'PUT',
+        headers: this.getHeaders(session),
+        body: JSON.stringify({ reason })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to approve cancellation');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error approving cancellation:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Decline cancellation request
+   */
+  static async declineCancellation(session: Session | null, orderId: string) {
+    try {
+      const response = await fetch(`${API_URL}/api/orders/${orderId}/decline-cancellation`, {
+        method: 'PUT',
+        headers: this.getHeaders(session),
+        body: JSON.stringify({})
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to decline cancellation');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error declining cancellation:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'

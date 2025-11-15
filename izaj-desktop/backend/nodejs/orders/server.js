@@ -63,6 +63,61 @@ router.get('/orders', authenticate, async (req, res) => {
       });
     }
 
+    // Fetch categories for order items
+    if (data && data.length > 0) {
+      const allProductIds = new Set();
+      data.forEach(order => {
+        if (order.order_items) {
+          order.order_items.forEach(item => {
+            if (item.product_id) {
+              allProductIds.add(item.product_id);
+            }
+          });
+        }
+      });
+
+      if (allProductIds.size > 0) {
+        const { data: products, error: productsError } = await supabase
+          .from('products')
+          .select('product_id, category, price')
+          .in('product_id', Array.from(allProductIds));
+
+        if (!productsError && products) {
+          const categoryMap = new Map();
+          const priceMap = new Map();
+          products.forEach(product => {
+            if (product.product_id) {
+              const category = typeof product.category === 'object' 
+                ? product.category?.category_name || product.category
+                : product.category;
+              categoryMap.set(String(product.product_id), category);
+              if (product.price) {
+                priceMap.set(String(product.product_id), parseFloat(product.price) || 0);
+              }
+            }
+          });
+
+          // Add category and original price to order items
+          data.forEach(order => {
+            if (order.order_items) {
+              order.order_items.forEach(item => {
+                if (item.product_id) {
+                  const category = categoryMap.get(String(item.product_id));
+                  if (category) {
+                    item.category = category;
+                  }
+                  const originalPrice = priceMap.get(String(item.product_id));
+                  if (originalPrice) {
+                    item.original_price = originalPrice;
+                  }
+                }
+              });
+            }
+          });
+        }
+      }
+    }
+
     // Removed verbose success log to reduce terminal noise
 
     // Log audit event
@@ -107,6 +162,50 @@ router.get('/orders/:id', authenticate, async (req, res) => {
         success: false,
         error: 'Order not found'
       });
+    }
+
+    // Fetch categories for order items
+    if (data && data.items) {
+      const productIds = data.items
+        .map(item => item.product_id)
+        .filter(Boolean);
+
+      if (productIds.length > 0) {
+        const { data: products, error: productsError } = await supabase
+          .from('products')
+          .select('product_id, category, price')
+          .in('product_id', productIds);
+
+        if (!productsError && products) {
+          const categoryMap = new Map();
+          const priceMap = new Map();
+          products.forEach(product => {
+            if (product.product_id) {
+              const category = typeof product.category === 'object' 
+                ? product.category?.category_name || product.category
+                : product.category;
+              categoryMap.set(String(product.product_id), category);
+              if (product.price) {
+                priceMap.set(String(product.product_id), parseFloat(product.price) || 0);
+              }
+            }
+          });
+
+          // Add category and original price to order items
+          data.items.forEach(item => {
+            if (item.product_id) {
+              const category = categoryMap.get(String(item.product_id));
+              if (category) {
+                item.category = category;
+              }
+              const originalPrice = priceMap.get(String(item.product_id));
+              if (originalPrice) {
+                item.original_price = originalPrice;
+              }
+            }
+          });
+        }
+      }
     }
 
     // Log audit event
@@ -284,11 +383,13 @@ router.put('/orders/:id/cancel', authenticate, async (req, res) => {
       .eq('id', id)
       .single();
 
+    // When admin cancels directly (not approving customer request)
+    // Set admin_notes but NOT cancellation_reason (so it shows "Cancelled by Admin")
     const { data, error } = await supabase
       .from('orders')
       .update({
         status: 'cancelled',
-        cancellation_reason: reason,
+        admin_notes: reason,
         cancelled_at: new Date().toISOString()
       })
       .eq('id', id)
@@ -334,6 +435,169 @@ router.put('/orders/:id/cancel', authenticate, async (req, res) => {
     res.status(500).json({
       success: false,
       error: error.message
+    });
+  }
+});
+
+// PUT /api/orders/:id/approve-cancellation - Approve cancellation request
+router.put('/orders/:id/approve-cancellation', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    // Get current order status
+    const { data: currentOrder, error: orderError } = await supabase
+      .from('orders')
+      .select('status, order_number, cancellation_reason')
+      .eq('id', id)
+      .single();
+
+    if (orderError || !currentOrder) {
+      return res.status(404).json({
+        success: false,
+        error: 'Order not found'
+      });
+    }
+
+    // Only allow approving cancellation for pending_cancellation orders
+    if (currentOrder.status !== 'pending_cancellation') {
+      return res.status(400).json({
+        success: false,
+        error: `Only pending cancellation orders can be approved. Current status: ${currentOrder.status}`
+      });
+    }
+
+    // Update order to cancelled
+    // When approving customer cancellation, keep customer's cancellation_reason
+    // This ensures it shows "Cancelled by Customer" (has cancellation_reason)
+    const updateData: any = {
+      status: 'cancelled',
+      cancelled_at: new Date().toISOString()
+    };
+    
+    // Keep customer's cancellation_reason (this is from customer's cancellation request)
+    // Don't set admin_notes so it shows "Cancelled by Customer"
+    if (currentOrder.cancellation_reason) {
+      updateData.cancellation_reason = currentOrder.cancellation_reason;
+    } else if (reason) {
+      // Fallback: if no customer reason, use the reason passed (shouldn't happen in normal flow)
+      updateData.cancellation_reason = reason;
+    }
+    
+    const { data, error } = await supabase
+      .from('orders')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to approve cancellation',
+        details: error.message
+      });
+    }
+
+    // Reverse stock if order was previously approved
+    if (currentOrder?.status === 'approved') {
+      try {
+        const stockResult = await reverseStockFromOrder(id);
+        if (!stockResult.success) {
+          console.error('⚠️ [Orders] Stock reversal had errors:', stockResult.errors);
+        }
+      } catch (stockError) {
+        console.error('⚠️ [Orders] Error reversing stock (non-critical):', stockError);
+      }
+    }
+
+    // Log audit event
+    await logAuditEvent(req.user.id, AuditActions.CANCEL_ORDER, {
+      order_id: id,
+      order_number: data.order_number,
+      cancellation_reason: reason || currentOrder.cancellation_reason,
+      action: 'approved_cancellation'
+    }, req);
+
+    res.json({
+      success: true,
+      message: 'Cancellation approved successfully',
+      data
+    });
+  } catch (error) {
+    console.error('Error approving cancellation:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to approve cancellation',
+      details: error.message
+    });
+  }
+});
+
+// PUT /api/orders/:id/decline-cancellation - Decline cancellation request
+router.put('/orders/:id/decline-cancellation', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Get current order status
+    const { data: currentOrder, error: orderError } = await supabase
+      .from('orders')
+      .select('status, order_number')
+      .eq('id', id)
+      .single();
+
+    if (orderError || !currentOrder) {
+      return res.status(404).json({
+        success: false,
+        error: 'Order not found'
+      });
+    }
+
+    // Only allow declining cancellation for pending_cancellation orders
+    if (currentOrder.status !== 'pending_cancellation') {
+      return res.status(400).json({
+        success: false,
+        error: `Only pending cancellation orders can be declined. Current status: ${currentOrder.status}`
+      });
+    }
+
+    // Update order back to pending
+    const { data, error } = await supabase
+      .from('orders')
+      .update({
+        status: 'pending',
+        cancellation_reason: null
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to decline cancellation',
+        details: error.message
+      });
+    }
+
+    // Log audit event
+    await logAuditEvent(req.user.id, AuditActions.CANCEL_ORDER, {
+      order_id: id,
+      order_number: data.order_number,
+      action: 'declined_cancellation'
+    }, req);
+
+    res.json({
+      success: true,
+      message: 'Cancellation declined successfully',
+      data
+    });
+  } catch (error) {
+    console.error('Error declining cancellation:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to decline cancellation',
+      details: error.message
     });
   }
 });
@@ -402,6 +666,7 @@ router.get('/orders-statistics', authenticate, async (req, res) => {
       in_transit: data.filter(o => o.status === 'in_transit').length,
       complete: data.filter(o => o.status === 'complete').length,
       cancelled: data.filter(o => o.status === 'cancelled').length,
+      pending_cancellation: data.filter(o => o.status === 'pending_cancellation').length,
       total: data.length,
       total_revenue: data
         .filter(o => o.status === 'complete')
