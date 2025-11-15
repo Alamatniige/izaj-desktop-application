@@ -219,7 +219,7 @@ export function AddProductModal({
     <div className="space-y-8">
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Category Selection */}
-        <div className="bg-white rounded-3xl shadow-lg border border-gray-200 overflow-hidden">
+        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-lg border border-gray-200 dark:border-slate-700 overflow-hidden">
           <div className="bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-4">
             <div className="flex items-center gap-3">
               <div className="bg-white/20 backdrop-blur-sm rounded-xl p-2">
@@ -239,12 +239,12 @@ export function AddProductModal({
             <div className="relative">
               <Icon 
                 icon="mdi:chevron-down" 
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xl"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-400 pointer-events-none text-xl"
               />
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full px-4 py-4 pr-12 rounded-xl border-2 border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white appearance-none cursor-pointer"
+                className="w-full px-4 py-4 pr-12 rounded-xl border-2 border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 dark:bg-slate-700 hover:bg-white dark:hover:bg-slate-600 text-gray-900 dark:text-slate-100 appearance-none cursor-pointer"
                 style={{ fontFamily: "'Jost', sans-serif" }}
               >
                 <option value="">Select a category...</option>
@@ -260,7 +260,7 @@ export function AddProductModal({
 
         {/* Product Cards */}
         {selectedCategory && (
-          <div className="bg-white rounded-3xl shadow-lg border border-gray-200 overflow-hidden">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-lg border border-gray-200 dark:border-slate-700 overflow-hidden">
             <div className="bg-gradient-to-r from-purple-500 to-violet-600 px-6 py-4">
               <div className="flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-3">
@@ -317,21 +317,21 @@ export function AddProductModal({
               {categoryProductsLoading ? (
                 <div className="flex items-center justify-center py-16">
                   <div className="flex flex-col items-center gap-4">
-                    <Icon icon="mdi:loading" className="text-4xl animate-spin text-purple-600" />
-                    <span className="text-gray-600 font-medium" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    <Icon icon="mdi:loading" className="text-4xl animate-spin text-purple-600 dark:text-purple-400" />
+                    <span className="text-gray-600 dark:text-slate-400 font-medium" style={{ fontFamily: "'Jost', sans-serif" }}>
                       Loading products...
                     </span>
                   </div>
                 </div>
               ) : categoryProducts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <div className="bg-gray-100 rounded-full p-6 mb-4">
-                    <Icon icon="mdi:package-variant-closed" className="text-6xl text-gray-400" />
+                  <div className="bg-gray-100 dark:bg-slate-700 rounded-full p-6 mb-4">
+                    <Icon icon="mdi:package-variant-closed" className="text-6xl text-gray-400 dark:text-slate-500" />
                   </div>
-                  <h4 className="text-gray-700 font-semibold text-lg mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  <h4 className="text-gray-700 dark:text-slate-300 font-semibold text-lg mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>
                     No products found
                   </h4>
-                  <p className="text-gray-500 text-sm max-w-md" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  <p className="text-gray-500 dark:text-slate-400 text-sm max-w-md" style={{ fontFamily: "'Jost', sans-serif" }}>
                     No published products found in this category. Try selecting a different category.
                   </p>
                 </div>
@@ -345,10 +345,10 @@ export function AddProductModal({
                       <div
                         key={product.id}
                         onClick={() => toggleProductSelection(product.product_id)}
-                        className={`group relative bg-white rounded-2xl shadow-md hover:shadow-xl border-2 transition-all duration-300 cursor-pointer overflow-hidden transform hover:-translate-y-1 ${
+                        className={`group relative bg-white dark:bg-slate-800 rounded-2xl shadow-md hover:shadow-xl border-2 transition-all duration-300 cursor-pointer overflow-hidden transform hover:-translate-y-1 ${
                           isSelected 
-                            ? 'border-purple-500 ring-4 ring-purple-200 shadow-purple-200' 
-                            : 'border-gray-200 hover:border-purple-400'
+                            ? 'border-purple-500 dark:border-purple-400 ring-4 ring-purple-200 dark:ring-purple-900/50 shadow-purple-200 dark:shadow-purple-900/30' 
+                            : 'border-gray-200 dark:border-slate-700 hover:border-purple-400 dark:hover:border-purple-500'
                         }`}
                       >
                         {/* Selected indicator */}
@@ -359,7 +359,7 @@ export function AddProductModal({
                         )}
 
                         {/* Product Image */}
-                        <div className="relative w-full aspect-[4/3] overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
+                        <div className="relative w-full aspect-[4/3] overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-slate-700 dark:to-slate-800">
                           <img
                             src={productImage}
                             alt={product.product_name}
@@ -381,21 +381,21 @@ export function AddProductModal({
 
                         {/* Product Info */}
                         <div className="p-5">
-                          <h3 className="font-bold text-base text-gray-900 mb-3 line-clamp-2 min-h-[3rem]" style={{ fontFamily: "'Jost', sans-serif" }}>
+                          <h3 className="font-bold text-base text-gray-900 dark:text-slate-100 mb-3 line-clamp-2 min-h-[3rem]" style={{ fontFamily: "'Jost', sans-serif" }}>
                             {product.product_name}
                           </h3>
-                          <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                          <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-slate-700">
                             <div>
-                              <p className="text-xs text-gray-500 mb-1 font-medium" style={{ fontFamily: "'Jost', sans-serif" }}>
+                              <p className="text-xs text-gray-500 dark:text-slate-400 mb-1 font-medium" style={{ fontFamily: "'Jost', sans-serif" }}>
                                 Price
                               </p>
-                              <p className="text-2xl font-bold text-gray-900" style={{ fontFamily: "'Jost', sans-serif" }}>
+                              <p className="text-2xl font-bold text-gray-900 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
                                 ₱{product.price?.toLocaleString() || '0'}
                               </p>
                             </div>
                             {isSelected && (
-                              <div className="bg-purple-100 rounded-lg px-3 py-1.5">
-                                <Icon icon="mdi:tag" className="text-purple-600 text-xl" />
+                              <div className="bg-purple-100 dark:bg-purple-900/30 rounded-lg px-3 py-1.5">
+                                <Icon icon="mdi:tag" className="text-purple-600 dark:text-purple-400 text-xl" />
                               </div>
                             )}
                           </div>
@@ -412,7 +412,7 @@ export function AddProductModal({
         {/* Discount Configuration & Date Range - Combined Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Discount Configuration */}
-          <div className="bg-white rounded-3xl shadow-lg border border-gray-200 overflow-hidden">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-lg border border-gray-200 dark:border-slate-700 overflow-hidden">
             <div className="bg-gradient-to-r from-green-500 to-emerald-600 px-6 py-4">
               <div className="flex items-center gap-3">
                 <div className="bg-white/20 backdrop-blur-sm rounded-xl p-2">
@@ -430,19 +430,19 @@ export function AddProductModal({
             </div>
             <div className="p-6 space-y-5">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2" style={{ fontFamily: "'Jost', sans-serif" }}>
-                  <Icon icon="mdi:tag-multiple" className="text-gray-500" />
+                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-3 flex items-center gap-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  <Icon icon="mdi:tag-multiple" className="text-gray-500 dark:text-slate-400" />
                   Discount Type
                 </label>
                 <div className="relative">
                   <Icon 
                     icon="mdi:chevron-down" 
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xl"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-400 pointer-events-none text-xl"
                   />
                   <select
                     value={saleData.discountType}
                     onChange={(e) => setSaleData({ ...saleData, discountType: e.target.value })}
-                    className="w-full px-4 py-4 pr-12 rounded-xl border-2 border-gray-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-gray-50 hover:bg-white appearance-none cursor-pointer"
+                    className="w-full px-4 py-4 pr-12 rounded-xl border-2 border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-gray-50 dark:bg-slate-700 hover:bg-white dark:hover:bg-slate-600 text-gray-900 dark:text-slate-100 appearance-none cursor-pointer"
                     style={{ fontFamily: "'Jost', sans-serif" }}
                   >
                     <option value="percentage">Percentage (%)</option>
@@ -451,17 +451,17 @@ export function AddProductModal({
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2" style={{ fontFamily: "'Jost', sans-serif" }}>
-                  <Icon icon="mdi:currency-usd" className="text-gray-500" />
+                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-3 flex items-center gap-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  <Icon icon="mdi:currency-usd" className="text-gray-500 dark:text-slate-400" />
                   Discount Value
                 </label>
                 <div className="relative">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">%</div>
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 dark:text-slate-400 font-semibold">%</div>
                   <input
                     type="number"
                     value={saleData.discountValue}
                     onChange={(e) => setSaleData({ ...saleData, discountValue: e.target.value })}
-                    className="w-full pl-10 pr-4 py-4 rounded-xl border-2 border-gray-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-gray-50 hover:bg-white"
+                    className="w-full pl-10 pr-4 py-4 rounded-xl border-2 border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-gray-50 dark:bg-slate-700 hover:bg-white dark:hover:bg-slate-600 text-gray-900 dark:text-slate-100"
                     placeholder="Enter discount percentage"
                     min="0"
                     max="100"
@@ -469,7 +469,7 @@ export function AddProductModal({
                   />
                 </div>
                 {saleData.discountValue && (
-                  <p className="mt-2 text-xs text-gray-500 flex items-center gap-1" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  <p className="mt-2 text-xs text-gray-500 dark:text-slate-400 flex items-center gap-1" style={{ fontFamily: "'Jost', sans-serif" }}>
                     <Icon icon="mdi:information-outline" className="text-sm" />
                     Products will be discounted by {saleData.discountValue}%
                   </p>
@@ -479,7 +479,7 @@ export function AddProductModal({
           </div>
 
           {/* Date Range */}
-          <div className="bg-white rounded-3xl shadow-lg border border-gray-200 overflow-hidden">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-lg border border-gray-200 dark:border-slate-700 overflow-hidden">
             <div className="bg-gradient-to-r from-purple-500 to-violet-600 px-6 py-4">
               <div className="flex items-center gap-3">
                 <div className="bg-white/20 backdrop-blur-sm rounded-xl p-2">
@@ -497,22 +497,22 @@ export function AddProductModal({
             </div>
             <div className="p-6 space-y-5">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2" style={{ fontFamily: "'Jost', sans-serif" }}>
-                  <Icon icon="mdi:calendar-start" className="text-gray-500" />
+                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-3 flex items-center gap-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  <Icon icon="mdi:calendar-start" className="text-gray-500 dark:text-slate-400" />
                   Start Date
                 </label>
                 <input
                   type="date"
                   value={saleData.startDate}
                   onChange={(e) => setSaleData({ ...saleData, startDate: e.target.value })}
-                  className="w-full px-4 py-4 rounded-xl border-2 border-gray-200 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 bg-gray-50 hover:bg-white cursor-pointer"
+                  className="w-full px-4 py-4 rounded-xl border-2 border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 bg-gray-50 dark:bg-slate-700 hover:bg-white dark:hover:bg-slate-600 text-gray-900 dark:text-slate-100 cursor-pointer"
                   style={{ fontFamily: "'Jost', sans-serif" }}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2" style={{ fontFamily: "'Jost', sans-serif" }}>
-                  <Icon icon="mdi:calendar-end" className="text-gray-500" />
+                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-3 flex items-center gap-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  <Icon icon="mdi:calendar-end" className="text-gray-500 dark:text-slate-400" />
                   End Date
                 </label>
                 <input
@@ -520,11 +520,11 @@ export function AddProductModal({
                   value={saleData.endDate}
                   onChange={(e) => setSaleData({ ...saleData, endDate: e.target.value })}
                   min={saleData.startDate || undefined}
-                  className="w-full px-4 py-4 rounded-xl border-2 border-gray-200 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 bg-gray-50 hover:bg-white cursor-pointer"
+                  className="w-full px-4 py-4 rounded-xl border-2 border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 bg-gray-50 dark:bg-slate-700 hover:bg-white dark:hover:bg-slate-600 text-gray-900 dark:text-slate-100 cursor-pointer"
                   style={{ fontFamily: "'Jost', sans-serif" }}
                 />
                 {saleData.startDate && saleData.endDate && (
-                  <p className="mt-2 text-xs text-gray-500 flex items-center gap-1" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  <p className="mt-2 text-xs text-gray-500 dark:text-slate-400 flex items-center gap-1" style={{ fontFamily: "'Jost', sans-serif" }}>
                     <Icon icon="mdi:information-outline" className="text-sm" />
                     Sale will run for {Math.ceil((new Date(saleData.endDate).getTime() - new Date(saleData.startDate).getTime()) / (1000 * 60 * 60 * 24))} day(s)
                   </p>
@@ -550,9 +550,9 @@ export function AddProductModal({
         />
       ) : (
         <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-center px-4 sm:px-6">
-          <Icon icon="mdi:package-variant-closed" className="text-4xl sm:text-6xl text-gray-300 mb-3 sm:mb-4" />
-          <h3 className="text-lg sm:text-xl font-semibold text-gray-700 mb-2">No new products in inventory</h3>
-          <p className="text-sm sm:text-base text-gray-500 max-w-[280px] sm:max-w-[320px]">Try fetching inventory to see available products</p>
+          <Icon icon="mdi:package-variant-closed" className="text-4xl sm:text-6xl text-gray-300 dark:text-slate-600 mb-3 sm:mb-4" />
+          <h3 className="text-lg sm:text-xl font-semibold text-gray-700 dark:text-slate-300 mb-2">No new products in inventory</h3>
+          <p className="text-sm sm:text-base text-gray-500 dark:text-slate-400 max-w-[280px] sm:max-w-[320px]">Try fetching inventory to see available products</p>
         </div>
       );
     }
@@ -560,7 +560,7 @@ export function AddProductModal({
     return (
       <div className="space-y-6">
         {selectedProduct && (
-          <div className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-lg border border-gray-100 dark:border-slate-700 overflow-hidden">
             <div className="flex flex-col lg:flex-row gap-8 items-start">
               {/* Preview Image */}
               <div className="w-full lg:w-2/5 flex-shrink-0 pt-4 pb-4 flex justify-end ml-8">
@@ -570,14 +570,14 @@ export function AddProductModal({
                     {previewUrls.length > 1 && (
                       <button
                         onClick={() => setPreviewIndex((prev) => (prev - 1 + previewUrls.length) % previewUrls.length)}
-                        className="absolute top-1/2 left-2 -translate-y-1/2 bg-white/90 hover:bg-white p-2.5 rounded-full shadow-lg z-10 transition-all hover:scale-105"
+                        className="absolute top-1/2 left-2 -translate-y-1/2 bg-white/90 dark:bg-slate-800/90 hover:bg-white dark:hover:bg-slate-700 p-2.5 rounded-full shadow-lg z-10 transition-all hover:scale-105"
                       >
-                        <Icon icon="mdi:chevron-left" className="text-xl text-gray-700" />
+                        <Icon icon="mdi:chevron-left" className="text-xl text-gray-700 dark:text-slate-200" />
                       </button>
                     )}
 
                     {/* PREVIEW ITEM */}
-                    <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-lg">
+                    <div className="rounded-2xl overflow-hidden border border-gray-200 dark:border-slate-700 shadow-lg">
                       {previewUrls[previewIndex]?.includes('video') ? (
                         <video
                           src={previewUrls[previewIndex]}
@@ -598,9 +598,9 @@ export function AddProductModal({
                     {previewUrls.length > 1 && (
                       <button
                         onClick={() => setPreviewIndex((prev) => (prev + 1) % previewUrls.length)}
-                        className="absolute top-1/2 right-2 -translate-y-1/2 bg-white/90 hover:bg-white p-2.5 rounded-full shadow-lg z-10 transition-all hover:scale-105"
+                        className="absolute top-1/2 right-2 -translate-y-1/2 bg-white/90 dark:bg-slate-800/90 hover:bg-white dark:hover:bg-slate-700 p-2.5 rounded-full shadow-lg z-10 transition-all hover:scale-105"
                       >
-                        <Icon icon="mdi:chevron-right" className="text-xl text-gray-700" />
+                        <Icon icon="mdi:chevron-right" className="text-xl text-gray-700 dark:text-slate-200" />
                       </button>
                     )}
 
@@ -619,23 +619,23 @@ export function AddProductModal({
                 {/* Product Name and Category */}
                 <div className="flex flex-col sm:flex-row gap-4">
                   {/* Product Name */}
-                  <div className="flex-1 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
+                  <div className="flex-1 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-2xl p-6 border border-blue-100 dark:border-blue-800">
                     <div className="flex items-center gap-3 mb-2">
-                      <Icon icon="mdi:package-variant" className="text-2xl text-blue-600" />
-                      <span className="text-sm text-blue-600 font-semibold uppercase tracking-wide">Product Name</span>
+                      <Icon icon="mdi:package-variant" className="text-2xl text-blue-600 dark:text-blue-400" />
+                      <span className="text-sm text-blue-600 dark:text-blue-400 font-semibold uppercase tracking-wide">Product Name</span>
                     </div>
-                    <h3 className="text-2xl font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    <h3 className="text-2xl font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
                       {selectedProduct.product_name}
                     </h3>
                   </div>
                   
                   {/* Category */}
-                  <div className="sm:w-64 bg-gradient-to-br from-purple-50 to-violet-50 rounded-2xl p-6 border border-purple-100">
+                  <div className="sm:w-64 bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 rounded-2xl p-6 border border-purple-100 dark:border-purple-800">
                     <div className="flex items-center gap-2 mb-2">
-                      <Icon icon="mdi:tag-outline" className="text-lg text-purple-600" />
-                      <span className="text-sm text-purple-600 font-semibold uppercase tracking-wide">Category</span>
+                      <Icon icon="mdi:tag-outline" className="text-lg text-purple-600 dark:text-purple-400" />
+                      <span className="text-sm text-purple-600 dark:text-purple-400 font-semibold uppercase tracking-wide">Category</span>
                     </div>
-                    <span className="text-lg font-semibold text-purple-700" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    <span className="text-lg font-semibold text-purple-700 dark:text-purple-300" style={{ fontFamily: "'Jost', sans-serif" }}>
                       {typeof selectedProduct.category === 'string'
                         ? selectedProduct.category
                         : selectedProduct.category?.category_name ?? 'Uncategorized'}
@@ -645,31 +645,31 @@ export function AddProductModal({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Price */}
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-5 border border-green-100">
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-2xl p-5 border border-green-100 dark:border-green-800">
                     <div className="flex items-center gap-2 mb-2">
-                      <Icon icon="mdi:currency-usd" className="text-lg text-green-600" />
-                      <span className="text-sm text-green-600 font-semibold uppercase tracking-wide">Price</span>
+                      <Icon icon="mdi:currency-usd" className="text-lg text-green-600 dark:text-green-400" />
+                      <span className="text-sm text-green-600 dark:text-green-400 font-semibold uppercase tracking-wide">Price</span>
                     </div>
-                    <span className="text-2xl font-bold text-green-700" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    <span className="text-2xl font-bold text-green-700 dark:text-green-300" style={{ fontFamily: "'Jost', sans-serif" }}>
                       ₱{selectedProduct.price.toLocaleString()}
                     </span>
                   </div>
                   
                   {/* Insert Media */}
-                  <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-5 border border-orange-100 relative z-20">
+                  <div className="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 rounded-2xl p-5 border border-orange-100 dark:border-orange-800 relative z-20">
                     <div className="flex items-center gap-2 mb-3">
-                      <Icon icon="mdi:image-plus" className="text-lg text-orange-600" />
-                      <span className="text-sm text-orange-600 font-semibold uppercase tracking-wide">Insert Media</span>
+                      <Icon icon="mdi:image-plus" className="text-lg text-orange-600 dark:text-orange-400" />
+                      <span className="text-sm text-orange-600 dark:text-orange-400 font-semibold uppercase tracking-wide">Insert Media</span>
                     </div>
                     <MediaDropzone onFilesSelected={handleFileChange} />
                   </div>
                 </div>
                 
                 {/* Details */}
-                <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-2xl p-6 border border-gray-100">
+                <div className="bg-gradient-to-br from-gray-50 to-slate-50 dark:from-slate-800 dark:to-slate-900 rounded-2xl p-6 border border-gray-100 dark:border-slate-700">
                   <div className="flex items-center gap-2 mb-3">
-                    <Icon icon="mdi:text-box-outline" className="text-lg text-gray-600" />
-                    <label htmlFor="product-description" className="text-sm text-gray-600 font-semibold uppercase tracking-wide">
+                    <Icon icon="mdi:text-box-outline" className="text-lg text-gray-600 dark:text-slate-400" />
+                    <label htmlFor="product-description" className="text-sm text-gray-600 dark:text-slate-400 font-semibold uppercase tracking-wide">
                       Product Details
                     </label>
                   </div>
@@ -677,7 +677,7 @@ export function AddProductModal({
                     id="product-description"
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full text-base text-gray-700 block border border-gray-200 rounded-xl p-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white"
+                    className="w-full text-base text-gray-700 dark:text-slate-200 block border border-gray-200 dark:border-slate-600 rounded-xl p-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white dark:bg-slate-700"
                     rows={4}
                     placeholder="Type your product description here..."
                     style={{ fontFamily: "'Jost', sans-serif" }}

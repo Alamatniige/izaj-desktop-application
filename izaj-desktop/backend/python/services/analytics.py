@@ -64,9 +64,10 @@ class AnalyticsService:
                 'total': len(df_orders)
             }
             
-            # Calculate earnings
-            total_earnings = df_orders['total_amount'].sum()
-            period_earnings = df_orders[df_orders['created_at'] >= start_date]['total_amount'].sum()
+            # Calculate earnings - ONLY from completed orders
+            completed_orders = df_orders[df_orders['status'] == 'complete']
+            total_earnings = completed_orders['total_amount'].sum()
+            period_earnings = completed_orders[completed_orders['created_at'] >= start_date]['total_amount'].sum()
             
             # Calculate growth
             previous_period_earnings = total_earnings - period_earnings

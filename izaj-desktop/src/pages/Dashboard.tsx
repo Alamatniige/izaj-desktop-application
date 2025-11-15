@@ -119,10 +119,7 @@ const Dashboard = ({ session, isActive = true }: DashboardProps) => {
           ) : (
             <>
               {/* Top Row - Stats Cards */}
-              <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-white dark:border-gray-700 p-4 sm:p-8 mb-8"
-                style={{
-                  boxShadow: '0 4px 32px 0 rgba(252, 211, 77, 0.07)',
-                }}>
+              <div className="mb-8">
                 <DragDropContext onDragEnd={handleDragEnd}>
                   <Droppable 
                   droppableId="stats-cards" 
@@ -277,10 +274,7 @@ const Dashboard = ({ session, isActive = true }: DashboardProps) => {
               </div>
 
               {/* Sales Report - Full Width */}
-              <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-white dark:border-slate-700 p-4 sm:p-8 mb-8"
-                style={{
-                  boxShadow: '0 4px 32px 0 rgba(252, 211, 77, 0.07)',
-                }}>
+              <div className="mb-8">
                 <div
                   className={`bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-slate-700 dark:to-slate-800 rounded-2xl shadow-lg border border-indigo-100 dark:border-slate-600 p-6 transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl hover:border-indigo-200 dark:hover:border-slate-500 cursor-pointer
                     ${salesExpanded ? 'h-auto' : 'h-[400px]'}
@@ -458,10 +452,7 @@ const Dashboard = ({ session, isActive = true }: DashboardProps) => {
               </div>
 
               {/* Bottom Row Stats Cards */}
-              <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-white dark:border-slate-700 p-4 sm:p-8 mb-8"
-                style={{
-                  boxShadow: '0 4px 32px 0 rgba(252, 211, 77, 0.07)',
-                }}>
+              <div className="mb-8">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   {/* Top Solds Container */}
                   <div>

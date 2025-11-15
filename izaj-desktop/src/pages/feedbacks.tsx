@@ -182,7 +182,7 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
             className={`px-4 py-2 rounded-xl font-semibold transition-all duration-200 ${
               activeFilter === 'Pending'
                 ? 'bg-yellow-500 text-white shadow-lg'
-                : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                : 'bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-600 border border-gray-200 dark:border-slate-600'
             }`}
             style={{ fontFamily: "'Jost', sans-serif" }}
           >
@@ -193,7 +193,7 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
             className={`px-4 py-2 rounded-xl font-semibold transition-all duration-200 ${
               activeFilter === 'Published'
                 ? 'bg-green-500 text-white shadow-lg'
-                : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                : 'bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-600 border border-gray-200 dark:border-slate-600'
             }`}
             style={{ fontFamily: "'Jost', sans-serif" }}
           >
@@ -387,9 +387,9 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
                             <div className="font-semibold text-base" style={{ fontFamily: "'Jost', sans-serif" }}>{selectedFeedback.product_name}</div>
                             <div className="text-sm text-gray-500 dark:text-slate-400 mt-1">
                               <span className={`inline-block px-2 py-0.5 rounded-full text-xs ${
-                                selectedFeedback.status === 'published' ? 'bg-green-100 text-green-700' :
-                                selectedFeedback.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                                'bg-red-100 text-red-700'
+                                selectedFeedback.status === 'published' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' :
+                                selectedFeedback.status === 'pending' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300' :
+                                'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
                               }`} style={{ fontFamily: "'Jost', sans-serif" }}>
                                 {selectedFeedback.status.toUpperCase()}
                               </span>
@@ -414,7 +414,7 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
                             <Icon
                               key={starIdx}
                               icon={starIdx < selectedFeedback.rating ? 'mdi:star' : 'mdi:star-outline'}
-                              className={`w-6 h-6 ${starIdx < selectedFeedback.rating ? 'text-yellow-400' : 'text-gray-300'}`}
+                              className={`w-6 h-6 ${starIdx < selectedFeedback.rating ? 'text-yellow-400' : 'text-gray-300 dark:text-slate-600'}`}
                             />
                           ))}
                           <span className="ml-2 text-lg font-bold text-gray-700 dark:text-slate-200" style={{ fontFamily: "'Jost', sans-serif" }}>{selectedFeedback.rating}/5</span>
@@ -559,20 +559,25 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
         {isReplying && (
           <div 
             className="fixed inset-0 flex items-center justify-center z-[100] p-2 sm:p-4"
+            style={{
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              background: 'rgba(0, 0, 0, 0.5)',
+            }}
             onClick={() => {
               setIsReplying(false);
               setReplyText('');
             }}
           >
             <div 
-              className="bg-white rounded-lg sm:rounded-xl md:rounded-2xl w-full max-w-[95%] sm:max-w-[90%] md:max-w-2xl mx-auto shadow-2xl border border-yellow-100"
+              className="bg-white dark:bg-slate-800 rounded-lg sm:rounded-xl md:rounded-2xl w-full max-w-[95%] sm:max-w-[90%] md:max-w-2xl mx-auto shadow-2xl border border-yellow-100 dark:border-slate-700"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="p-3 sm:p-4 md:p-6 border-b border-gray-100">
+              <div className="p-3 sm:p-4 md:p-6 border-b border-gray-100 dark:border-slate-700">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-base sm:text-lg md:text-xl font-semibold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Reply to Feedback</h4>
+                  <h4 className="text-base sm:text-lg md:text-xl font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Reply to Feedback</h4>
                   <button
-                    className="text-gray-400 hover:text-red-500 rounded-full p-1 hover:bg-gray-50 transition hover:scale-110"
+                    className="text-gray-400 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 rounded-full p-1 hover:bg-gray-50 dark:hover:bg-slate-700 transition hover:scale-110"
                     onClick={() => {
                       setIsReplying(false);
                       setReplyText('');
@@ -587,12 +592,12 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
 
               <div className="p-3 sm:p-4 md:p-6">
                 <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-                  <div className="w-8 sm:w-10 md:w-12 h-8 sm:h-10 md:h-12 bg-blue-50 rounded-lg sm:rounded-xl flex items-center justify-center border border-blue-100">
-                    <Icon icon="mdi:account-circle" className="w-5 sm:w-6 md:w-8 h-5 sm:h-6 md:h-8 text-blue-400" />
+                  <div className="w-8 sm:w-10 md:w-12 h-8 sm:h-10 md:h-12 bg-blue-50 dark:bg-blue-900/30 rounded-lg sm:rounded-xl flex items-center justify-center border border-blue-100 dark:border-blue-800">
+                    <Icon icon="mdi:account-circle" className="w-5 sm:w-6 md:w-8 h-5 sm:h-6 md:h-8 text-blue-400 dark:text-blue-500" />
                   </div>
                   <div>
-                    <div className="font-medium text-xs sm:text-sm md:text-base text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>Admin Reply</div>
-                    <div className="text-xs sm:text-sm text-gray-500" style={{ fontFamily: "'Jost', sans-serif" }}>Support Team</div>
+                    <div className="font-medium text-xs sm:text-sm md:text-base text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Admin Reply</div>
+                    <div className="text-xs sm:text-sm text-gray-500 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>Support Team</div>
                   </div>
                 </div>
 
@@ -601,12 +606,12 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
                     placeholder="Write your reply to the customer..."
-                    className="w-full p-2 sm:p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-200 resize-none text-xs sm:text-sm md:text-base"
+                    className="w-full p-2 sm:p-3 border border-gray-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/50 focus:border-blue-200 dark:focus:border-blue-700 resize-none text-xs sm:text-sm md:text-base bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-400"
                     style={{ fontFamily: "'Jost', sans-serif" }}
                     rows={4}
                     maxLength={500}
                   />
-                  <div className="absolute bottom-2 right-2 text-xs text-gray-400" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  <div className="absolute bottom-2 right-2 text-xs text-gray-400 dark:text-slate-500" style={{ fontFamily: "'Jost', sans-serif" }}>
                     {replyText.length}/500
                   </div>
                 </div>
@@ -614,13 +619,13 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <button
-                      className="p-1 sm:p-1.5 md:p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-50 transition"
+                      className="p-1 sm:p-1.5 md:p-2 text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition"
                       title="Add emoji"
                     >
                       <Icon icon="mdi:emoticon-outline" className="w-4 sm:w-5 h-4 sm:h-5" />
                     </button>
                     <button
-                      className="p-1 sm:p-1.5 md:p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-50 transition"
+                      className="p-1 sm:p-1.5 md:p-2 text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition"
                       title="Add attachment"
                     >
                       <Icon icon="mdi:paperclip" className="w-4 sm:w-5 h-4 sm:h-5" />
@@ -632,7 +637,7 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
                         setIsReplying(false);
                         setReplyText('');
                       }}
-                      className="px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 md:py-2 text-xs sm:text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition"
+                      className="px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 md:py-2 text-xs sm:text-sm text-gray-600 dark:text-slate-300 hover:text-gray-800 dark:hover:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-lg transition"
                     >
                       <span style={{ fontFamily: "'Jost', sans-serif" }}>Cancel</span>
                     </button>
@@ -641,7 +646,7 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
                       className={`px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 md:py-2 text-xs sm:text-sm font-medium rounded-lg transition flex items-center gap-1
                         ${replyText.trim() 
                           ? 'bg-blue-500 text-white hover:bg-blue-600' 
-                          : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+                          : 'bg-gray-100 dark:bg-slate-700 text-gray-400 dark:text-slate-500 cursor-not-allowed'}`}
                       disabled={!replyText.trim()}
                     >
                       <Icon icon="mdi:send" className="w-3 sm:w-4 h-3 sm:h-4" />
@@ -666,23 +671,23 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
             onClick={() => setShowDeleteConfirm(false)}
           >
             <div
-              className="bg-white rounded-2xl shadow-2xl border border-gray-100 max-w-md w-full mx-4 transform transition-all relative"
+              className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-700 max-w-md w-full mx-4 transform transition-all relative"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-6">
-                <div className="flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mx-auto mb-4">
-                  <Icon icon="mdi:alert-circle" className="text-red-600 w-8 h-8" />
+                <div className="flex items-center justify-center w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full mx-auto mb-4">
+                  <Icon icon="mdi:alert-circle" className="text-red-600 dark:text-red-400 w-8 h-8" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2 text-center" style={{ fontFamily: "'Jost', sans-serif" }}>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-slate-100 mb-2 text-center" style={{ fontFamily: "'Jost', sans-serif" }}>
                   Delete Feedback?
                 </h3>
-                <p className="text-gray-600 text-center mb-6" style={{ fontFamily: "'Jost', sans-serif" }}>
+                <p className="text-gray-600 dark:text-slate-400 text-center mb-6" style={{ fontFamily: "'Jost', sans-serif" }}>
                   Are you sure you want to delete this feedback? This action cannot be undone and the feedback will be permanently removed.
                 </p>
                 <div className="flex gap-3">
                   <button
                     onClick={() => setShowDeleteConfirm(false)}
-                    className="flex-1 px-4 py-2.5 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition"
+                    className="flex-1 px-4 py-2.5 bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-200 rounded-lg font-semibold hover:bg-gray-300 dark:hover:bg-slate-600 transition"
                     style={{ fontFamily: "'Jost', sans-serif" }}
                   >
                     Cancel

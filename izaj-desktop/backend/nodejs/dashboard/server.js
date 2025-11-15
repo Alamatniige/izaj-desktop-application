@@ -81,12 +81,15 @@ router.get('/dashboard/stats', authenticate, async (req, res) => {
         orderStats[order.status] = (orderStats[order.status] || 0) + 1;
         orderStats.total += 1;
         
-        const amount = parseFloat(order.total_amount || 0);
-        totalEarnings += amount;
-        
-        // Check if order is within the period
-        if (new Date(order.created_at) >= startDate) {
-          periodEarnings += amount;
+        // Only count earnings from completed orders
+        if (order.status === 'complete') {
+          const amount = parseFloat(order.total_amount || 0);
+          totalEarnings += amount;
+          
+          // Check if order is within the period
+          if (new Date(order.created_at) >= startDate) {
+            periodEarnings += amount;
+          }
         }
       });
     }

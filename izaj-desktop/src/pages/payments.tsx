@@ -1,16 +1,19 @@
 import { Icon } from '@iconify/react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Session } from '@supabase/supabase-js';
-import { 
-  usePayments, 
-  usePaymentActions,
-  formatPaymentDate,
-  formatPaymentTime,
-  formatPrice,
-  getPaymentStatusColor,
-  getPaymentMethodLabel 
-} from '../hooks/usePayments';
-import { Payment } from '../services/paymentService';
+import { useOrders, useOrderActions } from '../services/orderServices';
+import { Order } from '../services/orderService';
+import { formatOrderDate, formatPrice } from '../services/orderServices';
+
+// Helper function for time formatting
+const formatPaymentTime = (dateString: string) => {
+  const date = new Date(dateString);
+  return date.toLocaleTimeString('en-US', { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    hour12: false
+  });
+};
 
 interface PaymentProps {  
   setIsOverlayOpen: (isOpen: boolean) => void;
@@ -18,14 +21,50 @@ interface PaymentProps {
 }
 
 function Payments({ setIsOverlayOpen, session }: PaymentProps) {
-  const { payments, stats, isLoading, refetchPayments } = usePayments(session);
-  const { isUpdating, updatePaymentStatus } = usePaymentActions(refetchPayments);
+  const { orders, isLoading, refetchOrders } = useOrders(session);
+  const { updateStatus } = useOrderActions(session, refetchOrders);
 
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [showAdvancedFilter, setShowAdvancedFilter] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const [selectedPayment, setSelectedPayment] = useState<Order | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const paymentsPerPage = 10;
+
+  // Convert orders to payments format and calculate stats
+  const { payments, stats } = useMemo(() => {
+    const paymentsData = orders.map(order => ({
+      id: order.id,
+      order_number: order.order_number,
+      customer_name: order.recipient_name,
+      customer_email: '', // Orders don't have email, will need to get from user profile if needed
+      customer_phone: order.shipping_phone,
+      total_amount: order.total_amount + (order.shipping_fee || 0),
+      payment_method: order.payment_method,
+      payment_status: order.payment_status,
+      created_at: order.created_at,
+      order: order // Keep full order for details
+    }));
+
+    // Calculate stats from orders
+    const paymentStats = {
+      pending: orders.filter(o => o.payment_status === 'pending').length,
+      paid: orders.filter(o => o.payment_status === 'paid').length,
+      failed: orders.filter(o => o.payment_status === 'failed').length,
+      refunded: orders.filter(o => o.payment_status === 'refunded').length,
+      total: orders.length,
+      total_amount: orders.reduce((sum, o) => sum + (o.total_amount + (o.shipping_fee || 0)), 0),
+      by_method: {
+        gcash: orders.filter(o => o.payment_method === 'gcash').length,
+        maya: orders.filter(o => o.payment_method === 'maya').length,
+        cod: orders.filter(o => o.payment_method === 'cash_on_delivery').length,
+        bank_transfer: orders.filter(o => o.payment_method === 'bank_transfer').length
+      }
+    };
+
+    return { payments: paymentsData, stats: paymentStats };
+  }, [orders]);
 
   const handleFilterToggle = (filter: string) => {
     setSelectedFilters(prev => 
@@ -33,24 +72,24 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
         ? prev.filter(f => f !== filter)
         : [...prev, filter]
     );
+    setCurrentPage(1); // Reset to first page when filtering
   };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
+    setCurrentPage(1); // Reset to first page when searching
   };
 
   const handleExport = () => {
-    // Create CSV content
-    const headers = ['Order Number', 'Customer Name', 'Email', 'Phone', 'Date', 'Amount', 'Payment Method', 'Payment Status'];
-    const selectedData = payments.filter(payment => selectedRows.has(payment.id));
+    // Create CSV content - export all filtered payments
+    const headers = ['Order Number', 'Customer Name', 'Phone', 'Date', 'Amount', 'Payment Method', 'Payment Status'];
     const csvContent = [
       headers.join(','),
-      ...selectedData.map(payment => [
+      ...filteredData.map(payment => [
         payment.order_number,
         payment.customer_name,
-        payment.customer_email,
         payment.customer_phone,
-        formatPaymentDate(payment.created_at),
+        formatOrderDate(payment.created_at),
         payment.total_amount,
         payment.payment_method,
         payment.payment_status
@@ -65,29 +104,13 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
     link.click();
   };
 
-  const handleRowSelect = (id: string) => {
-    setSelectedRows(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
-  };
-
-  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) {
-      setSelectedRows(new Set(payments.map(payment => payment.id)));
-    } else {
-      setSelectedRows(new Set());
+  const handleRowClick = (payment: typeof payments[0]) => {
+    // Find the full order object
+    const fullOrder = orders.find(o => o.id === payment.id);
+    if (fullOrder) {
+      setSelectedPayment(fullOrder);
+      setIsOverlayOpen(true);
     }
-  };
-
-  const handleRowClick = (payment: Payment) => {
-    setSelectedPayment(payment);
-    setIsOverlayOpen(true);
   };
 
   const closeModal = () => {
@@ -95,23 +118,23 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
     setIsOverlayOpen(false);
   };
 
-  const handleUpdatePaymentStatus = async (paymentId: string, newStatus: string) => {
-    const result = await updatePaymentStatus(session, paymentId, newStatus);
-    if (result.success) {
-      closeModal();
-    }
-  };
-
   // Filter and search data
   const filteredData = payments.filter(payment => {
     const matchesSearch = searchQuery === '' || 
       payment.order_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
       payment.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      payment.customer_email.toLowerCase().includes(searchQuery.toLowerCase());
+      payment.customer_phone.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter = selectedFilters.length === 0 || 
       selectedFilters.includes(payment.payment_status);
     return matchesSearch && matchesFilter;
   });
+
+  // Pagination
+  const pageCount = Math.ceil(filteredData.length / paymentsPerPage);
+  const paginatedData = filteredData.slice(
+    (currentPage - 1) * paymentsPerPage,
+    currentPage * paymentsPerPage
+  );
 
   if (isLoading) {
     return (
@@ -185,11 +208,8 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
         </div>
 
         {/* Filter Section */}
-        <div className="max-w-6xl mx-auto bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-white dark:border-slate-700 p-4 sm:p-8 mb-2 flex flex-col items-center"
-          style={{
-            boxShadow: '0 4px 32px 0 rgba(252, 211, 77, 0.07)',
-          }}>
-          <div className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-700 dark:to-slate-800 rounded-2xl px-4 py-3 mb-1 border border-gray-100 dark:border-slate-700 shadow-sm -mt-12 w-full">
+        <div className="max-w-6xl mx-auto mb-2 flex flex-col items-center">
+          <div className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-700 dark:to-slate-800 rounded-2xl px-4 py-3 mb-1 border border-gray-100 dark:border-slate-700 shadow-sm w-full">
             {/* Status Filter Buttons */}
             <div className="flex flex-wrap lg:flex-nowrap items-center justify-between gap-4 mb-2 mt-2">
               <div className="flex flex-wrap gap-2 flex-1">
@@ -234,6 +254,18 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
 
               {/* Search Bar and Refresh Button */}
               <div className="flex flex-col sm:flex-row gap-2 flex-shrink-0">
+                {/* Download Button */}
+                <button
+                  onClick={handleExport}
+                  className="px-3 py-2 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 font-semibold rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 dark:hover:bg-slate-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 flex items-center gap-2"
+                  style={{ fontFamily: "'Jost', sans-serif" }}
+                  type="button"
+                  title="Download Payments"
+                >
+                  <Icon icon="mdi:download" className="w-5 h-5" />
+                  <span className="hidden sm:inline">Download</span>
+                </button>
+
                 {/* Search Bar */}
                 <div className="relative w-48">
                   <div className="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
@@ -295,87 +327,186 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
         )}
 
         {/* Payments Table */}
-        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-white dark:border-slate-700 overflow-hidden mx-auto"
-          style={{
-            boxShadow: '0 4px 32px 0 rgba(252, 211, 77, 0.07)',
-          }}>
-          <div className="p-4 border-b border-gray-100 dark:border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 bg-gradient-to-r from-gray-50 to-white dark:from-slate-700 dark:to-slate-800">
-            <span className="font-semibold text-gray-700 dark:text-slate-100 text-lg" style={{ fontFamily: "'Jost', sans-serif" }}>Payments Table ({filteredData.length})</span>
-            <button 
-              onClick={handleExport}
-              disabled={selectedRows.size === 0}
-              className={`flex items-center gap-1 text-sm px-4 py-2 rounded-xl transition-all ${
-                selectedRows.size > 0 
-                  ? 'text-pink-600 hover:bg-pink-50 hover:underline' 
-                  : 'text-gray-400 cursor-not-allowed'
-              }`}
+        {isLoading ? (
+          <div className="flex justify-center items-center py-12">
+            <Icon icon="mdi:loading" className="w-8 h-8 text-blue-400 animate-spin" />
+          </div>
+        ) : (
+          <>
+        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-white dark:border-slate-700 overflow-hidden mx-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-700 dark:to-slate-800 border-b border-gray-200 dark:border-slate-700">
+                <th className="px-6 py-4 text-left font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Order #</th>
+                <th className="px-6 py-4 text-left font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Customer</th>
+                <th className="px-6 py-4 text-left font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Amount</th>
+                <th className="px-6 py-4 text-left font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Payment Method</th>
+                <th className="px-6 py-4 text-left font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Date</th>
+                <th className="px-6 py-4 text-left font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Status</th>
+                <th className="px-6 py-4 text-left font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
+              {paginatedData.map((payment) => (
+                <tr key={payment.id} className="hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors duration-200">
+                  <td className="px-6 py-4">
+                    <div className="font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{payment.order_number}</div>
+                    <div className="text-xs text-gray-400 dark:text-slate-500">{formatOrderDate(payment.created_at)}</div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="font-medium text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{payment.customer_name}</div>
+                    <div className="text-xs text-gray-500 dark:text-slate-400">{payment.customer_phone}</div>
+                  </td>
+                  <td className="px-6 py-4 font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    {formatPrice(payment.total_amount)}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-xs text-gray-600 dark:text-slate-300 capitalize" style={{ fontFamily: "'Jost', sans-serif" }}>
+                      {payment.payment_method === 'cash_on_delivery' ? 'Cash on Delivery' :
+                       payment.payment_method === 'gcash' ? 'GCash' :
+                       payment.payment_method === 'maya' ? 'Maya' :
+                       payment.payment_method === 'bank_transfer' ? 'Bank Transfer' :
+                       payment.payment_method.replace('_', ' ')}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-gray-500 dark:text-slate-400 text-xs">{formatOrderDate(payment.created_at)}</td>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex items-center px-3 py-1 rounded-xl text-xs font-bold text-white shadow-sm ${
+                      payment.payment_status === 'pending' ? 'bg-yellow-500' :
+                      payment.payment_status === 'paid' ? 'bg-green-500' :
+                      payment.payment_status === 'failed' ? 'bg-red-500' :
+                      payment.payment_status === 'refunded' ? 'bg-blue-500' :
+                      'bg-gray-500'
+                    }`} style={{ fontFamily: "'Jost', sans-serif" }}>
+                      {payment.payment_status.toUpperCase()}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => handleRowClick(payment)}
+                        className="p-2 text-gray-600 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all"
+                        title="View Payment Details"
+                        type="button"
+                      >
+                        <Icon icon="mdi:eye" className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {paginatedData.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="text-center py-12 text-gray-400 dark:text-slate-500">
+                    <Icon icon="mdi:cash-remove" className="w-16 h-16 mx-auto mb-3 opacity-50" />
+                    <p className="text-lg" style={{ fontFamily: "'Jost', sans-serif" }}>No payments found.</p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6">
+          <div className="text-xs sm:text-sm text-gray-500 dark:text-slate-400">
+            Showing {filteredData.length === 0 ? 0 : (currentPage - 1) * paymentsPerPage + 1} to{' '}
+            {Math.min(currentPage * paymentsPerPage, filteredData.length)} of {filteredData.length} entries
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              className="px-3 py-1 border border-gray-200 dark:border-slate-600 rounded-lg text-xs sm:text-sm hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-slate-200"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              type="button"
             >
-              <Icon icon="mdi:download" className="w-4 h-4" />
-              <span style={{ fontFamily: "'Jost', sans-serif" }}>Export {selectedRows.size > 0 && `(${selectedRows.size})`}</span>
+              Previous
+            </button>
+            <div className="flex items-center gap-1">
+              {(() => {
+                // Show page numbers with smart pagination
+                const maxVisible = 7;
+                const pages: (number | string)[] = [];
+                
+                if (pageCount <= maxVisible) {
+                  // Show all pages if total is less than max visible
+                  for (let i = 1; i <= pageCount; i++) {
+                    pages.push(i);
+                  }
+                } else {
+                  // Show first page
+                  pages.push(1);
+                  
+                  // Calculate start and end of visible range
+                  let start = Math.max(2, currentPage - 1);
+                  let end = Math.min(pageCount - 1, currentPage + 1);
+                  
+                  // Adjust if near start
+                  if (currentPage <= 3) {
+                    end = Math.min(maxVisible - 1, pageCount - 1);
+                  }
+                  
+                  // Adjust if near end
+                  if (currentPage >= pageCount - 2) {
+                    start = Math.max(2, pageCount - (maxVisible - 2));
+                  }
+                  
+                  // Add ellipsis if needed
+                  if (start > 2) {
+                    pages.push('...');
+                  }
+                  
+                  // Add visible pages
+                  for (let i = start; i <= end; i++) {
+                    pages.push(i);
+                  }
+                  
+                  // Add ellipsis if needed
+                  if (end < pageCount - 1) {
+                    pages.push('...');
+                  }
+                  
+                  // Show last page
+                  pages.push(pageCount);
+                }
+                
+                return pages.map((page, idx) => {
+                  if (page === '...') {
+                    return (
+                      <span key={`ellipsis-${idx}`} className="px-2 text-gray-500 dark:text-slate-400">
+                        ...
+                      </span>
+                    );
+                  }
+                  
+                  const pageNum = page as number;
+                  return (
+                    <button
+                      key={pageNum}
+                      className={`px-2 sm:px-3 py-1 rounded-lg text-xs sm:text-sm ${
+                        currentPage === pageNum ? 'bg-yellow-400 text-white font-bold' : 'hover:bg-gray-50 dark:hover:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200'
+                      }`}
+                      onClick={() => setCurrentPage(pageNum)}
+                      type="button"
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                });
+              })()}
+            </div>
+            <button
+              className="px-3 py-1 border border-gray-200 dark:border-slate-600 rounded-lg text-xs sm:text-sm hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-slate-200"
+              disabled={currentPage === pageCount || pageCount === 0}
+              onClick={() => setCurrentPage((prev) => Math.min(pageCount, prev + 1))}
+              type="button"
+            >
+              Next
             </button>
           </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead>
-                <tr className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-700 dark:to-slate-800 border-b border-gray-200 dark:border-slate-700">
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
-                    <input 
-                      type="checkbox" 
-                      checked={selectedRows.size === filteredData.length && filteredData.length > 0}
-                      onChange={handleSelectAll}
-                      className="accent-pink-400"
-                    />
-                  </th>
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Order #</th>
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700 dark:text-slate-100 hidden sm:table-cell" style={{ fontFamily: "'Jost', sans-serif" }}>Customer</th>
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700 dark:text-slate-100 hidden md:table-cell" style={{ fontFamily: "'Jost', sans-serif" }}>Email</th>
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700 dark:text-slate-100 hidden lg:table-cell" style={{ fontFamily: "'Jost', sans-serif" }}>Phone</th>
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Amount</th>
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700 dark:text-slate-100 hidden md:table-cell" style={{ fontFamily: "'Jost', sans-serif" }}>Method</th>
-                  <th className="px-6 py-4 text-left font-semibold text-gray-700 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
-                {filteredData.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center text-gray-400 dark:text-slate-500">
-                      <Icon icon="mdi:cash-remove" className="w-16 h-16 mx-auto mb-3 text-gray-300 dark:text-slate-600" />
-                      <p className="text-lg" style={{ fontFamily: "'Jost', sans-serif" }}>No payments found</p>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredData.map((payment, idx) => (
-                    <tr 
-                      key={idx} 
-                      className="hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors duration-200 cursor-pointer" 
-                      onClick={() => handleRowClick(payment)}
-                    >
-                      <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                        <input 
-                          type="checkbox" 
-                          checked={selectedRows.has(payment.id)}
-                          onChange={() => handleRowSelect(payment.id)}
-                          className="accent-pink-400"
-                        />
-                      </td>
-                      <td className="px-6 py-4 font-mono text-pink-700 dark:text-pink-400" style={{ fontFamily: "'Jost', sans-serif" }}>{payment.order_number}</td>
-                      <td className="px-6 py-4 hidden sm:table-cell text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{payment.customer_name}</td>
-                      <td className="px-6 py-4 hidden md:table-cell text-xs text-gray-700 dark:text-slate-300" style={{ fontFamily: "'Jost', sans-serif" }}>{payment.customer_email}</td>
-                      <td className="px-6 py-4 hidden lg:table-cell text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{payment.customer_phone}</td>
-                      <td className="px-6 py-4 font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{formatPrice(payment.total_amount)}</td>
-                      <td className="px-6 py-4 hidden md:table-cell text-gray-700 dark:text-slate-300" style={{ fontFamily: "'Jost', sans-serif" }}>{getPaymentMethodLabel(payment.payment_method)}</td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-3 py-1 rounded-xl text-xs font-bold text-white shadow-sm ${getPaymentStatusColor(payment.payment_status)}`} style={{ fontFamily: "'Jost', sans-serif" }}>
-                          {payment.payment_status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
         </div>
+        </>
+        )}
 
         {/* Payment Details Modal */}
         {selectedPayment && (
@@ -419,15 +550,14 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
                   <div className="space-y-4 sm:space-y-6">
                     <div>
                       <span className="block text-xs font-semibold text-yellow-500 uppercase tracking-wider mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Customer Information</span>
-                      <div className="bg-white/90 border border-gray-100 rounded-xl p-4 shadow-sm">
+                      <div className="bg-white/90 dark:bg-slate-800/90 border border-gray-100 dark:border-slate-700 rounded-xl p-4 shadow-sm">
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-50 rounded-xl flex items-center justify-center border border-blue-100">
-                            <Icon icon="mdi:account-circle" className="w-8 h-8 sm:w-10 sm:h-10 text-blue-400" />
+                          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-50 dark:bg-blue-900/30 rounded-xl flex items-center justify-center border border-blue-100 dark:border-blue-800">
+                            <Icon icon="mdi:account-circle" className="w-8 h-8 sm:w-10 sm:h-10 text-blue-400 dark:text-blue-500" />
                           </div>
                           <div>
-                            <div className="font-semibold text-base sm:text-lg" style={{ fontFamily: "'Jost', sans-serif" }}>{selectedPayment.customer_name}</div>
-                            <div className="text-xs sm:text-sm text-gray-500" style={{ fontFamily: "'Jost', sans-serif" }}>{selectedPayment.customer_email}</div>
-                            <div className="text-xs sm:text-sm text-gray-500" style={{ fontFamily: "'Jost', sans-serif" }}>{selectedPayment.customer_phone}</div>
+                            <div className="font-semibold text-base sm:text-lg text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{selectedPayment.recipient_name}</div>
+                            <div className="text-xs sm:text-sm text-gray-500 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>{selectedPayment.shipping_phone}</div>
                           </div>
                         </div>
                       </div>
@@ -435,20 +565,32 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
 
                     <div>
                       <span className="block text-xs font-semibold text-yellow-500 uppercase tracking-wider mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Payment Information</span>
-                      <div className="bg-white/90 border border-gray-100 rounded-xl p-4 shadow-sm">
+                      <div className="bg-white/90 dark:bg-slate-800/90 border border-gray-100 dark:border-slate-700 rounded-xl p-4 shadow-sm">
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
-                            <span className="text-gray-500 text-sm sm:text-base" style={{ fontFamily: "'Jost', sans-serif" }}>Amount</span>
-                            <span className="font-semibold text-base sm:text-lg" style={{ fontFamily: "'Jost', sans-serif" }}>{formatPrice(selectedPayment.total_amount)}</span>
+                            <span className="text-gray-500 dark:text-slate-400 text-sm sm:text-base" style={{ fontFamily: "'Jost', sans-serif" }}>Amount</span>
+                            <span className="font-semibold text-base sm:text-lg text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{formatPrice(selectedPayment.total_amount + (selectedPayment.shipping_fee || 0))}</span>
                           </div>
                           <div className="flex items-center justify-between">
-                            <span className="text-gray-500 text-sm sm:text-base" style={{ fontFamily: "'Jost', sans-serif" }}>Payment Method</span>
-                            <span className="font-medium text-sm sm:text-base" style={{ fontFamily: "'Jost', sans-serif" }}>{getPaymentMethodLabel(selectedPayment.payment_method)}</span>
+                            <span className="text-gray-500 dark:text-slate-400 text-sm sm:text-base" style={{ fontFamily: "'Jost', sans-serif" }}>Payment Method</span>
+                            <span className="font-medium text-sm sm:text-base text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
+                              {selectedPayment.payment_method === 'cash_on_delivery' ? 'Cash on Delivery' :
+                               selectedPayment.payment_method === 'gcash' ? 'GCash' :
+                               selectedPayment.payment_method === 'maya' ? 'Maya' :
+                               selectedPayment.payment_method === 'bank_transfer' ? 'Bank Transfer' :
+                               selectedPayment.payment_method.replace('_', ' ')}
+                            </span>
                           </div>
                           <div className="flex items-center justify-between">
-                            <span className="text-gray-500 text-sm sm:text-base" style={{ fontFamily: "'Jost', sans-serif" }}>Status</span>
-                            <span className={`inline-block px-2 py-1 text-xs font-semibold rounded ${getPaymentStatusColor(selectedPayment.payment_status)}`} style={{ fontFamily: "'Jost', sans-serif" }}>
-                              {selectedPayment.payment_status}
+                            <span className="text-gray-500 dark:text-slate-400 text-sm sm:text-base" style={{ fontFamily: "'Jost', sans-serif" }}>Status</span>
+                            <span className={`inline-block px-2 py-1 text-xs font-semibold rounded text-white ${
+                              selectedPayment.payment_status === 'pending' ? 'bg-yellow-500' :
+                              selectedPayment.payment_status === 'paid' ? 'bg-green-500' :
+                              selectedPayment.payment_status === 'failed' ? 'bg-red-500' :
+                              selectedPayment.payment_status === 'refunded' ? 'bg-blue-500' :
+                              'bg-gray-500'
+                            }`} style={{ fontFamily: "'Jost', sans-serif" }}>
+                              {selectedPayment.payment_status.toUpperCase()}
                             </span>
                           </div>
                         </div>
@@ -457,19 +599,19 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
 
                     <div>
                       <span className="block text-xs font-semibold text-yellow-500 uppercase tracking-wider mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Transaction Details</span>
-                      <div className="bg-white/90 border border-gray-100 rounded-xl p-4 shadow-sm">
+                      <div className="bg-white/90 dark:bg-slate-800/90 border border-gray-100 dark:border-slate-700 rounded-xl p-4 shadow-sm">
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
-                            <span className="text-gray-500 text-sm sm:text-base" style={{ fontFamily: "'Jost', sans-serif" }}>Order Number</span>
-                            <span className="font-mono text-blue-700 text-sm sm:text-base" style={{ fontFamily: "'Jost', sans-serif" }}>{selectedPayment.order_number}</span>
+                            <span className="text-gray-500 dark:text-slate-400 text-sm sm:text-base" style={{ fontFamily: "'Jost', sans-serif" }}>Order Number</span>
+                            <span className="font-mono text-blue-700 dark:text-blue-400 text-sm sm:text-base" style={{ fontFamily: "'Jost', sans-serif" }}>{selectedPayment.order_number}</span>
                           </div>
                           <div className="flex items-center justify-between">
-                            <span className="text-gray-500 text-sm sm:text-base" style={{ fontFamily: "'Jost', sans-serif" }}>Date</span>
-                            <span className="font-medium text-sm sm:text-base" style={{ fontFamily: "'Jost', sans-serif" }}>{formatPaymentDate(selectedPayment.created_at)}</span>
+                            <span className="text-gray-500 dark:text-slate-400 text-sm sm:text-base" style={{ fontFamily: "'Jost', sans-serif" }}>Date</span>
+                            <span className="font-medium text-sm sm:text-base text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{formatOrderDate(selectedPayment.created_at)}</span>
                           </div>
                           <div className="flex items-center justify-between">
-                            <span className="text-gray-500 text-sm sm:text-base" style={{ fontFamily: "'Jost', sans-serif" }}>Time</span>
-                            <span className="font-medium text-sm sm:text-base" style={{ fontFamily: "'Jost', sans-serif" }}>{formatPaymentTime(selectedPayment.created_at)}</span>
+                            <span className="text-gray-500 dark:text-slate-400 text-sm sm:text-base" style={{ fontFamily: "'Jost', sans-serif" }}>Time</span>
+                            <span className="font-medium text-sm sm:text-base text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{formatPaymentTime(selectedPayment.created_at)}</span>
                           </div>
                         </div>
                       </div>
@@ -480,15 +622,28 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
                   <div className="space-y-4 sm:space-y-6">
                     <div>
                       <span className="block text-xs font-semibold text-yellow-500 uppercase tracking-wider mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Order Status</span>
-                      <div className="bg-white/90 border border-gray-100 rounded-xl p-4 shadow-sm">
+                      <div className="bg-white/90 dark:bg-slate-800/90 border border-gray-100 dark:border-slate-700 rounded-xl p-4 shadow-sm">
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
-                            <span className="text-gray-500 text-sm sm:text-base" style={{ fontFamily: "'Jost', sans-serif" }}>Order Status</span>
-                            <span className="font-medium text-sm sm:text-base capitalize" style={{ fontFamily: "'Jost', sans-serif" }}>{selectedPayment.status.replace('_', ' ')}</span>
+                            <span className="text-gray-500 dark:text-slate-400 text-sm sm:text-base" style={{ fontFamily: "'Jost', sans-serif" }}>Order Status</span>
+                            <span className="font-medium text-sm sm:text-base capitalize text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{selectedPayment.status.replace('_', ' ')}</span>
                           </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-gray-500 text-sm sm:text-base" style={{ fontFamily: "'Jost', sans-serif" }}>Shipping Address</span>
-                            <span className="font-medium text-sm sm:text-base text-right" style={{ fontFamily: "'Jost', sans-serif" }}>{selectedPayment.shipping_address_line1}</span>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-gray-500 dark:text-slate-400 text-sm sm:text-base" style={{ fontFamily: "'Jost', sans-serif" }}>Shipping Address</span>
+                            <div className="font-medium text-sm sm:text-base text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
+                              <div>{selectedPayment.shipping_address_line1}</div>
+                              {selectedPayment.shipping_address_line2 && (
+                                <div>{selectedPayment.shipping_address_line2}</div>
+                              )}
+                              {selectedPayment.shipping_barangay && (
+                                <div>{selectedPayment.shipping_barangay}</div>
+                              )}
+                              <div>
+                                {selectedPayment.shipping_city}
+                                {selectedPayment.shipping_province && `, ${selectedPayment.shipping_province}`}
+                                {selectedPayment.shipping_postal_code && ` ${selectedPayment.shipping_postal_code}`}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -500,17 +655,26 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
                         {selectedPayment.payment_status === 'pending' && (
                           <>
                             <button 
-                              onClick={() => handleUpdatePaymentStatus(selectedPayment.id, 'paid')}
-                              disabled={isUpdating}
-                              className="px-3 sm:px-4 py-1.5 sm:py-2 bg-green-50 text-green-600 rounded-lg text-xs sm:text-sm font-medium hover:bg-green-100 transition flex items-center gap-1 disabled:opacity-50"
+                              onClick={async () => {
+                                // Update payment status via order update
+                                await updateStatus(selectedPayment.id, selectedPayment.status, {
+                                  payment_status: 'paid'
+                                });
+                                closeModal();
+                              }}
+                              className="px-3 sm:px-4 py-1.5 sm:py-2 bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-lg text-xs sm:text-sm font-medium hover:bg-green-100 dark:hover:bg-green-900/50 transition flex items-center gap-1 border border-green-200 dark:border-green-800"
                             >
                               <Icon icon="mdi:check-circle" className="w-4 h-4" />
                               <span style={{ fontFamily: "'Jost', sans-serif" }}>Mark as Paid</span>
                             </button>
                             <button 
-                              onClick={() => handleUpdatePaymentStatus(selectedPayment.id, 'failed')}
-                              disabled={isUpdating}
-                              className="px-3 sm:px-4 py-1.5 sm:py-2 bg-red-50 text-red-600 rounded-lg text-xs sm:text-sm font-medium hover:bg-red-100 transition flex items-center gap-1 disabled:opacity-50"
+                              onClick={async () => {
+                                await updateStatus(selectedPayment.id, selectedPayment.status, {
+                                  payment_status: 'failed'
+                                });
+                                closeModal();
+                              }}
+                              className="px-3 sm:px-4 py-1.5 sm:py-2 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg text-xs sm:text-sm font-medium hover:bg-red-100 dark:hover:bg-red-900/50 transition flex items-center gap-1 border border-red-200 dark:border-red-800"
                             >
                               <Icon icon="mdi:close-circle" className="w-4 h-4" />
                               <span style={{ fontFamily: "'Jost', sans-serif" }}>Mark as Failed</span>
@@ -519,15 +683,19 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
                         )}
                         {selectedPayment.payment_status === 'paid' && (
                           <button 
-                            onClick={() => handleUpdatePaymentStatus(selectedPayment.id, 'refunded')}
-                            disabled={isUpdating}
-                            className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-50 text-blue-600 rounded-lg text-xs sm:text-sm font-medium hover:bg-blue-100 transition flex items-center gap-1 disabled:opacity-50"
+                            onClick={async () => {
+                              await updateStatus(selectedPayment.id, selectedPayment.status, {
+                                payment_status: 'refunded'
+                              });
+                              closeModal();
+                            }}
+                            className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg text-xs sm:text-sm font-medium hover:bg-blue-100 dark:hover:bg-blue-900/50 transition flex items-center gap-1 border border-blue-200 dark:border-blue-800"
                           >
                             <Icon icon="mdi:cash-refund" className="w-4 h-4" />
                             <span style={{ fontFamily: "'Jost', sans-serif" }}>Process Refund</span>
                           </button>
                         )}
-                        <button className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gray-50 text-gray-600 rounded-lg text-xs sm:text-sm font-medium hover:bg-gray-100 transition flex items-center gap-1">
+                        <button className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gray-50 dark:bg-slate-700 text-gray-600 dark:text-slate-200 rounded-lg text-xs sm:text-sm font-medium hover:bg-gray-100 dark:hover:bg-slate-600 transition flex items-center gap-1 border border-gray-200 dark:border-slate-600">
                           <Icon icon="mdi:printer" className="w-4 h-4" />
                           <span style={{ fontFamily: "'Jost', sans-serif" }}>Print Details</span>
                         </button>

@@ -96,7 +96,7 @@ export default function Sale({
     <div className="flex-1 overflow-y-auto">
       <main className="flex-1 px-8 py-6">
         {/* Header section */}
-        <div className="bg-gradient-to-r from-white via-gray-50 to-white rounded-2xl p-6 mb-8 border border-gray-100 shadow-sm">
+        <div className="bg-gradient-to-r from-white via-gray-50 to-white dark:from-slate-800 dark:via-slate-700 dark:to-slate-800 rounded-2xl p-6 mb-8 border border-gray-100 dark:border-slate-700 shadow-sm">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
             {/* Title Section */}
             <div className="flex-1">
@@ -110,7 +110,7 @@ export default function Sale({
                 <div className="relative">
                   <button 
                     onClick={() => setShowDropdown(!showDropdown)}
-                    className="flex items-center gap-3 text-2xl lg:text-3xl font-bold text-gray-800 hover:text-gray-600 transition-colors group"
+                    className="flex items-center gap-3 text-2xl lg:text-3xl font-bold text-gray-800 dark:text-slate-100 hover:text-gray-600 dark:hover:text-slate-200 transition-colors group"
                     style={{ fontFamily: "'Jost', sans-serif" }}
                   >
                     <span>Sale</span>
@@ -122,10 +122,10 @@ export default function Sale({
                   
                   {/* Dropdown Menu */}
                   {showDropdown && (
-                    <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 py-3 z-20">
+                    <div className="absolute top-full left-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-gray-100 dark:border-slate-700 py-3 z-20">
                       <button
                         onClick={() => onViewChange?.('products')}
-                        className="w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                        className="w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-slate-100"
                         style={{ fontFamily: "'Jost', sans-serif" }}
                       >
                         <Icon icon="mdi:grid" className="text-lg" />
@@ -133,7 +133,7 @@ export default function Sale({
                       </button>
                       <button
                         onClick={() => onViewChange?.('stock')}
-                        className="w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                        className="w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-slate-100"
                         style={{ fontFamily: "'Jost', sans-serif" }}
                       >
                         <Icon icon="mdi:package-variant" className="text-lg" />
@@ -141,7 +141,7 @@ export default function Sale({
                       </button>
                       <button
                         onClick={() => onViewChange?.('sale')}
-                        className="w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors bg-blue-50 text-blue-700 font-semibold border-l-4 border-blue-500"
+                        className="w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-semibold border-l-4 border-blue-500 dark:border-blue-400"
                         style={{ fontFamily: "'Jost', sans-serif" }}
                       >
                         <Icon icon="mdi:tag-outline" className="text-lg" />
@@ -153,7 +153,7 @@ export default function Sale({
               </div>
               
               {/* Description */}
-              <p className="text-gray-600 text-base mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+              <p className="text-gray-600 dark:text-slate-400 text-base mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>
                 Manage product sales and discounts
               </p>
             </div>
@@ -173,27 +173,24 @@ export default function Sale({
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto bg-white rounded-3xl shadow-2xl border border-white p-4 sm:p-8 mb-8"
-          style={{
-            boxShadow: '0 4px 32px 0 rgba(252, 211, 77, 0.07)',
-          }}>
+        <div className="max-w-7xl mx-auto">
 
           { /* Filter and search controls */}
-          <div className="bg-gradient-to-r from-gray-50 to-white rounded-2xl p-6 mb-4 border border-gray-100 shadow-sm -mt-12">
+          <div className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-700 dark:to-slate-800 rounded-2xl p-6 mb-4 border border-gray-100 dark:border-slate-700 shadow-sm">
             <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 xl:gap-8">
               {/* Search and Filter Controls */}
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto">
                 {/* Search Bar */}
                 <div className="relative flex-1 sm:flex-none sm:w-80">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Icon icon="mdi:magnify" className="h-5 w-5 text-gray-400" />
+                    <Icon icon="mdi:magnify" className="h-5 w-5 text-gray-400 dark:text-slate-500" />
                   </div>
                   <input
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder="Search sales..."
-                    className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all duration-200"
+                    className="block w-full pl-10 pr-3 py-3 border border-gray-200 dark:border-slate-600 rounded-xl leading-5 bg-white dark:bg-slate-700 placeholder-gray-500 dark:placeholder-slate-400 text-gray-900 dark:text-slate-100 focus:outline-none focus:placeholder-gray-400 dark:focus:placeholder-slate-500 focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all duration-200"
                     style={{ fontFamily: "'Jost', sans-serif" }}
                   />
                 </div>
@@ -203,7 +200,7 @@ export default function Sale({
                   <select
                     value={selectedCategory}
                     onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="appearance-none block w-full px-4 py-3 pr-10 border border-gray-200 rounded-xl leading-5 bg-white focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all duration-200"
+                    className="appearance-none block w-full px-4 py-3 pr-10 border border-gray-200 dark:border-slate-600 rounded-xl leading-5 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all duration-200"
                     style={{ fontFamily: "'Jost', sans-serif" }}
                   >
                     {saleCategories.map((cat) => (
@@ -216,7 +213,7 @@ export default function Sale({
                     ))}
                   </select>
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                    <Icon icon="mdi:chevron-down" className="h-5 w-5 text-gray-400" />
+                    <Icon icon="mdi:chevron-down" className="h-5 w-5 text-gray-400 dark:text-slate-400" />
                   </div>
                 </div>
               </div>
@@ -229,10 +226,9 @@ export default function Sale({
               {filteredSales.map((sale) => (
                 <div 
                   key={sale.id} 
-                  className="group relative bg-white rounded-3xl shadow-lg hover:shadow-2xl border border-gray-100 overflow-hidden cursor-pointer transition-all duration-300 hover:-translate-y-2"
+                  className="group relative bg-white dark:bg-slate-800 rounded-3xl shadow-lg hover:shadow-2xl border border-gray-100 dark:border-slate-700 overflow-hidden cursor-pointer transition-all duration-300 hover:-translate-y-2"
                   style={{
                     boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)',
-                    background: 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)'
                   }}
                   onClick={() => {
                     // Try multiple sources for media URLs with priority order
@@ -270,7 +266,7 @@ export default function Sale({
 
                   {/* Product Image */}
                   <div className="relative overflow-hidden">
-                    <div className="aspect-[4/3] bg-gradient-to-br from-gray-50 to-gray-100">
+                    <div className="aspect-[4/3] bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-700 dark:to-slate-800">
                       <img
                         src={
                           sale.mediaUrl?.[0] ?? 
@@ -295,13 +291,13 @@ export default function Sale({
                   <div className="p-6 space-y-4">
                     {/* Product Name */}
                     <div>
-                      <h3 className="font-bold text-xl text-gray-900 mb-2 line-clamp-2 group-hover:text-gray-700 transition-colors" style={{ fontFamily: "'Jost', sans-serif" }}>
+                      <h3 className="font-bold text-xl text-gray-900 dark:text-slate-100 mb-2 line-clamp-2 group-hover:text-gray-700 dark:group-hover:text-slate-200 transition-colors" style={{ fontFamily: "'Jost', sans-serif" }}>
                         {sale.product_name}
                       </h3>
                       
                       {/* Category */}
                       <div className="flex flex-wrap gap-2 mb-3">
-                        <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 rounded-lg" style={{ fontFamily: "'Jost', sans-serif" }}>
+                        <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-lg" style={{ fontFamily: "'Jost', sans-serif" }}>
                           <Icon icon="mdi:tag-outline" className="w-3 h-3 mr-1" />
                           {getCategoryName(sale.category)}
                         </span>
@@ -313,24 +309,24 @@ export default function Sale({
                       {/* Price */}
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Original Price</p>
-                          <p className="text-2xl font-bold text-gray-900" style={{ fontFamily: "'Jost', sans-serif" }}>
+                          <p className="text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Original Price</p>
+                          <p className="text-2xl font-bold text-gray-900 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
                             ₱{sale.price?.toLocaleString() || '0'}
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Discount</p>
-                          <p className="text-xl font-bold text-green-600" style={{ fontFamily: "'Jost', sans-serif" }}>
+                          <p className="text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Discount</p>
+                          <p className="text-xl font-bold text-green-600 dark:text-green-400" style={{ fontFamily: "'Jost', sans-serif" }}>
                             {sale.sale?.[0]?.percentage ? `${sale.sale[0].percentage}%` : 'No discount'}
                           </p>
                         </div>
                       </div>
 
                       {/* Sale Price */}
-                      <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-4 border border-green-100">
+                      <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-2xl p-4 border border-green-100 dark:border-green-800">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-green-700" style={{ fontFamily: "'Jost', sans-serif" }}>Sale Price</span>
-                          <span className="text-lg font-bold text-green-600" style={{ fontFamily: "'Jost', sans-serif" }}>
+                          <span className="text-sm font-medium text-green-700 dark:text-green-400" style={{ fontFamily: "'Jost', sans-serif" }}>Sale Price</span>
+                          <span className="text-lg font-bold text-green-600 dark:text-green-400" style={{ fontFamily: "'Jost', sans-serif" }}>
                             ₱{sale.sale?.[0]?.percentage 
                               ? (sale.price - (sale.price * sale.sale[0].percentage / 100)).toLocaleString()
                               : sale.price?.toLocaleString() || '0'}
@@ -341,7 +337,7 @@ export default function Sale({
 
                     {/* Hover Action Indicator */}
                     <div className="flex items-center justify-center pt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                      <div className="flex items-center gap-2 text-sm font-medium text-gray-600" style={{ fontFamily: "'Jost', sans-serif" }}>
+                      <div className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-slate-300" style={{ fontFamily: "'Jost', sans-serif" }}>
                         <Icon icon="mdi:eye" className="w-4 h-4" />
                         <span>View Details</span>
                       </div>
@@ -352,13 +348,13 @@ export default function Sale({
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mb-6">
-                <Icon icon="mdi:tag-outline" className="text-4xl text-gray-400" />
+              <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-slate-700 dark:to-slate-800 rounded-full flex items-center justify-center mb-6">
+                <Icon icon="mdi:tag-outline" className="text-4xl text-gray-400 dark:text-slate-500" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-700 mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+              <h3 className="text-xl font-semibold text-gray-700 dark:text-slate-300 mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>
                 No sales found
               </h3>
-              <p className="text-gray-500 max-w-md" style={{ fontFamily: "'Jost', sans-serif" }}>
+              <p className="text-gray-500 dark:text-slate-400 max-w-md" style={{ fontFamily: "'Jost', sans-serif" }}>
                 Start by creating your first sale to offer discounts and promotions to your customers.
               </p>
             </div>

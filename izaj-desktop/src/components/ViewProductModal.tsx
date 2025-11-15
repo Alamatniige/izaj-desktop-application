@@ -471,9 +471,9 @@ export function ViewProductModal({
                     {hasMultipleMedia && (
                       <button
                         onClick={handlePrevMedia}
-                        className="absolute top-1/2 left-2 -translate-y-1/2 bg-white/90 hover:bg-white p-2.5 rounded-full shadow-lg z-10 transition-all hover:scale-105"
+                        className="absolute top-1/2 left-2 -translate-y-1/2 bg-white/90 dark:bg-slate-800/90 hover:bg-white dark:hover:bg-slate-700 p-2.5 rounded-full shadow-lg z-10 transition-all hover:scale-105"
                       >
-                        <Icon icon="mdi:chevron-left" className="text-xl text-gray-700" />
+                        <Icon icon="mdi:chevron-left" className="text-xl text-gray-700 dark:text-slate-200" />
                       </button>
                     )}
 
@@ -499,9 +499,9 @@ export function ViewProductModal({
                     {hasMultipleMedia && (
                       <button
                         onClick={handleNextMedia}
-                        className="absolute top-1/2 right-2 -translate-y-1/2 bg-white/90 hover:bg-white p-2.5 rounded-full shadow-lg z-10 transition-all hover:scale-105"
+                        className="absolute top-1/2 right-2 -translate-y-1/2 bg-white/90 dark:bg-slate-800/90 hover:bg-white dark:hover:bg-slate-700 p-2.5 rounded-full shadow-lg z-10 transition-all hover:scale-105"
                       >
-                        <Icon icon="mdi:chevron-right" className="text-xl text-gray-700" />
+                        <Icon icon="mdi:chevron-right" className="text-xl text-gray-700 dark:text-slate-200" />
                       </button>
                     )}
 
@@ -527,23 +527,23 @@ export function ViewProductModal({
                 {/* Product Name and Category */}
                 <div className="flex flex-col sm:flex-row gap-4">
                   {/* Product Name */}
-                  <div className="flex-1 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
+                  <div className="flex-1 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-2xl p-6 border border-blue-100 dark:border-blue-800">
                     <div className="flex items-center gap-3 mb-2">
-                      <Icon icon="mdi:package-variant" className="text-2xl text-blue-600" />
-                      <span className="text-sm text-blue-600 font-semibold uppercase tracking-wide">Product Name</span>
+                      <Icon icon="mdi:package-variant" className="text-2xl text-blue-600 dark:text-blue-400" />
+                      <span className="text-sm text-blue-600 dark:text-blue-400 font-semibold uppercase tracking-wide">Product Name</span>
                     </div>
-                    <h3 className="text-2xl font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    <h3 className="text-2xl font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
                       {currentProduct.product_name}
                     </h3>
                   </div>
                   
                   {/* Category */}
-                  <div className="sm:w-64 bg-gradient-to-br from-purple-50 to-violet-50 rounded-2xl p-6 border border-purple-100">
+                  <div className="sm:w-64 bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 rounded-2xl p-6 border border-purple-100 dark:border-purple-800">
                     <div className="flex items-center gap-2 mb-2">
-                      <Icon icon="mdi:tag-outline" className="text-lg text-purple-600" />
-                      <span className="text-sm text-purple-600 font-semibold uppercase tracking-wide">Category</span>
+                      <Icon icon="mdi:tag-outline" className="text-lg text-purple-600 dark:text-purple-400" />
+                      <span className="text-sm text-purple-600 dark:text-purple-400 font-semibold uppercase tracking-wide">Category</span>
                     </div>
-                    <span className="text-lg font-semibold text-purple-700" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    <span className="text-lg font-semibold text-purple-700 dark:text-purple-300" style={{ fontFamily: "'Jost', sans-serif" }}>
                       {typeof currentProduct.category === 'string'
                         ? currentProduct.category
                         : currentProduct.category?.category_name ?? 'Uncategorized'}
@@ -553,23 +553,23 @@ export function ViewProductModal({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Price */}
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-5 border border-green-100">
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-2xl p-5 border border-green-100 dark:border-green-800">
                     <div className="flex items-center gap-2 mb-2">
-                      <Icon icon="mdi:currency-usd" className="text-lg text-green-600" />
-                      <span className="text-sm text-green-600 font-semibold uppercase tracking-wide">Price</span>
+                      <Icon icon="mdi:currency-usd" className="text-lg text-green-600 dark:text-green-400" />
+                      <span className="text-sm text-green-600 dark:text-green-400 font-semibold uppercase tracking-wide">Price</span>
                     </div>
-                    <span className="text-2xl font-bold text-green-700" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    <span className="text-2xl font-bold text-green-700 dark:text-green-300" style={{ fontFamily: "'Jost', sans-serif" }}>
                       ₱{currentProduct.price?.toLocaleString() || '0'}
                     </span>
                   </div>
                   
                   {/* Stock/Quantity */}
-                  <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-5 border border-orange-100">
+                  <div className="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 rounded-2xl p-5 border border-orange-100 dark:border-orange-800">
                     <div className="flex items-center gap-2 mb-2">
-                      <Icon icon="mdi:package-variant-closed" className="text-lg text-orange-600" />
-                      <span className="text-sm text-orange-600 font-semibold uppercase tracking-wide">Stock</span>
+                      <Icon icon="mdi:package-variant-closed" className="text-lg text-orange-600 dark:text-orange-400" />
+                      <span className="text-sm text-orange-600 dark:text-orange-400 font-semibold uppercase tracking-wide">Stock</span>
                     </div>
-                    <span className="text-2xl font-bold text-orange-700" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    <span className="text-2xl font-bold text-orange-700 dark:text-orange-300" style={{ fontFamily: "'Jost', sans-serif" }}>
                       {currentProduct.display_quantity ?? 'N/A'}
                     </span>
                   </div>
@@ -577,16 +577,16 @@ export function ViewProductModal({
                   {/* Pickup Status */}
                   <div className={`bg-gradient-to-br rounded-2xl p-5 border ${
                     (currentProduct?.pickup_available === true)
-                      ? 'from-teal-50 to-cyan-50 border-teal-100' 
-                      : 'from-red-50 to-pink-50 border-red-100'
+                      ? 'from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/20 border-teal-100 dark:border-teal-800' 
+                      : 'from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20 border-red-100 dark:border-red-800'
                   }`}>
                     <div className="flex items-center gap-2 mb-2">
                       <Icon 
                         icon={(currentProduct?.pickup_available === true) ? "mdi:checkbox-marked-circle" : "mdi:close-circle"} 
-                        className={`text-lg ${(currentProduct?.pickup_available === true) ? 'text-teal-600' : 'text-red-600'}`} 
+                        className={`text-lg ${(currentProduct?.pickup_available === true) ? 'text-teal-600 dark:text-teal-400' : 'text-red-600 dark:text-red-400'}`} 
                       />
                       <span className={`text-sm font-semibold uppercase tracking-wide ${
-                        (currentProduct?.pickup_available === true) ? 'text-teal-600' : 'text-red-600'
+                        (currentProduct?.pickup_available === true) ? 'text-teal-600 dark:text-teal-400' : 'text-red-600 dark:text-red-400'
                       }`}>
                         Pickup Status
                       </span>
@@ -596,7 +596,7 @@ export function ViewProductModal({
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={`text-xl font-bold ${
-                        (currentProduct?.pickup_available === true) ? 'text-teal-700' : 'text-red-700'
+                        (currentProduct?.pickup_available === true) ? 'text-teal-700 dark:text-teal-300' : 'text-red-700 dark:text-red-300'
                       }`} style={{ fontFamily: "'Jost', sans-serif" }}>
                         {(currentProduct?.pickup_available === true) ? 'Available' : 'Unavailable'}
                       </span>
@@ -610,12 +610,12 @@ export function ViewProductModal({
                   
                   {/* Created Date */}
                   {currentProduct.created_at && (
-                    <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-2xl p-5 border border-gray-100">
+                    <div className="bg-gradient-to-br from-gray-50 to-slate-50 dark:from-slate-800 dark:to-slate-900 rounded-2xl p-5 border border-gray-100 dark:border-slate-700">
                       <div className="flex items-center gap-2 mb-2">
-                        <Icon icon="mdi:calendar-outline" className="text-lg text-gray-600" />
-                        <span className="text-sm text-gray-600 font-semibold uppercase tracking-wide">Created</span>
+                        <Icon icon="mdi:calendar-outline" className="text-lg text-gray-600 dark:text-slate-400" />
+                        <span className="text-sm text-gray-600 dark:text-slate-400 font-semibold uppercase tracking-wide">Created</span>
                       </div>
-                      <span className="text-base font-medium text-gray-700" style={{ fontFamily: "'Jost', sans-serif" }}>
+                      <span className="text-base font-medium text-gray-700 dark:text-slate-200" style={{ fontFamily: "'Jost', sans-serif" }}>
                         {formatDate(currentProduct.created_at)}
                       </span>
                     </div>

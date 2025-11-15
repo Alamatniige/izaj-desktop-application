@@ -177,7 +177,7 @@ const handleViewChange = (newView: ViewType) => {
                         <div className="absolute top-full left-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-gray-100 dark:border-slate-700 py-3 z-20">
                           <button
                             onClick={() => handleViewChange('products')}
-                            className="w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors bg-blue-50 text-blue-700 font-semibold border-l-4 border-blue-500"
+                            className="w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-semibold border-l-4 border-blue-500 dark:border-blue-400"
                             style={{ fontFamily: "'Jost', sans-serif" }}
                           >
                             <Icon icon="mdi:grid" className="text-lg" />
@@ -185,7 +185,7 @@ const handleViewChange = (newView: ViewType) => {
                           </button>
                           <button
                             onClick={() => handleViewChange('stock')}
-                            className="w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                            className="w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-slate-100"
                             style={{ fontFamily: "'Jost', sans-serif" }}
                           >
                             <Icon icon="mdi:package-variant" className="text-lg" />
@@ -193,7 +193,7 @@ const handleViewChange = (newView: ViewType) => {
                           </button>
                           <button
                             onClick={() => handleViewChange('sale')}
-                            className="w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                            className="w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-slate-100"
                             style={{ fontFamily: "'Jost', sans-serif" }}
                           >
                             <Icon icon="mdi:tag-outline" className="text-lg" />
@@ -256,13 +256,10 @@ const handleViewChange = (newView: ViewType) => {
               </div>
             </div>
 
-            <div className="max-w-7xl mx-auto bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-white dark:border-slate-700 p-4 sm:p-8 mb-8 flex flex-col items-center"
-              style={{
-                boxShadow: '0 4px 32px 0 rgba(252, 211, 77, 0.07)',
-              }}>
+            <div className="max-w-7xl mx-auto mb-8 flex flex-col items-center">
 
               { /* Filter and search controls */}
-              <div className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-700 dark:to-slate-800 rounded-2xl px-4 py-3 mb-4 border border-gray-100 dark:border-slate-700 shadow-sm -mt-12 w-full">
+              <div className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-700 dark:to-slate-800 rounded-2xl px-4 py-3 mb-4 border border-gray-100 dark:border-slate-700 shadow-sm w-full">
                 <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <button

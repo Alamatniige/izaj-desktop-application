@@ -53,6 +53,7 @@ export interface UpdateOrderOptions {
   courier?: string;
   admin_notes?: string;
   shipping_fee?: number;
+  payment_status?: string;
 }
 
 export class OrderService {

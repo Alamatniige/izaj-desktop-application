@@ -22,8 +22,8 @@ export const getStockColor = (quantity: number): string => {
 
 export const getStatusBadgeClass = (published_status: boolean): string => {
   return published_status
-    ? 'text-green-600 bg-green-100' // Active
-    : 'text-red-600 bg-red-100'; // Inactive
+    ? 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 border-green-200 dark:border-green-800' // Active
+    : 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 border-red-200 dark:border-red-800'; // Inactive
 };
 
 export const filterProducts = (

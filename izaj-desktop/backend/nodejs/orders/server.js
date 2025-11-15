@@ -232,7 +232,7 @@ router.get('/orders/:id', authenticate, async (req, res) => {
 router.put('/orders/:id/status', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, tracking_number, courier, admin_notes, shipping_fee } = req.body;
+    const { status, tracking_number, courier, admin_notes, shipping_fee, payment_status } = req.body;
 
     // Removed verbose log to reduce terminal noise
 
@@ -279,6 +279,10 @@ router.put('/orders/:id/status', authenticate, async (req, res) => {
       if (!isNaN(parsedFee)) {
         updateData.shipping_fee = parsedFee;
       }
+    }
+    // Update payment_status if provided
+    if (payment_status) {
+      updateData.payment_status = payment_status;
     }
     
     // Set delivered_at timestamp when marking as complete
@@ -470,7 +474,7 @@ router.put('/orders/:id/approve-cancellation', authenticate, async (req, res) =>
     // Update order to cancelled
     // When approving customer cancellation, keep customer's cancellation_reason
     // This ensures it shows "Cancelled by Customer" (has cancellation_reason)
-    const updateData: any = {
+    const updateData = {
       status: 'cancelled',
       cancelled_at: new Date().toISOString()
     };

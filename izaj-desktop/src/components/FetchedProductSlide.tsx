@@ -26,7 +26,7 @@ interface FetchedProductSlideProps {
 
 export function FetchedProductSlide({ fetchedProducts, currentIndex, handlePrev, handleNext}: FetchedProductSlideProps) {
   if (!fetchedProducts.length || currentIndex >= fetchedProducts.length) { 
-    return <p className="text-center text-gray-500"> No unpublished products to review. </p>;
+    return <p className="text-center text-gray-500 dark:text-slate-400"> No unpublished products to review. </p>;
   }
   const product = fetchedProducts[currentIndex];
   
@@ -40,7 +40,7 @@ export function FetchedProductSlide({ fetchedProducts, currentIndex, handlePrev,
     <div className="w-full flex flex-col items-center justify-center relative px-8 py-6" style={{ minHeight: '400px' }}>
       {/* Product Name - Above Image */}
       <div className="w-full max-w-2xl mb-4">
-        <h3 className="text-xl sm:text-2xl font-bold text-gray-800 text-center" style={{ fontFamily: "'Jost', sans-serif" }}>
+        <h3 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-slate-100 text-center" style={{ fontFamily: "'Jost', sans-serif" }}>
           {product.product_name}
         </h3>
       </div>
@@ -57,14 +57,14 @@ export function FetchedProductSlide({ fetchedProducts, currentIndex, handlePrev,
         {/* Left Navigation Button */}
         <button
           onClick={handlePrev}
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 flex items-center justify-center rounded-full bg-white shadow-lg hover:bg-yellow-50 border border-gray-200 transition-all duration-200"
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 flex items-center justify-center rounded-full bg-white dark:bg-slate-800 shadow-lg hover:bg-yellow-50 dark:hover:bg-yellow-900/30 border border-gray-200 dark:border-slate-700 transition-all duration-200"
           aria-label="Previous"
         >
-          <Icon icon="mdi:chevron-left" className="text-2xl text-yellow-500" />
+          <Icon icon="mdi:chevron-left" className="text-2xl text-yellow-500 dark:text-yellow-400" />
         </button>
 
         {/* Large White Image Preview Area */}
-        <div className="w-full bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden" style={{ minHeight: '400px', maxHeight: '500px' }}>
+        <div className="w-full bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden" style={{ minHeight: '400px', maxHeight: '500px' }}>
           {product.image_url ? (
             <img
               src={product.image_url}
@@ -73,8 +73,8 @@ export function FetchedProductSlide({ fetchedProducts, currentIndex, handlePrev,
               style={{ minHeight: '400px', maxHeight: '500px' }}
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gray-50" style={{ minHeight: '400px', maxHeight: '500px' }}>
-              <Icon icon="mdi:image-off" className="text-6xl text-gray-300" />
+            <div className="w-full h-full flex items-center justify-center bg-gray-50 dark:bg-slate-700" style={{ minHeight: '400px', maxHeight: '500px' }}>
+              <Icon icon="mdi:image-off" className="text-6xl text-gray-300 dark:text-slate-600" />
             </div>
           )}
         </div>
@@ -82,10 +82,10 @@ export function FetchedProductSlide({ fetchedProducts, currentIndex, handlePrev,
         {/* Right Navigation Button */}
         <button
           onClick={handleNext}
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 flex items-center justify-center rounded-full bg-white shadow-lg hover:bg-yellow-50 border border-gray-200 transition-all duration-200"
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 flex items-center justify-center rounded-full bg-white dark:bg-slate-800 shadow-lg hover:bg-yellow-50 dark:hover:bg-yellow-900/30 border border-gray-200 dark:border-slate-700 transition-all duration-200"
           aria-label="Next"
         >
-          <Icon icon="mdi:chevron-right" className="text-2xl text-yellow-500" />
+          <Icon icon="mdi:chevron-right" className="text-2xl text-yellow-500 dark:text-yellow-400" />
         </button>
       </div>
     </div>

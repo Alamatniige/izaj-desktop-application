@@ -658,10 +658,10 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                 {activeTab === 'userManagement' && (
                   <div className="space-y-6 sm:space-y-8">
                     {!isSuperAdmin ? (
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 text-center">
-                        <Icon icon="mdi:alert" className="w-12 h-12 text-yellow-600 mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold text-yellow-800 mb-2">Access Denied</h3>
-                        <p className="text-yellow-700">Only SuperAdmin users can access User Management.</p>
+                      <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-6 text-center">
+                        <Icon icon="mdi:alert" className="w-12 h-12 text-yellow-600 dark:text-yellow-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-yellow-800 dark:text-yellow-300 mb-2">Access Denied</h3>
+                        <p className="text-yellow-700 dark:text-yellow-400">Only SuperAdmin users can access User Management.</p>
                       </div>
                     ) : (
                     <>
@@ -685,20 +685,20 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                       {/* Add Admin Modal */}
                       {isAddAdminModalOpen && (
                         <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-50 p-4">
-                          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col overflow-hidden">
+                          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col overflow-hidden">
                             {/* Fixed Header */}
-                            <div className="flex justify-between items-center p-8 border-b border-gray-200 flex-shrink-0">
+                            <div className="flex justify-between items-center p-8 border-b border-gray-200 dark:border-slate-700 flex-shrink-0">
                               <div className="flex items-center gap-3">
-                                <div className="p-2 bg-yellow-100 rounded-lg">
-                                  <Icon icon="mdi:account-plus" className="w-6 h-6 text-yellow-600" />
+                                <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
+                                  <Icon icon="mdi:account-plus" className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
                                 </div>
-                                <h3 className="text-2xl font-bold text-gray-900">Add New Admin</h3>
+                                <h3 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Add New Admin</h3>
                               </div>
                               <button
                                 onClick={() => setIsAddAdminModalOpen(false)}
-                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors duration-200"
                               >
-                                <Icon icon="mdi:close" className="w-6 h-6 text-gray-500" />
+                                <Icon icon="mdi:close" className="w-6 h-6 text-gray-500 dark:text-slate-400" />
                               </button>
                             </div>
                             
@@ -713,36 +713,36 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                                 className="space-y-6"
                               >
                                 <div className="space-y-2">
-                                  <label className="block text-sm font-semibold text-gray-700">
+                                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300">
                                     Full Name
                                   </label>
                                   <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                      <Icon icon="mdi:account" className="w-5 h-5 text-gray-400" />
+                                      <Icon icon="mdi:account" className="w-5 h-5 text-gray-400 dark:text-slate-400" />
                                     </div>
                                     <input
                                       type="text"
                                       value={newAdmin.name}
                                       onChange={(e) => setNewAdmin({ ...newAdmin, name: e.target.value })}
-                                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-yellow-200 focus:border-yellow-400 transition-colors duration-200"
+                                      className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-yellow-200 dark:focus:ring-yellow-900/50 focus:border-yellow-400 dark:focus:border-yellow-500 transition-colors duration-200 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-400"
                                       placeholder="Enter full name"
                                       required
                                     />
                                   </div>
                                 </div>
                                 <div className="space-y-2">
-                                  <label className="block text-sm font-semibold text-gray-700">
+                                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300">
                                     Email Address
                                   </label>
                                   <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                      <Icon icon="mdi:email" className="w-5 h-5 text-gray-400" />
+                                      <Icon icon="mdi:email" className="w-5 h-5 text-gray-400 dark:text-slate-400" />
                                     </div>
                                     <input
                                       type="email"
                                       value={newAdmin.email}
                                       onChange={(e) => setNewAdmin({ ...newAdmin, email: e.target.value })}
-                                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-yellow-200 focus:border-yellow-400 transition-colors duration-200"
+                                      className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-yellow-200 dark:focus:ring-yellow-900/50 focus:border-yellow-400 dark:focus:border-yellow-500 transition-colors duration-200 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-400"
                                       placeholder="Enter email address"
                                       required
                                     />
@@ -763,34 +763,34 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                                           assigned_branches: isSuper ? [] : newAdmin.assigned_branches
                                         });
                                       }}
-                                      className="w-4 h-4 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500"
+                                      className="w-4 h-4 text-yellow-600 border-gray-300 dark:border-slate-600 rounded focus:ring-yellow-500 dark:bg-slate-700"
                                     />
-                                    <span className="text-sm font-semibold text-gray-700">Super Admin (can see everything)</span>
+                                    <span className="text-sm font-semibold text-gray-700 dark:text-slate-300">Super Admin (can see everything)</span>
                                   </label>
                                 </div>
                                 {!newAdmin.is_super_admin && (
                                   <>
                                     <div className="space-y-2">
                                       <div className="flex items-center justify-between">
-                                        <label className="block text-sm font-semibold text-gray-700">
+                                        <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300">
                                           Assigned Categories
                                         </label>
                                         {newAdmin.assigned_categories.length > 0 && (
-                                          <span className="text-xs text-yellow-600 font-medium">
+                                          <span className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">
                                             {newAdmin.assigned_categories.length} selected
                                           </span>
                                         )}
                                       </div>
-                                      <div className="relative border border-gray-300 rounded-xl bg-white min-h-[120px] max-h-[200px] overflow-y-auto">
+                                      <div className="relative border border-gray-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 min-h-[120px] max-h-[200px] overflow-y-auto">
                                         <div className="absolute left-3 top-3 flex items-center pointer-events-none z-10">
-                                          <Icon icon="mdi:tag-multiple" className="w-5 h-5 text-gray-400" />
+                                          <Icon icon="mdi:tag-multiple" className="w-5 h-5 text-gray-400 dark:text-slate-400" />
                                         </div>
                                         {availableCategories.length > 0 ? (
                                           <div className="pl-10 pr-4 py-3 space-y-2">
                                             {availableCategories.map(category => (
                                               <label
                                                 key={category}
-                                                className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                                                className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-600 cursor-pointer transition-colors"
                                               >
                                                 <input
                                                   type="checkbox"
@@ -808,41 +808,41 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                                                       });
                                                     }
                                                   }}
-                                                  className="w-4 h-4 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500 cursor-pointer"
+                                                  className="w-4 h-4 text-yellow-600 border-gray-300 dark:border-slate-600 rounded focus:ring-yellow-500 cursor-pointer dark:bg-slate-700"
                                                 />
-                                                <span className="text-sm text-gray-700">{category}</span>
+                                                <span className="text-sm text-gray-700 dark:text-slate-300">{category}</span>
                                               </label>
                                             ))}
                                           </div>
                                         ) : (
                                           <div className="pl-10 pr-4 py-3">
-                                            <p className="text-sm text-gray-500">No categories available. Please add categories to products first.</p>
+                                            <p className="text-sm text-gray-500 dark:text-slate-400">No categories available. Please add categories to products first.</p>
                                           </div>
                                         )}
                                       </div>
-                                      <p className="text-xs text-gray-500">Select multiple categories by clicking the checkboxes</p>
+                                      <p className="text-xs text-gray-500 dark:text-slate-400">Select multiple categories by clicking the checkboxes</p>
                                     </div>
                                     <div className="space-y-2">
                                       <div className="flex items-center justify-between">
-                                        <label className="block text-sm font-semibold text-gray-700">
+                                        <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300">
                                           Assigned Branches
                                         </label>
                                         {newAdmin.assigned_branches.length > 0 && (
-                                          <span className="text-xs text-yellow-600 font-medium">
+                                          <span className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">
                                             {newAdmin.assigned_branches.length} selected
                                           </span>
                                         )}
                                       </div>
-                                      <div className="relative border border-gray-300 rounded-xl bg-white min-h-[120px] max-h-[200px] overflow-y-auto">
+                                      <div className="relative border border-gray-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 min-h-[120px] max-h-[200px] overflow-y-auto">
                                         <div className="absolute left-3 top-3 flex items-center pointer-events-none z-10">
-                                          <Icon icon="mdi:store" className="w-5 h-5 text-gray-400" />
+                                          <Icon icon="mdi:store" className="w-5 h-5 text-gray-400 dark:text-slate-400" />
                                         </div>
                                         {availableBranches.length > 0 ? (
                                           <div className="pl-10 pr-4 py-3 space-y-2">
                                             {availableBranches.map(branch => (
                                               <label
                                                 key={branch}
-                                                className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                                                className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-600 cursor-pointer transition-colors"
                                               >
                                                 <input
                                                   type="checkbox"
@@ -860,19 +860,19 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                                                       });
                                                     }
                                                   }}
-                                                  className="w-4 h-4 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500 cursor-pointer"
+                                                  className="w-4 h-4 text-yellow-600 border-gray-300 dark:border-slate-600 rounded focus:ring-yellow-500 cursor-pointer dark:bg-slate-700"
                                                 />
-                                                <span className="text-sm text-gray-700">{branch}</span>
+                                                <span className="text-sm text-gray-700 dark:text-slate-300">{branch}</span>
                                               </label>
                                             ))}
                                           </div>
                                         ) : (
                                           <div className="pl-10 pr-4 py-3">
-                                            <p className="text-sm text-gray-500">No branches available. Please add branches to products first.</p>
+                                            <p className="text-sm text-gray-500 dark:text-slate-400">No branches available. Please add branches to products first.</p>
                                           </div>
                                         )}
                                       </div>
-                                      <p className="text-xs text-gray-500">Select multiple branches by clicking the checkboxes</p>
+                                      <p className="text-xs text-gray-500 dark:text-slate-400">Select multiple branches by clicking the checkboxes</p>
                                     </div>
                                   </>
                                 )}
@@ -880,11 +880,11 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                             </div>
                             
                             {/* Fixed Footer with Buttons */}
-                            <div className="flex justify-end gap-4 p-8 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+                            <div className="flex justify-end gap-4 p-8 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 flex-shrink-0">
                               <button
                                 type="button"
                                 onClick={() => setIsAddAdminModalOpen(false)}
-                                className="px-6 py-3 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors duration-200"
+                                className="px-6 py-3 text-sm font-medium text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-xl transition-colors duration-200"
                               >
                                 Cancel
                               </button>
@@ -947,26 +947,26 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                                   <div className="text-sm text-gray-900 dark:text-slate-100">{user.email}</div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                  <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-xl bg-blue-100 text-blue-800 shadow-sm">
+                                  <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 shadow-sm">
                                     {user.role}
                                   </span>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   {user.is_super_admin ? (
-                                    <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-xl bg-purple-100 text-purple-800 shadow-sm">
+                                    <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-xl bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 shadow-sm">
                                       Super Admin
                                     </span>
                                   ) : (
-                                    <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-xl bg-gray-100 text-gray-800 shadow-sm">
+                                    <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-slate-200 shadow-sm">
                                       Regular Admin
                                     </span>
                                   )}
                                 </td>
                                 <td className="px-6 py-4">
                                   {user.is_super_admin ? (
-                                    <span className="text-xs text-gray-500">All access</span>
+                                    <span className="text-xs text-gray-500 dark:text-slate-400">All access</span>
                                   ) : (
-                                    <div className="text-xs">
+                                    <div className="text-xs text-gray-700 dark:text-slate-300">
                                       {user.assigned_categories && user.assigned_categories.length > 0 && (
                                         <div className="mb-1">
                                           <span className="font-semibold">Categories:</span> {user.assigned_categories.join(', ')}
@@ -979,14 +979,14 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                                       )}
                                       {(!user.assigned_categories || user.assigned_categories.length === 0) && 
                                        (!user.assigned_branches || user.assigned_branches.length === 0) && (
-                                        <span className="text-gray-400">No assignments</span>
+                                        <span className="text-gray-400 dark:text-slate-500">No assignments</span>
                                       )}
                                     </div>
                                   )}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-xl shadow-sm ${
-                                    user.status === true ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                    user.status === true ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
                                   }`}>
                                     {user.status}
                                   </span>
@@ -1001,7 +1001,7 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                                         newStatus: user.status === true ? false : true,
                                       })
                                     }
-                                    className="text-yellow-600 hover:text-yellow-900 mr-3"
+                                    className="text-yellow-600 dark:text-yellow-400 hover:text-yellow-900 dark:hover:text-yellow-300 mr-3"
                                     title={user.status === true ? 'Deactivate' : 'Activate'}
                                   >
                                     <Icon icon="mdi:pencil" />
@@ -1014,7 +1014,7 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                                         user,
                                       })
                                     }
-                                    className="text-red-600 hover:text-red-900"
+                                    className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
                                     title="Delete"
                                   >
                                     <Icon icon="mdi:delete" />
@@ -1035,14 +1035,14 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                 {activeTab === 'auditLogs' && isSuperAdmin && (
                   <div className="space-y-6">
                     <div className="flex justify-between items-center">
-                      <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100 flex items-center gap-2">
                         <Icon icon="mdi:history" className="text-yellow-400" />
                         System Activity Logs
                       </h3>
                       <div className="flex gap-4">
                         <div className="relative">
                           <div className="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                            <Icon icon="mdi:magnify" className="w-5 h-5 text-gray-400" />
+                            <Icon icon="mdi:magnify" className="w-5 h-5 text-gray-400 dark:text-slate-400" />
                           </div>
                           <input
                             type="text"
@@ -1077,12 +1077,12 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                     {/* Filter Modal */}
                     {isFilterModalOpen && (
                       <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
-                        <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
+                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl p-6 w-full max-w-md">
                           <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-semibold">Filter Logs</h3>
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Filter Logs</h3>
                             <button 
                               onClick={() => setIsFilterModalOpen(false)}
-                              className="text-gray-400 hover:text-gray-600"
+                              className="text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-200"
                             >
                               <Icon icon="mdi:close" className="w-6 h-6" />
                             </button>
@@ -1090,13 +1090,13 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                           
                           <div className="space-y-4">
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                                 Action Type
                               </label>
                               <select
                                 value={filterAction}
                                 onChange={(e) => setFilterAction(e.target.value)}
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                                className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
                               >
                                 <option value="">All Actions</option>
                                 <option value="LOGIN">Login</option>
@@ -1110,7 +1110,7 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                             </div>
 
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                                 Date Range
                               </label>
                               <div className="grid grid-cols-2 gap-4">
@@ -1121,7 +1121,7 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                                     ...prev,
                                     from: e.target.value
                                   }))}
-                                  className="border border-gray-300 rounded-lg px-3 py-2"
+                                  className="border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
                                 />
                                 <input
                                   type="date"
@@ -1130,7 +1130,7 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                                     ...prev,
                                     to: e.target.value
                                   }))}
-                                  className="border border-gray-300 rounded-lg px-3 py-2"
+                                  className="border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
                                 />
                               </div>
                             </div>
@@ -1138,7 +1138,7 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                             <div className="flex justify-end gap-3 mt-6">
                               <button
                                 onClick={clearFilters}
-                                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+                                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-slate-300 hover:text-gray-900 dark:hover:text-slate-100"
                               >
                                 Clear Filters
                               </button>
@@ -1157,19 +1157,19 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                     {/* Download Confirmation Modal */}
                       {isDownloadModalOpen && (
                       <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
-                        <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
+                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl p-6 w-full max-w-md">
                           <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-semibold">Download Audit Logs</h3>
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Download Audit Logs</h3>
                             <button 
                               onClick={() => setIsDownloadModalOpen(false)}
-                              className="text-gray-400 hover:text-gray-600"
+                              className="text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-200"
                             >
                               <Icon icon="mdi:close" className="w-6 h-6" />
                             </button>
                           </div>
                           <div className="space-y-4">
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                                 Date Range
                               </label>
                               <div className="grid grid-cols-2 gap-4">
@@ -1177,20 +1177,20 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                                   type="date"
                                   value={downloadRange.from}
                                   onChange={e => setDownloadRange(r => ({ ...r, from: e.target.value }))}
-                                  className="border border-gray-300 rounded-lg px-3 py-2"
+                                  className="border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
                                 />
                                 <input
                                   type="date"
                                   value={downloadRange.to}
                                   onChange={e => setDownloadRange(r => ({ ...r, to: e.target.value }))}
-                                  className="border border-gray-300 rounded-lg px-3 py-2"
+                                  className="border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
                                 />
                               </div>
                             </div>
                             <div className="flex justify-end gap-3 mt-6">
                               <button
                                 onClick={() => setIsDownloadModalOpen(false)}
-                                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+                                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-slate-300 hover:text-gray-900 dark:hover:text-slate-100"
                               >
                                 Cancel
                               </button>
@@ -1242,7 +1242,11 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                                   </td>
                                   <td className="px-6 py-4 whitespace-nowrap">
                                     <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                      ${getActionColor(log.action)}`}>
+                                      ${getActionColor(log.action)} ${getActionColor(log.action).includes('bg-green-100') ? 'dark:bg-green-900/30 dark:text-green-300' : 
+                                      getActionColor(log.action).includes('bg-red-100') ? 'dark:bg-red-900/30 dark:text-red-300' :
+                                      getActionColor(log.action).includes('bg-blue-100') ? 'dark:bg-blue-900/30 dark:text-blue-300' :
+                                      getActionColor(log.action).includes('bg-yellow-100') ? 'dark:bg-yellow-900/30 dark:text-yellow-300' :
+                                      'dark:bg-gray-700 dark:text-slate-200'}`}>
                                       {log.action}
                                     </span>
                                   </td>
@@ -1301,28 +1305,28 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                           </p>
                         </div>
 
-                        <div className="flex flex-col gap-4 pt-4 border-t border-gray-200">
+                        <div className="flex flex-col gap-4 pt-4 border-t border-gray-200 dark:border-slate-700">
                           <div className="flex items-center gap-3">
                             {messageSaveStatus === 'success' && (
-                              <div className="flex items-center gap-2 text-green-600">
+                              <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
                                 <Icon icon="mdi:check-circle" className="w-5 h-5" />
                                 <span className="text-sm font-medium">Message saved successfully!</span>
                               </div>
                             )}
                             {messageSaveStatus === 'error' && (
-                              <div className="flex items-center gap-2 text-red-600">
+                              <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
                                 <Icon icon="mdi:alert-circle" className="w-5 h-5" />
                                 <span className="text-sm font-medium">Failed to save message. Please try again.</span>
                               </div>
                             )}
                             {sendToAllStatus === 'success' && (
-                              <div className="flex items-center gap-2 text-green-600">
+                              <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
                                 <Icon icon="mdi:check-circle" className="w-5 h-5" />
                                 <span className="text-sm font-medium">Message sent to all subscribers!</span>
                               </div>
                             )}
                             {sendToAllStatus === 'error' && (
-                              <div className="flex items-center gap-2 text-red-600">
+                              <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
                                 <Icon icon="mdi:alert-circle" className="w-5 h-5" />
                                 <span className="text-sm font-medium">Failed to send messages. Please try again.</span>
                               </div>
@@ -1381,10 +1385,10 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
       {/* Confirmation Modal */}
       {confirmModal.open && confirmModal.user && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-8">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-8">
             <div className="mb-6 flex items-center gap-3">
-              <Icon icon={confirmModal.action === 'delete' ? "mdi:delete" : "mdi:pencil"} className={`w-7 h-7 ${confirmModal.action === 'delete' ? 'text-red-500' : 'text-yellow-500'}`} />
-              <h3 className="text-xl font-bold text-gray-900">
+              <Icon icon={confirmModal.action === 'delete' ? "mdi:delete" : "mdi:pencil"} className={`w-7 h-7 ${confirmModal.action === 'delete' ? 'text-red-500 dark:text-red-400' : 'text-yellow-500 dark:text-yellow-400'}`} />
+              <h3 className="text-xl font-bold text-gray-900 dark:text-slate-100">
                 {confirmModal.action === 'delete'
                   ? 'Delete Admin User'
                   : confirmModal.newStatus
@@ -1392,7 +1396,7 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                     : 'Deactivate Account'}
               </h3>
             </div>
-            <p className="mb-8 text-gray-700">
+            <p className="mb-8 text-gray-700 dark:text-slate-300">
               {confirmModal.action === 'delete'
                 ? `Are you sure you want to delete ${confirmModal.user?.name}? This action cannot be undone.`
                 : `Are you sure you want to ${confirmModal.newStatus ? 'activate' : 'deactivate'} the account for ${confirmModal.user?.name}?`}
@@ -1400,7 +1404,7 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
             <div className="flex justify-end gap-4">
               <button
                 onClick={() => setConfirmModal({ open: false, action: null, user: null })}
-                className="px-5 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200"
+                className="px-5 py-2 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-200 dark:hover:bg-slate-600"
               >
                 Cancel
               </button>
@@ -1433,27 +1437,27 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
       {/* Send to All Subscribers Confirmation Modal */}
       {sendConfirmModal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-8">
             <div className="mb-6 flex items-center gap-3">
-              <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-xl">
-                <Icon icon="mdi:email-send" className="w-7 h-7 text-blue-600" />
+              <div className="flex items-center justify-center w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
+                <Icon icon="mdi:email-send" className="w-7 h-7 text-blue-600 dark:text-blue-400" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-slate-100">
                 Send to All
               </h3>
             </div>
             
             <div className="mb-6">
-              <p className="text-gray-700 mb-4">
-                Are you sure you want to send this message to <span className="font-semibold text-blue-600">{subscriberCount || 0} active subscriber{subscriberCount !== 1 ? 's' : ''}</span>?
+              <p className="text-gray-700 dark:text-slate-300 mb-4">
+                Are you sure you want to send this message to <span className="font-semibold text-blue-600 dark:text-blue-400">{subscriberCount || 0} active subscriber{subscriberCount !== 1 ? 's' : ''}</span>?
               </p>
               
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4">
                 <div className="flex items-start gap-3">
-                  <Icon icon="mdi:alert-circle" className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                  <Icon icon="mdi:alert-circle" className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="text-sm font-semibold text-yellow-800 mb-1">Important</p>
-                    <p className="text-sm text-yellow-700">
+                    <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-300 mb-1">Important</p>
+                    <p className="text-sm text-yellow-700 dark:text-yellow-400">
                       This action cannot be undone. All active subscribers will receive an email with your custom message.
                     </p>
                   </div>
@@ -1461,10 +1465,10 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
               </div>
 
               {subscriptionMessage.trim() && (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                  <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Message Preview:</p>
+                <div className="bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg p-4">
+                  <p className="text-xs font-semibold text-gray-600 dark:text-slate-400 mb-2 uppercase tracking-wide">Message Preview:</p>
                   <div 
-                    className="text-sm text-gray-700 line-clamp-3"
+                    className="text-sm text-gray-700 dark:text-slate-300 line-clamp-3"
                     dangerouslySetInnerHTML={{ __html: subscriptionMessage.substring(0, 200) + (subscriptionMessage.length > 200 ? '...' : '') }}
                   />
                 </div>
@@ -1474,7 +1478,7 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
             <div className="flex justify-end gap-4">
               <button
                 onClick={() => setSendConfirmModal({ open: false })}
-                className="px-6 py-3 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 font-medium transition-colors"
+                className="px-6 py-3 rounded-xl bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-200 dark:hover:bg-slate-600 font-medium transition-colors"
                 style={{ fontFamily: "'Jost', sans-serif" }}
               >
                 Cancel

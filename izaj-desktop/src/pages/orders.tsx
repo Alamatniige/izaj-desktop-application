@@ -321,10 +321,7 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       <main
-        className="flex-1 px-4 sm:px-6 md:px-8 py-4 sm:py-6 bg-white dark:bg-slate-800 m-2 sm:m-4 rounded-2xl shadow-lg border border-white dark:border-slate-700 overflow-y-auto"
-        style={{
-          boxShadow: '0 4px 32px 0 rgba(252, 211, 77, 0.07)',
-        }}
+        className="flex-1 px-4 sm:px-6 md:px-8 py-4 sm:py-6 overflow-y-auto"
       >
         {/* Header Section */}
         <div className="bg-gradient-to-r from-white via-gray-50 to-white dark:from-slate-800 dark:via-slate-700 dark:to-slate-800 rounded-2xl p-6 mb-8 border border-gray-100 dark:border-slate-700 shadow-sm">
@@ -439,12 +436,12 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
                 {/* Download Button */}
                 <button
                   onClick={handleDownloadClick}
-                  className="relative px-3 py-2 bg-white border border-gray-200 text-gray-700 font-semibold rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 flex items-center gap-2"
+                  className="relative px-3 py-2 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 font-semibold rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 dark:hover:bg-slate-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 flex items-center gap-2"
                   style={{ fontFamily: "'Jost', sans-serif" }}
                   type="button"
                   title="Download Orders"
                 >
-                  <Icon icon="mdi:download" className="w-5 h-5 text-gray-700" />
+                  <Icon icon="mdi:download" className="w-5 h-5 text-gray-700 dark:text-slate-200" />
                   <span className="hidden sm:inline">Download</span>
                 </button>
 
@@ -474,7 +471,7 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
                   type="button"
                   title="Refresh"
                 >
-                  <Icon icon="mdi:refresh" className="w-5 h-5 text-gray-700" />
+                  <Icon icon="mdi:refresh" className="w-5 h-5 text-gray-700 dark:text-slate-200" />
                 </button>
               </div>
             </div>
