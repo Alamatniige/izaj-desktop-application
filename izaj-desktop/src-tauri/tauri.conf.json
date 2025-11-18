@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "IZAJ LIGHTING CENTRE",
-  "version": "0.1.8",
+  "productName": "Izaj Lighting Centre",
+  "version": "0.1.9",
   "identifier": "com.izaj.lightingcentre",
   "build": {
     "frontendDist": "../dist",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Izaj Lighting Centre",
+        "title": "Izaj Lighting Centre v0.1.9",
         "width": 1024,
         "height": 768,
         "resizable": true,
