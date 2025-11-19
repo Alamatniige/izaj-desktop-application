@@ -40,4 +40,23 @@ export default defineConfig(async () => ({
   css: {
     postcss: './postcss.config.mjs',
   },
+
+  // 5. Optimize bundle size with manual chunking
+  build: {
+    // Increase chunk size warning limit to 1000 KB (1 MB)
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Vendor chunks for better caching
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'ui-vendor': ['antd', '@iconify/react', 'lucide-react'],
+          'chart-vendor': ['echarts', 'echarts-for-react'],
+          'supabase-vendor': ['@supabase/supabase-js'],
+          'dnd-vendor': ['react-beautiful-dnd'],
+          'tauri-vendor': ['@tauri-apps/api', '@tauri-apps/plugin-dialog', '@tauri-apps/plugin-fs', '@tauri-apps/plugin-deep-link'],
+        },
+      },
+    },
+  },
 }));

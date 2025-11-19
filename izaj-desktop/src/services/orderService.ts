@@ -25,6 +25,7 @@ export interface Order {
   status: 'pending' | 'approved' | 'in_transit' | 'complete' | 'cancelled' | 'pending_cancellation';
   total_amount: number;
   shipping_fee: number;
+  shipping_fee_confirmed?: boolean;
   payment_method: string;
   payment_status: string;
   recipient_name: string;
@@ -146,6 +147,38 @@ export class OrderService {
       return data;
     } catch (error) {
       console.error('❌ [OrderService] Error updating order status:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Set shipping fee (sends email automatically)
+   */
+  static async setShippingFee(session: Session | null, orderId: string, shippingFee: number) {
+    try {
+      console.log('📝 [OrderService] Setting shipping fee:', { orderId, shippingFee });
+
+      const response = await fetch(`${API_URL}/api/orders/${orderId}/shipping-fee`, {
+        method: 'PUT',
+        headers: this.getHeaders(session),
+        body: JSON.stringify({ shipping_fee: shippingFee })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('❌ [OrderService] Set shipping fee failed:', data);
+        const errorMessage = data.details || data.error || 'Failed to set shipping fee';
+        throw new Error(errorMessage);
+      }
+
+      console.log('✅ [OrderService] Shipping fee set successfully:', data);
+      return data;
+    } catch (error) {
+      console.error('❌ [OrderService] Error setting shipping fee:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'

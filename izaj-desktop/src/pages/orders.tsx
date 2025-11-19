@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Icon } from '@iconify/react';
 import { Session } from '@supabase/supabase-js';
 import { useOrders, useOrderActions, formatOrderDate, formatPrice } from '../services/orderServices';
-import { Order } from '../services/orderService';
+import { Order, OrderService } from '../services/orderService';
 
 interface OrdersProps {
   setIsOverlayOpen: (isOpen: boolean) => void;
@@ -24,6 +24,7 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
   const [showCancelReasons, setShowCancelReasons] = useState(false);
   const [shippingFee, setShippingFee] = useState<string>('');
   const [isShippingFeeSet, setIsShippingFeeSet] = useState(false);
+  const [isSettingShippingFee, setIsSettingShippingFee] = useState(false);
   const [showDateRangeModal, setShowDateRangeModal] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -37,14 +38,24 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
   const handleViewOrder = (order: Order) => {
     setSelectedOrder(order);
     setAdminNotes('');
-    // For pending orders, always show shipping fee input form first
-    // Always start with empty input field
+    // Check if shipping fee is set and confirmed
+    const hasShippingFee = order.shipping_fee !== undefined && order.shipping_fee !== null;
+    const isShippingFeeConfirmed = (order as any).shipping_fee_confirmed === true;
+    const isFreeShipping = hasShippingFee && order.shipping_fee === 0;
+    
     if (order.status === 'pending') {
-      setShippingFee('');
-      setIsShippingFeeSet(false); // Always start with false for pending orders
+      // For pending orders:
+      // - If shipping fee is set and confirmed (or free shipping), show it as set
+      // - Otherwise, show empty input field
+      if (hasShippingFee && (isShippingFeeConfirmed || isFreeShipping)) {
+        setShippingFee(order.shipping_fee.toString());
+        setIsShippingFeeSet(true);
+      } else {
+        setShippingFee(hasShippingFee ? order.shipping_fee.toString() : '');
+        setIsShippingFeeSet(false);
+      }
     } else {
       // For other statuses, show existing shipping fee if available
-      const hasShippingFee = order.shipping_fee !== undefined && order.shipping_fee !== null;
       setShippingFee(hasShippingFee ? order.shipping_fee.toString() : '');
       setIsShippingFeeSet(hasShippingFee);
     }
@@ -80,17 +91,90 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
     }
   };
 
-  const handleSetShippingFee = () => {
+  const handleSetShippingFee = async () => {
+    if (!selectedOrder) return;
+    
     const fee = parseFloat(shippingFee);
-    if (!isNaN(fee) && fee >= 0) {
-      setIsShippingFeeSet(true);
+    if (isNaN(fee) || fee < 0) {
+      return;
+    }
+
+    setIsSettingShippingFee(true);
+    try {
+      // Call API to set shipping fee (this will send email automatically)
+      const result = await OrderService.setShippingFee(session, selectedOrder.id, fee);
+      
+      if (result.success) {
+        setIsShippingFeeSet(true);
+        // Refresh orders to get updated data
+        refetchOrders();
+        // Update local state
+        setSelectedOrder({ ...selectedOrder, shipping_fee: fee, shipping_fee_confirmed: fee === 0 });
+      } else {
+        alert(result.error || 'Failed to set shipping fee');
+      }
+    } catch (error) {
+      console.error('Error setting shipping fee:', error);
+      alert('Failed to set shipping fee. Please try again.');
+    } finally {
+      setIsSettingShippingFee(false);
     }
   };
 
-  const handleSetFreeShipping = () => {
+  const handleSetFreeShipping = async () => {
+    if (!selectedOrder) return;
+    
+    setIsSettingShippingFee(true);
     setShippingFee('0');
-    setIsShippingFeeSet(true);
+    try {
+      // Call API to set shipping fee to 0
+      const result = await OrderService.setShippingFee(session, selectedOrder.id, 0);
+      
+      if (result.success) {
+        setIsShippingFeeSet(true);
+        // Refresh orders to get updated data
+        refetchOrders();
+        // Update local state
+        setSelectedOrder({ ...selectedOrder, shipping_fee: 0, shipping_fee_confirmed: true }); // Free shipping doesn't need confirmation
+      } else {
+        alert(result.error || 'Failed to set free shipping');
+      }
+    } catch (error) {
+      console.error('Error setting free shipping:', error);
+      alert('Failed to set free shipping. Please try again.');
+    } finally {
+      setIsSettingShippingFee(false);
+    }
   };
+
+  // Update selectedOrder when orders list is refreshed (e.g., after customer confirms shipping fee)
+  useEffect(() => {
+    if (selectedOrder && orders.length > 0) {
+      const updatedOrder = orders.find(o => o.id === selectedOrder.id);
+      if (updatedOrder) {
+        // Only update if shipping_fee_confirmed status has changed
+        const currentConfirmed = (selectedOrder as any).shipping_fee_confirmed;
+        const updatedConfirmed = (updatedOrder as any).shipping_fee_confirmed;
+        
+        if (currentConfirmed !== updatedConfirmed || 
+            selectedOrder.shipping_fee !== updatedOrder.shipping_fee) {
+          // Update selectedOrder with latest data, especially shipping_fee_confirmed
+          setSelectedOrder(updatedOrder);
+          
+          // Also update the shipping fee state if it's confirmed
+          const hasShippingFee = updatedOrder.shipping_fee !== undefined && updatedOrder.shipping_fee !== null;
+          const isShippingFeeConfirmed = (updatedOrder as any).shipping_fee_confirmed === true;
+          const isFreeShipping = hasShippingFee && updatedOrder.shipping_fee === 0;
+          
+          if (hasShippingFee && (isShippingFeeConfirmed || isFreeShipping)) {
+            setShippingFee(updatedOrder.shipping_fee.toString());
+            setIsShippingFeeSet(true);
+          }
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orders]);
 
   const closeOrderDetailsModal = () => {
     setShowOrderDetailsModal(false);
@@ -989,22 +1073,41 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
                         <div className="flex gap-3">
                           <button
                             onClick={handleSetFreeShipping}
-                            className="flex-1 px-4 py-3 bg-green-500 text-white rounded-xl shadow-lg hover:shadow-xl hover:bg-green-600 transition-all font-semibold flex items-center justify-center gap-2"
+                            disabled={isSettingShippingFee}
+                            className="flex-1 px-4 py-3 bg-green-500 text-white rounded-xl shadow-lg hover:shadow-xl hover:bg-green-600 transition-all font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                             style={{ fontFamily: "'Jost', sans-serif" }}
                             type="button"
                           >
-                            <Icon icon="mdi:truck-delivery" className="w-5 h-5" />
-                            FREE
+                            {isSettingShippingFee ? (
+                              <>
+                                <Icon icon="mdi:loading" className="w-5 h-5 animate-spin" />
+                                Setting...
+                              </>
+                            ) : (
+                              <>
+                                <Icon icon="mdi:truck-delivery" className="w-5 h-5" />
+                                FREE
+                              </>
+                            )}
                           </button>
                           <button
                             onClick={handleSetShippingFee}
-                            disabled={!shippingFee || shippingFee.trim() === '' || shippingFee === '0' || isNaN(parseFloat(shippingFee)) || parseFloat(shippingFee) < 0}
+                            disabled={!shippingFee || shippingFee.trim() === '' || shippingFee === '0' || isNaN(parseFloat(shippingFee)) || parseFloat(shippingFee) < 0 || isSettingShippingFee}
                             className="flex-1 px-4 py-3 bg-blue-500 text-white rounded-xl shadow-lg hover:shadow-xl hover:bg-blue-600 transition-all font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                             style={{ fontFamily: "'Jost', sans-serif" }}
                             type="button"
                           >
-                            <Icon icon="mdi:check" className="w-5 h-5" />
-                            Set Fee
+                            {isSettingShippingFee ? (
+                              <>
+                                <Icon icon="mdi:loading" className="w-5 h-5 animate-spin" />
+                                Setting...
+                              </>
+                            ) : (
+                              <>
+                                <Icon icon="mdi:check" className="w-5 h-5" />
+                                Set Fee
+                              </>
+                            )}
                           </button>
                         </div>
                       </>
@@ -1033,13 +1136,34 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
                         </div>
                         <button
                           onClick={() => confirmStatusUpdate('approved')}
-                          className="w-full px-4 py-3 bg-blue-500 text-white rounded-xl shadow-lg hover:shadow-xl hover:bg-blue-600 transition-all font-semibold flex items-center justify-center gap-2"
+                          disabled={
+                            (selectedOrder.shipping_fee || 0) > 0 && 
+                            !(selectedOrder as any).shipping_fee_confirmed
+                          }
+                          className={`w-full px-4 py-3 rounded-xl shadow-lg transition-all font-semibold flex items-center justify-center gap-2 ${
+                            (selectedOrder.shipping_fee || 0) > 0 && !(selectedOrder as any).shipping_fee_confirmed
+                              ? 'bg-gray-400 text-white cursor-not-allowed'
+                              : 'bg-blue-500 text-white hover:shadow-xl hover:bg-blue-600'
+                          }`}
                           style={{ fontFamily: "'Jost', sans-serif" }}
                           type="button"
+                          title={
+                            (selectedOrder.shipping_fee || 0) > 0 && !(selectedOrder as any).shipping_fee_confirmed
+                              ? 'Customer must confirm shipping fee first'
+                              : 'Approve Order'
+                          }
                         >
                           <Icon icon="mdi:check-circle" className="w-5 h-5" />
                           Approve Order
                         </button>
+                        {(selectedOrder.shipping_fee || 0) > 0 && !(selectedOrder as any).shipping_fee_confirmed && (
+                          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-3">
+                            <p className="text-xs text-yellow-800 dark:text-yellow-200" style={{ fontFamily: "'Jost', sans-serif" }}>
+                              <Icon icon="mdi:alert" className="inline w-4 h-4 mr-1" />
+                              Waiting for customer to confirm shipping fee via email
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
                     <button
@@ -1280,13 +1404,34 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
 
                       <button
                         onClick={() => confirmStatusUpdate('approved')}
-                        className="w-full px-4 py-3 bg-blue-500 text-white rounded-xl shadow-lg hover:shadow-xl hover:bg-blue-600 transition-all font-semibold flex items-center justify-center gap-2"
+                        disabled={
+                          (selectedOrder.shipping_fee || 0) > 0 && 
+                          !(selectedOrder as any).shipping_fee_confirmed
+                        }
+                        className={`w-full px-4 py-3 rounded-xl shadow-lg transition-all font-semibold flex items-center justify-center gap-2 ${
+                          (selectedOrder.shipping_fee || 0) > 0 && !(selectedOrder as any).shipping_fee_confirmed
+                            ? 'bg-gray-400 text-white cursor-not-allowed'
+                            : 'bg-blue-500 text-white hover:shadow-xl hover:bg-blue-600'
+                        }`}
                         style={{ fontFamily: "'Jost', sans-serif" }}
                         type="button"
+                        title={
+                          (selectedOrder.shipping_fee || 0) > 0 && !(selectedOrder as any).shipping_fee_confirmed
+                            ? 'Customer must confirm shipping fee first'
+                            : 'Approve Order'
+                        }
                       >
                         <Icon icon="mdi:check-circle" className="w-5 h-5" />
                         Approve Order
                       </button>
+                      {(selectedOrder.shipping_fee || 0) > 0 && !(selectedOrder as any).shipping_fee_confirmed && (
+                        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-3">
+                          <p className="text-xs text-yellow-800 dark:text-yellow-200" style={{ fontFamily: "'Jost', sans-serif" }}>
+                            <Icon icon="mdi:alert" className="inline w-4 h-4 mr-1" />
+                            Waiting for customer to confirm shipping fee via email
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </>
