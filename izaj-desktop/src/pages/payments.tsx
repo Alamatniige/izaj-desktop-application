@@ -29,6 +29,18 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
   const [showAdvancedFilter, setShowAdvancedFilter] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Order | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  
+  // Advanced filter states
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
+  const [filterAmountMin, setFilterAmountMin] = useState('');
+  const [filterAmountMax, setFilterAmountMax] = useState('');
+  const [filterPaymentMethod, setFilterPaymentMethod] = useState('');
+  
+  // Download date range states
+  const [showDateRangeModal, setShowDateRangeModal] = useState(false);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const paymentsPerPage = 10;
 
@@ -58,8 +70,7 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
       by_method: {
         gcash: orders.filter(o => o.payment_method === 'gcash').length,
         maya: orders.filter(o => o.payment_method === 'maya').length,
-        cod: orders.filter(o => o.payment_method === 'cash_on_delivery').length,
-        bank_transfer: orders.filter(o => o.payment_method === 'bank_transfer').length
+        cod: orders.filter(o => o.payment_method === 'cash_on_delivery').length
       }
     };
 
@@ -69,8 +80,8 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
   const handleFilterToggle = (filter: string) => {
     setSelectedFilters(prev => 
       prev.includes(filter) 
-        ? prev.filter(f => f !== filter)
-        : [...prev, filter]
+        ? [] // If clicking the same filter, deselect it (show all)
+        : [filter] // Only select this one filter, deselect others
     );
     setCurrentPage(1); // Reset to first page when filtering
   };
@@ -80,28 +91,131 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
     setCurrentPage(1); // Reset to first page when searching
   };
 
-  const handleExport = () => {
-    // Create CSV content - export all filtered payments
-    const headers = ['Order Number', 'Customer Name', 'Phone', 'Date', 'Amount', 'Payment Method', 'Payment Status'];
+  const handleDownloadClick = () => {
+    setShowDateRangeModal(true);
+    setIsOverlayOpen(true);
+  };
+
+  const handleDownloadPayments = () => {
+    // Function to properly escape CSV values
+    const escapeCsvValue = (value: string | number | null | undefined): string => {
+      if (value === null || value === undefined) return '';
+      
+      const stringValue = String(value);
+      
+      // If the value contains comma, quote, or newline, wrap it in quotes
+      if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n') || stringValue.includes('\r')) {
+        // Escape quotes by doubling them
+        return `"${stringValue.replace(/"/g, '""')}"`;
+      }
+      
+      return stringValue;
+    };
+
+    // Filter payments by date range if dates are provided
+    let paymentsToExport = filteredData;
+    
+    if (startDate && endDate) {
+      // Create dates in local timezone to avoid timezone issues
+      const startParts = startDate.split('-');
+      const endParts = endDate.split('-');
+      const start = new Date(parseInt(startParts[0]), parseInt(startParts[1]) - 1, parseInt(startParts[2]), 0, 0, 0, 0);
+      const end = new Date(parseInt(endParts[0]), parseInt(endParts[1]) - 1, parseInt(endParts[2]), 23, 59, 59, 999);
+      
+      paymentsToExport = filteredData.filter(payment => {
+        const paymentDate = new Date(payment.created_at);
+        return paymentDate >= start && paymentDate <= end;
+      });
+    } else if (startDate) {
+      const startParts = startDate.split('-');
+      const start = new Date(parseInt(startParts[0]), parseInt(startParts[1]) - 1, parseInt(startParts[2]), 0, 0, 0, 0);
+      
+      paymentsToExport = filteredData.filter(payment => {
+        const paymentDate = new Date(payment.created_at);
+        return paymentDate >= start;
+      });
+    } else if (endDate) {
+      const endParts = endDate.split('-');
+      const end = new Date(parseInt(endParts[0]), parseInt(endParts[1]) - 1, parseInt(endParts[2]), 23, 59, 59, 999);
+      
+      paymentsToExport = filteredData.filter(payment => {
+        const paymentDate = new Date(payment.created_at);
+        return paymentDate <= end;
+      });
+    }
+
+    // Convert payments to CSV format
+    const csvHeaders = [
+      'Order Number',
+      'Customer Name',
+      'Phone',
+      'Date',
+      'Amount',
+      'Payment Method',
+      'Payment Status'
+    ];
+
+    const csvRows: string[][] = [];
+    
+    paymentsToExport.forEach((payment) => {
+      const dateTime = formatOrderDate(payment.created_at);
+      
+      csvRows.push([
+        escapeCsvValue(payment.order_number),
+        escapeCsvValue(payment.customer_name),
+        escapeCsvValue(payment.customer_phone),
+        escapeCsvValue(dateTime),
+        escapeCsvValue(payment.total_amount.toFixed(2)),
+        escapeCsvValue(payment.payment_method),
+        escapeCsvValue(payment.payment_status)
+      ]);
+    });
+
     const csvContent = [
-      headers.join(','),
-      ...filteredData.map(payment => [
-        payment.order_number,
-        payment.customer_name,
-        payment.customer_phone,
-        formatOrderDate(payment.created_at),
-        payment.total_amount,
-        payment.payment_method,
-        payment.payment_status
-      ].join(','))
+      csvHeaders.join(','),
+      ...csvRows.map(row => row.join(','))
     ].join('\n');
 
-    // Create and trigger download
+    // Create blob and download
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'payments_export.csv';
+    const url = URL.createObjectURL(blob);
+    
+    // Format filename with proper date format
+    let filename = '';
+    if (startDate && endDate) {
+      filename = `payments_${startDate}_${endDate}.csv`;
+    } else if (startDate) {
+      filename = `payments_${startDate}_to_latest.csv`;
+    } else if (endDate) {
+      filename = `payments_earliest_to_${endDate}.csv`;
+    } else {
+      const today = new Date();
+      const todayStr = today.getFullYear() + '-' + 
+        String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+        String(today.getDate()).padStart(2, '0');
+      filename = `payments_${todayStr}.csv`;
+    }
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
+    
+    // Close modal
+    setShowDateRangeModal(false);
+    setIsOverlayOpen(false);
+    setStartDate('');
+    setEndDate('');
+  };
+
+  const closeDateRangeModal = () => {
+    setShowDateRangeModal(false);
+    setIsOverlayOpen(false);
+    setStartDate('');
+    setEndDate('');
   };
 
   const handleRowClick = (payment: typeof payments[0]) => {
@@ -120,13 +234,59 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
 
   // Filter and search data
   const filteredData = payments.filter(payment => {
+    // Search filter
     const matchesSearch = searchQuery === '' || 
       payment.order_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
       payment.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       payment.customer_phone.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // Status filter
     const matchesFilter = selectedFilters.length === 0 || 
       selectedFilters.includes(payment.payment_status);
-    return matchesSearch && matchesFilter;
+    
+    // Date range filter
+    let matchesDate = true;
+    if (filterDateFrom || filterDateTo) {
+      const paymentDate = new Date(payment.created_at);
+      paymentDate.setHours(0, 0, 0, 0);
+      
+      if (filterDateFrom) {
+        const fromDate = new Date(filterDateFrom);
+        fromDate.setHours(0, 0, 0, 0);
+        if (paymentDate < fromDate) matchesDate = false;
+      }
+      
+      if (filterDateTo) {
+        const toDate = new Date(filterDateTo);
+        toDate.setHours(23, 59, 59, 999);
+        if (paymentDate > toDate) matchesDate = false;
+      }
+    }
+    
+    // Amount range filter
+    let matchesAmount = true;
+    if (filterAmountMin || filterAmountMax) {
+      const amount = payment.total_amount;
+      if (filterAmountMin && amount < parseFloat(filterAmountMin)) {
+        matchesAmount = false;
+      }
+      if (filterAmountMax && amount > parseFloat(filterAmountMax)) {
+        matchesAmount = false;
+      }
+    }
+    
+    // Payment method filter
+    let matchesMethod = true;
+    if (filterPaymentMethod) {
+      const methodMap: Record<string, string> = {
+        'gcash': 'gcash',
+        'maya': 'maya',
+        'cod': 'cash_on_delivery'
+      };
+      matchesMethod = payment.payment_method === methodMap[filterPaymentMethod];
+    }
+    
+    return matchesSearch && matchesFilter && matchesDate && matchesAmount && matchesMethod;
   });
 
   // Pagination
@@ -213,6 +373,23 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
             {/* Status Filter Buttons */}
             <div className="flex flex-wrap lg:flex-nowrap items-center justify-between gap-4 mb-2 mt-2">
               <div className="flex flex-wrap gap-2 flex-1">
+                {/* All Payments Button */}
+                <button
+                  onClick={() => {
+                    setSelectedFilters([]);
+                    setCurrentPage(1);
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
+                    selectedFilters.length === 0
+                      ? 'bg-blue-500 text-white shadow-lg'
+                      : 'bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-600 shadow-sm border border-gray-200 dark:border-slate-600'
+                  }`}
+                  style={{ fontFamily: "'Jost', sans-serif" }}
+                  type="button"
+                >
+                  <Icon icon="mdi:credit-card-multiple" className="w-4 h-4" />
+                  All Payments
+                </button>
                 {['pending', 'paid', 'failed', 'refunded'].map((status) => {
                   const labels: Record<string, string> = {
                     'pending': 'Pending',
@@ -253,19 +430,7 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
               </div>
 
               {/* Search Bar and Refresh Button */}
-              <div className="flex flex-col sm:flex-row gap-2 flex-shrink-0">
-                {/* Download Button */}
-                <button
-                  onClick={handleExport}
-                  className="px-3 py-2 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 font-semibold rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 dark:hover:bg-slate-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 flex items-center gap-2"
-                  style={{ fontFamily: "'Jost', sans-serif" }}
-                  type="button"
-                  title="Download Payments"
-                >
-                  <Icon icon="mdi:download" className="w-5 h-5" />
-                  <span className="hidden sm:inline">Download</span>
-                </button>
-
+              <div className="flex items-center gap-2 flex-shrink-0">
                 {/* Search Bar */}
                 <div className="relative w-48">
                   <div className="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
@@ -281,9 +446,24 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
                   />
                 </div>
 
+                {/* Download Button */}
+                <button
+                  onClick={handleDownloadClick}
+                  className="p-2.5 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 font-semibold rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 dark:hover:bg-slate-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 flex items-center justify-center"
+                  style={{ fontFamily: "'Jost', sans-serif" }}
+                  type="button"
+                  title="Download Payments"
+                >
+                  <Icon icon="mdi:download" className="w-5 h-5" />
+                </button>
+
                 {/* Advance Filter Button */}
                 <button
-                  className="px-3 py-2 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 font-semibold rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 dark:hover:bg-slate-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
+                  className={`p-2.5 bg-white dark:bg-slate-700 border rounded-xl shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 flex items-center justify-center ${
+                    showAdvancedFilter
+                      ? 'border-pink-500 dark:border-pink-500 bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400'
+                      : 'border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-600'
+                  }`}
                   style={{ fontFamily: "'Jost', sans-serif" }}
                   onClick={() => setShowAdvancedFilter(!showAdvancedFilter)}
                   type="button"
@@ -298,28 +478,112 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
 
         {/* Advanced Filter Panel */}
         {showAdvancedFilter && (
-          <div className="max-w-7xl mx-auto bg-white dark:bg-slate-800 p-4 rounded-lg shadow-md mb-6 border border-gray-100 dark:border-slate-700">
-            <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Advanced Filters</h3>
+          <div className="max-w-7xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg mb-6 border border-gray-200 dark:border-slate-700">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 flex items-center gap-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                <Icon icon="mdi:filter-variant" className="w-5 h-5 text-pink-500" />
+                Advanced Filters
+              </h3>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setFilterDateFrom('');
+                    setFilterDateTo('');
+                    setFilterAmountMin('');
+                    setFilterAmountMax('');
+                    setFilterPaymentMethod('');
+                    setCurrentPage(1);
+                  }}
+                  className="px-3 py-1.5 text-sm bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-lg transition-colors flex items-center gap-1.5"
+                  style={{ fontFamily: "'Jost', sans-serif" }}
+                  type="button"
+                >
+                  <Icon icon="mdi:filter-remove" className="w-4 h-4" />
+                  Clear
+                </button>
+                <button
+                  onClick={() => setShowAdvancedFilter(false)}
+                  className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                  type="button"
+                  title="Close"
+                >
+                  <Icon icon="mdi:close" className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Date Range</label>
-                <input type="date" className="w-full p-2 border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }} />
+                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>Date From</label>
+                <input 
+                  type="date" 
+                  value={filterDateFrom}
+                  onChange={(e) => {
+                    setFilterDateFrom(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full px-4 py-2.5 border border-gray-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all" 
+                  style={{ fontFamily: "'Jost', sans-serif" }} 
+                />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Amount Range</label>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>Date To</label>
+                <input 
+                  type="date" 
+                  value={filterDateTo}
+                  onChange={(e) => {
+                    setFilterDateTo(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full px-4 py-2.5 border border-gray-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all" 
+                  style={{ fontFamily: "'Jost', sans-serif" }} 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>Amount Range</label>
                 <div className="flex gap-2">
-                  <input type="number" placeholder="Min" className="w-full p-2 border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }} />
-                  <input type="number" placeholder="Max" className="w-full p-2 border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }} />
+                  <input 
+                    type="number" 
+                    placeholder="Min" 
+                    value={filterAmountMin}
+                    onChange={(e) => {
+                      setFilterAmountMin(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    min="0"
+                    step="0.01"
+                    className="w-full px-4 py-2.5 border border-gray-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all placeholder-gray-400 dark:placeholder-slate-500" 
+                    style={{ fontFamily: "'Jost', sans-serif" }} 
+                  />
+                  <input 
+                    type="number" 
+                    placeholder="Max" 
+                    value={filterAmountMax}
+                    onChange={(e) => {
+                      setFilterAmountMax(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    min="0"
+                    step="0.01"
+                    className="w-full px-4 py-2.5 border border-gray-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all placeholder-gray-400 dark:placeholder-slate-500" 
+                    style={{ fontFamily: "'Jost', sans-serif" }} 
+                  />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Payment Method</label>
-                <select className="w-full p-2 border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>Payment Method</label>
+                <select 
+                  value={filterPaymentMethod}
+                  onChange={(e) => {
+                    setFilterPaymentMethod(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full px-4 py-2.5 border border-gray-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all" 
+                  style={{ fontFamily: "'Jost', sans-serif" }}
+                >
                   <option value="">All Methods</option>
                   <option value="gcash">GCash</option>
                   <option value="maya">Maya</option>
                   <option value="cod">Cash on Delivery</option>
-                  <option value="bank_transfer">Bank Transfer</option>
                 </select>
               </div>
             </div>
@@ -365,7 +629,6 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
                       {payment.payment_method === 'cash_on_delivery' ? 'Cash on Delivery' :
                        payment.payment_method === 'gcash' ? 'GCash' :
                        payment.payment_method === 'maya' ? 'Maya' :
-                       payment.payment_method === 'bank_transfer' ? 'Bank Transfer' :
                        payment.payment_method.replace('_', ' ')}
                     </span>
                   </td>
@@ -577,7 +840,6 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
                               {selectedPayment.payment_method === 'cash_on_delivery' ? 'Cash on Delivery' :
                                selectedPayment.payment_method === 'gcash' ? 'GCash' :
                                selectedPayment.payment_method === 'maya' ? 'Maya' :
-                               selectedPayment.payment_method === 'bank_transfer' ? 'Bank Transfer' :
                                selectedPayment.payment_method.replace('_', ' ')}
                             </span>
                           </div>
@@ -703,6 +965,111 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Date Range Modal */}
+        {showDateRangeModal && (
+          <div
+            className="fixed z-50 inset-0 flex items-center justify-center p-4"
+            style={{
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              background: 'rgba(59, 130, 246, 0.09)',
+            }}
+            onClick={closeDateRangeModal}
+          >
+            <div
+              className="relative bg-white rounded-3xl shadow-2xl border border-gray-100 max-w-md w-full overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="bg-gradient-to-r from-blue-50 to-white p-6 border-b border-gray-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-500 rounded-xl shadow-lg">
+                      <Icon icon="mdi:download" className="text-lg text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-800" style={{ fontFamily: "'Jost', sans-serif" }}>
+                        Export Payments
+                      </h3>
+                      <p className="text-sm text-gray-600" style={{ fontFamily: "'Jost', sans-serif" }}>
+                        Select date range (optional)
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                    onClick={closeDateRangeModal}
+                    type="button"
+                  >
+                    <Icon icon="mdi:close" className="w-6 h-6" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 space-y-4">
+                {/* Start Date */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    Start Date (Optional)
+                  </label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-200"
+                    style={{ fontFamily: "'Jost', sans-serif" }}
+                  />
+                </div>
+
+                {/* End Date */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    End Date (Optional)
+                  </label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    min={startDate}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-200"
+                    style={{ fontFamily: "'Jost', sans-serif" }}
+                  />
+                </div>
+
+                {/* Info */}
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
+                  <p className="text-sm text-blue-800" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    <Icon icon="mdi:information" className="inline w-4 h-4 mr-1" />
+                    Leave both fields empty to download all payments
+                  </p>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 pb-6 flex gap-3">
+                <button
+                  onClick={closeDateRangeModal}
+                  className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl shadow-sm hover:shadow-md hover:bg-gray-200 transition-all font-semibold"
+                  style={{ fontFamily: "'Jost', sans-serif" }}
+                  type="button"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDownloadPayments}
+                  className="flex-1 px-4 py-3 bg-blue-500 text-white rounded-xl shadow-lg hover:shadow-xl hover:bg-blue-600 transition-all font-semibold flex items-center justify-center gap-2"
+                  style={{ fontFamily: "'Jost', sans-serif" }}
+                  type="button"
+                >
+                  <Icon icon="mdi:download" className="w-5 h-5" />
+                  Download CSV
+                </button>
               </div>
             </div>
           </div>

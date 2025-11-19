@@ -77,27 +77,14 @@ export default function Login({ onLogin, handleNavigation }: LoginProps) {
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-slate-100/20 to-gray-100/20 dark:from-slate-800/10 dark:to-gray-800/10 rounded-full blur-3xl"></div>
       </div>
       
-      <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-gray-200/50 dark:border-slate-700/50 px-12 py-8 w-full max-w-lg flex flex-col items-center relative z-10">
-        {/* Logo */}
-        <div className="absolute -top-12 left-1/2 -translate-x-1/2">
+      <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-gray-200/50 dark:border-slate-700/50 px-12 pt-4 pb-8 w-full max-w-lg flex flex-col items-center relative z-10">
+        <div className="mt-1 mb-3 flex flex-col items-center">
+          {/* Logo */}
           <img
             src="/izaj.jpg"
             alt="IZAJ Logo"
-            className="w-24 h-24 rounded-full object-cover shadow-xl"
+            className="w-28 h-28 rounded-full object-cover shadow-xl mb-4"
           />
-        </div>
-
-        <div className="mt-12 mb-3 flex flex-col items-center">
-          <h2
-            className="text-4xl font-bold mb-1 text-gray-800 dark:text-slate-100"
-            style={{
-              fontFamily: "'Playfair Display', serif",
-              letterSpacing: '8px',
-              textShadow: '-2px 0px 2px rgba(0, 0, 0, 0.5)',
-            }}
-          >
-            IZAJ
-          </h2>
           <span className="text-gray-600 dark:text-slate-400 font-semibold tracking-[0.3em] text-xs mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>
             ADMIN PANEL
           </span>

@@ -13,6 +13,7 @@ import { Session } from '@supabase/supabase-js';
 import { ProfileData } from './pages/profile';
 import PrivateRoute from './route/PrivateRoute';
 import { useNotifications } from './utils/notificationsProvider';
+import { useSessionContext } from './utils/sessionContext';
 import UpdatePassword from './pages/update-password';
 import AcceptInvite from './pages/accept-invite';
 import API_URL from '../config/api';
@@ -31,7 +32,7 @@ function App() {
     return <AcceptInvite />;
   }
   
-  const [session, setSession] = useState<Session | null>(null);
+  const { session, setSession } = useSessionContext();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [currentPage, setCurrentPage] = useState('DASHBOARD');
   const [isLoggedIn, setIsLoggedIn] = useState(false);

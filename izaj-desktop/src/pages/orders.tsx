@@ -25,6 +25,10 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
   const [shippingFee, setShippingFee] = useState<string>('');
   const [isShippingFeeSet, setIsShippingFeeSet] = useState(false);
   const [isSettingShippingFee, setIsSettingShippingFee] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isMarkingInTransit, setIsMarkingInTransit] = useState(false);
+  const [isMarkingComplete, setIsMarkingComplete] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [showDateRangeModal, setShowDateRangeModal] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -38,27 +42,20 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
   const handleViewOrder = (order: Order) => {
     setSelectedOrder(order);
     setAdminNotes('');
-    // Check if shipping fee is set and confirmed
+    // Check if shipping fee is set
     const hasShippingFee = order.shipping_fee !== undefined && order.shipping_fee !== null;
-    const isShippingFeeConfirmed = (order as any).shipping_fee_confirmed === true;
-    const isFreeShipping = hasShippingFee && order.shipping_fee === 0;
     
-    if (order.status === 'pending') {
-      // For pending orders:
-      // - If shipping fee is set and confirmed (or free shipping), show it as set
-      // - Otherwise, show empty input field
-      if (hasShippingFee && (isShippingFeeConfirmed || isFreeShipping)) {
-        setShippingFee(order.shipping_fee.toString());
-        setIsShippingFeeSet(true);
-      } else {
-        setShippingFee(hasShippingFee ? order.shipping_fee.toString() : '');
-        setIsShippingFeeSet(false);
-      }
+    // Once shipping fee is set (regardless of confirmation or status), always show it as set
+    // This prevents going back to the input field after setting the shipping fee
+    if (hasShippingFee) {
+      setShippingFee(order.shipping_fee.toString());
+      setIsShippingFeeSet(true); // Always set to true if shipping fee exists
     } else {
-      // For other statuses, show existing shipping fee if available
-      setShippingFee(hasShippingFee ? order.shipping_fee.toString() : '');
-      setIsShippingFeeSet(hasShippingFee);
+      // Only show input field if shipping fee hasn't been set yet
+      setShippingFee('');
+      setIsShippingFeeSet(false);
     }
+    
     setShowOrderDetailsModal(true);
     setIsOverlayOpen(true);
   };
@@ -67,27 +64,46 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
   const confirmStatusUpdate = async (newStatus: string) => {
     if (!selectedOrder) return;
 
-    // Always send shipping_fee if it's been set (even if 0 for free shipping)
-    let shippingFeeValue: number | undefined = undefined;
-    if (isShippingFeeSet && shippingFee !== '' && !isNaN(parseFloat(shippingFee))) {
-      shippingFeeValue = parseFloat(shippingFee);
-    } else if (selectedOrder.shipping_fee !== undefined && selectedOrder.shipping_fee !== null) {
-      // Keep existing shipping fee if not changed
-      shippingFeeValue = selectedOrder.shipping_fee;
+    // Set loading state based on action
+    if (newStatus === 'approved') {
+      setIsApproving(true);
+    } else if (newStatus === 'in_transit') {
+      setIsMarkingInTransit(true);
+    } else if (newStatus === 'complete') {
+      setIsMarkingComplete(true);
     }
 
-    const result = await updateStatus(selectedOrder.id, newStatus, {
-      admin_notes: adminNotes || undefined,
-      shipping_fee: shippingFeeValue
-    });
+    try {
+      // Always send shipping_fee if it's been set (even if 0 for free shipping)
+      let shippingFeeValue: number | undefined = undefined;
+      if (isShippingFeeSet && shippingFee !== '' && !isNaN(parseFloat(shippingFee))) {
+        shippingFeeValue = parseFloat(shippingFee);
+      } else if (selectedOrder.shipping_fee !== undefined && selectedOrder.shipping_fee !== null) {
+        // Keep existing shipping fee if not changed
+        shippingFeeValue = selectedOrder.shipping_fee;
+      }
 
-    if (result.success) {
-      setShowStatusModal(false);
-      setIsOverlayOpen(false);
-      setSelectedOrder(null);
-      setAdminNotes('');
-      setShippingFee('');
-      setIsShippingFeeSet(false);
+      const result = await updateStatus(selectedOrder.id, newStatus, {
+        admin_notes: adminNotes || undefined,
+        shipping_fee: shippingFeeValue
+      });
+
+      if (result.success) {
+        setShowStatusModal(false);
+        setIsOverlayOpen(false);
+        setSelectedOrder(null);
+        setAdminNotes('');
+        setShippingFee('');
+        setIsShippingFeeSet(false);
+      }
+    } finally {
+      if (newStatus === 'approved') {
+        setIsApproving(false);
+      } else if (newStatus === 'in_transit') {
+        setIsMarkingInTransit(false);
+      } else if (newStatus === 'complete') {
+        setIsMarkingComplete(false);
+      }
     }
   };
 
@@ -152,21 +168,17 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
     if (selectedOrder && orders.length > 0) {
       const updatedOrder = orders.find(o => o.id === selectedOrder.id);
       if (updatedOrder) {
-        // Only update if shipping_fee_confirmed status has changed
-        const currentConfirmed = (selectedOrder as any).shipping_fee_confirmed;
-        const updatedConfirmed = (updatedOrder as any).shipping_fee_confirmed;
-        
-        if (currentConfirmed !== updatedConfirmed || 
-            selectedOrder.shipping_fee !== updatedOrder.shipping_fee) {
-          // Update selectedOrder with latest data, especially shipping_fee_confirmed
+        // Update if order data has changed
+        if (selectedOrder.status !== updatedOrder.status ||
+            selectedOrder.shipping_fee !== updatedOrder.shipping_fee ||
+            (selectedOrder as any).shipping_fee_confirmed !== (updatedOrder as any).shipping_fee_confirmed) {
+          // Update selectedOrder with latest data
           setSelectedOrder(updatedOrder);
           
-          // Also update the shipping fee state if it's confirmed
+          // Always set isShippingFeeSet to true if shipping fee exists
+          // This ensures it doesn't go back to input field after setting shipping fee
           const hasShippingFee = updatedOrder.shipping_fee !== undefined && updatedOrder.shipping_fee !== null;
-          const isShippingFeeConfirmed = (updatedOrder as any).shipping_fee_confirmed === true;
-          const isFreeShipping = hasShippingFee && updatedOrder.shipping_fee === 0;
-          
-          if (hasShippingFee && (isShippingFeeConfirmed || isFreeShipping)) {
+          if (hasShippingFee) {
             setShippingFee(updatedOrder.shipping_fee.toString());
             setIsShippingFeeSet(true);
           }
@@ -517,18 +529,6 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
               
               {/* Search and refresh controls */}
               <div className="flex items-center gap-2 flex-shrink-0">
-                {/* Download Button */}
-                <button
-                  onClick={handleDownloadClick}
-                  className="relative px-3 py-2 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 font-semibold rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 dark:hover:bg-slate-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 flex items-center gap-2"
-                  style={{ fontFamily: "'Jost', sans-serif" }}
-                  type="button"
-                  title="Download Orders"
-                >
-                  <Icon icon="mdi:download" className="w-5 h-5 text-gray-700 dark:text-slate-200" />
-                  <span className="hidden sm:inline">Download</span>
-                </button>
-
                 {/* Search Bar */}
                 <div className="relative">
                   <div className="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
@@ -542,20 +542,41 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
                       setCurrentPage(1);
                     }}
                     placeholder="Search orders..." 
-                    className="w-36 pl-10 pr-4 py-2 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900 dark:text-slate-100"
+                    className="w-56 pl-10 pr-4 py-2.5 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900 dark:text-slate-100"
                     style={{ fontFamily: "'Jost', sans-serif" }}
                   />
                 </div>
 
+                {/* Download Button */}
+                <button
+                  onClick={handleDownloadClick}
+                  className="p-2.5 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 font-semibold rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 dark:hover:bg-slate-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 flex items-center justify-center"
+                  style={{ fontFamily: "'Jost', sans-serif" }}
+                  type="button"
+                  title="Download Orders"
+                >
+                  <Icon icon="mdi:download" className="w-5 h-5 text-gray-700 dark:text-slate-200" />
+                </button>
+
                 {/* Refresh Button */}
                 <button
-                  className="px-3 py-2 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 font-semibold rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 dark:hover:bg-slate-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2"
+                  className="p-2.5 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 font-semibold rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 dark:hover:bg-slate-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 flex items-center justify-center"
                   style={{ fontFamily: "'Jost', sans-serif" }}
-                  onClick={() => refetchOrders()}
+                  onClick={async () => {
+                    setIsRefreshing(true);
+                    await refetchOrders();
+                    setTimeout(() => setIsRefreshing(false), 1000);
+                  }}
+                  disabled={isRefreshing}
                   type="button"
                   title="Refresh"
                 >
-                  <Icon icon="mdi:refresh" className="w-5 h-5 text-gray-700 dark:text-slate-200" />
+                  <Icon 
+                    icon="mdi:refresh" 
+                    className={`w-5 h-5 text-gray-700 dark:text-slate-200 transition-transform duration-300 ${
+                      isRefreshing ? 'animate-spin' : ''
+                    }`}
+                  />
                 </button>
               </div>
             </div>
@@ -1137,11 +1158,12 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
                         <button
                           onClick={() => confirmStatusUpdate('approved')}
                           disabled={
-                            (selectedOrder.shipping_fee || 0) > 0 && 
-                            !(selectedOrder as any).shipping_fee_confirmed
+                            isApproving ||
+                            ((selectedOrder.shipping_fee || 0) > 0 && 
+                            !(selectedOrder as any).shipping_fee_confirmed)
                           }
                           className={`w-full px-4 py-3 rounded-xl shadow-lg transition-all font-semibold flex items-center justify-center gap-2 ${
-                            (selectedOrder.shipping_fee || 0) > 0 && !(selectedOrder as any).shipping_fee_confirmed
+                            isApproving || ((selectedOrder.shipping_fee || 0) > 0 && !(selectedOrder as any).shipping_fee_confirmed)
                               ? 'bg-gray-400 text-white cursor-not-allowed'
                               : 'bg-blue-500 text-white hover:shadow-xl hover:bg-blue-600'
                           }`}
@@ -1153,8 +1175,17 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
                               : 'Approve Order'
                           }
                         >
-                          <Icon icon="mdi:check-circle" className="w-5 h-5" />
-                          Approve Order
+                          {isApproving ? (
+                            <>
+                              <Icon icon="mdi:loading" className="w-5 h-5 animate-spin" />
+                              Approving...
+                            </>
+                          ) : (
+                            <>
+                              <Icon icon="mdi:check-circle" className="w-5 h-5" />
+                              Approve Order
+                            </>
+                          )}
                         </button>
                         {(selectedOrder.shipping_fee || 0) > 0 && !(selectedOrder as any).shipping_fee_confirmed && (
                           <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-3">
@@ -1179,14 +1210,43 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
                 )}
                 {selectedOrder.status === 'approved' && (
                   <div className="space-y-4">
+                    {/* Shipping Fee Display - Show if shipping fee exists */}
+                    {(selectedOrder.shipping_fee !== undefined && selectedOrder.shipping_fee !== null) && (
+                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-gray-600 dark:text-slate-400 mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>
+                              Shipping Fee
+                            </p>
+                            <p className="text-lg font-bold text-blue-600 dark:text-blue-400" style={{ fontFamily: "'Jost', sans-serif" }}>
+                              {selectedOrder.shipping_fee === 0 ? 'FREE' : formatPrice(selectedOrder.shipping_fee)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     <button
                       onClick={() => setShowInTransitConfirmModal(true)}
-                      className="w-full px-4 py-3 bg-purple-500 text-white rounded-xl shadow-lg hover:shadow-xl hover:bg-purple-600 transition-all font-semibold flex items-center justify-center gap-2"
+                      disabled={isMarkingInTransit}
+                      className={`w-full px-4 py-3 rounded-xl shadow-lg transition-all font-semibold flex items-center justify-center gap-2 ${
+                        isMarkingInTransit
+                          ? 'bg-gray-400 text-white cursor-not-allowed'
+                          : 'bg-purple-500 text-white hover:shadow-xl hover:bg-purple-600'
+                      }`}
                       style={{ fontFamily: "'Jost', sans-serif" }}
                       type="button"
                     >
-                      <Icon icon="mdi:truck-fast" className="w-5 h-5" />
-                      Mark as In Transit
+                      {isMarkingInTransit ? (
+                        <>
+                          <Icon icon="mdi:loading" className="w-5 h-5 animate-spin" />
+                          Marking...
+                        </>
+                      ) : (
+                        <>
+                          <Icon icon="mdi:truck-fast" className="w-5 h-5" />
+                          Mark as In Transit
+                        </>
+                      )}
                     </button>
                   </div>
                 )}
@@ -1194,12 +1254,26 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
                   <div className="space-y-4">
                     <button
                       onClick={() => confirmStatusUpdate('complete')}
-                      className="w-full px-4 py-3 bg-green-500 text-white rounded-xl shadow-lg hover:shadow-xl hover:bg-green-600 transition-all font-semibold flex items-center justify-center gap-2"
+                      disabled={isMarkingComplete}
+                      className={`w-full px-4 py-3 rounded-xl shadow-lg transition-all font-semibold flex items-center justify-center gap-2 ${
+                        isMarkingComplete
+                          ? 'bg-gray-400 text-white cursor-not-allowed'
+                          : 'bg-green-500 text-white hover:shadow-xl hover:bg-green-600'
+                      }`}
                       style={{ fontFamily: "'Jost', sans-serif" }}
                       type="button"
                     >
-                      <Icon icon="mdi:check-all" className="w-5 h-5" />
-                      Mark as Complete
+                      {isMarkingComplete ? (
+                        <>
+                          <Icon icon="mdi:loading" className="w-5 h-5 animate-spin" />
+                          Marking...
+                        </>
+                      ) : (
+                        <>
+                          <Icon icon="mdi:check-all" className="w-5 h-5" />
+                          Mark as Complete
+                        </>
+                      )}
                     </button>
                   </div>
                 )}
@@ -1404,26 +1478,36 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
 
                       <button
                         onClick={() => confirmStatusUpdate('approved')}
-                        disabled={
-                          (selectedOrder.shipping_fee || 0) > 0 && 
-                          !(selectedOrder as any).shipping_fee_confirmed
-                        }
-                        className={`w-full px-4 py-3 rounded-xl shadow-lg transition-all font-semibold flex items-center justify-center gap-2 ${
-                          (selectedOrder.shipping_fee || 0) > 0 && !(selectedOrder as any).shipping_fee_confirmed
-                            ? 'bg-gray-400 text-white cursor-not-allowed'
-                            : 'bg-blue-500 text-white hover:shadow-xl hover:bg-blue-600'
-                        }`}
-                        style={{ fontFamily: "'Jost', sans-serif" }}
-                        type="button"
-                        title={
-                          (selectedOrder.shipping_fee || 0) > 0 && !(selectedOrder as any).shipping_fee_confirmed
-                            ? 'Customer must confirm shipping fee first'
-                            : 'Approve Order'
-                        }
-                      >
-                        <Icon icon="mdi:check-circle" className="w-5 h-5" />
-                        Approve Order
-                      </button>
+                          disabled={
+                            isApproving ||
+                            ((selectedOrder.shipping_fee || 0) > 0 && 
+                            !(selectedOrder as any).shipping_fee_confirmed)
+                          }
+                          className={`w-full px-4 py-3 rounded-xl shadow-lg transition-all font-semibold flex items-center justify-center gap-2 ${
+                            isApproving || ((selectedOrder.shipping_fee || 0) > 0 && !(selectedOrder as any).shipping_fee_confirmed)
+                              ? 'bg-gray-400 text-white cursor-not-allowed'
+                              : 'bg-blue-500 text-white hover:shadow-xl hover:bg-blue-600'
+                          }`}
+                          style={{ fontFamily: "'Jost', sans-serif" }}
+                          type="button"
+                          title={
+                            (selectedOrder.shipping_fee || 0) > 0 && !(selectedOrder as any).shipping_fee_confirmed
+                              ? 'Customer must confirm shipping fee first'
+                              : 'Approve Order'
+                          }
+                        >
+                          {isApproving ? (
+                            <>
+                              <Icon icon="mdi:loading" className="w-5 h-5 animate-spin" />
+                              Approving...
+                            </>
+                          ) : (
+                            <>
+                              <Icon icon="mdi:check-circle" className="w-5 h-5" />
+                              Approve Order
+                            </>
+                          )}
+                        </button>
                       {(selectedOrder.shipping_fee || 0) > 0 && !(selectedOrder as any).shipping_fee_confirmed && (
                         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-3">
                           <p className="text-xs text-yellow-800 dark:text-yellow-200" style={{ fontFamily: "'Jost', sans-serif" }}>
@@ -1472,12 +1556,26 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
                   </div>
                   <button
                     onClick={() => confirmStatusUpdate('in_transit')}
-                    className="w-full px-4 py-3 bg-purple-500 text-white rounded-xl shadow-lg hover:shadow-xl hover:bg-purple-600 transition-all font-semibold flex items-center justify-center gap-2"
+                    disabled={isMarkingInTransit}
+                    className={`w-full px-4 py-3 rounded-xl shadow-lg transition-all font-semibold flex items-center justify-center gap-2 ${
+                      isMarkingInTransit
+                        ? 'bg-gray-400 text-white cursor-not-allowed'
+                        : 'bg-purple-500 text-white hover:shadow-xl hover:bg-purple-600'
+                    }`}
                     style={{ fontFamily: "'Jost', sans-serif" }}
                     type="button"
                   >
-                    <Icon icon="mdi:truck-fast" className="w-5 h-5" />
-                    Mark as In Transit
+                    {isMarkingInTransit ? (
+                      <>
+                        <Icon icon="mdi:loading" className="w-5 h-5 animate-spin" />
+                        Marking...
+                      </>
+                    ) : (
+                      <>
+                        <Icon icon="mdi:truck-fast" className="w-5 h-5" />
+                        Mark as In Transit
+                      </>
+                    )}
                   </button>
                 </div>
               )}
@@ -1517,12 +1615,26 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
                   </div>
                   <button
                     onClick={() => confirmStatusUpdate('complete')}
-                    className="w-full px-4 py-3 bg-green-500 text-white rounded-xl shadow-lg hover:shadow-xl hover:bg-green-600 transition-all font-semibold flex items-center justify-center gap-2"
+                    disabled={isMarkingComplete}
+                    className={`w-full px-4 py-3 rounded-xl shadow-lg transition-all font-semibold flex items-center justify-center gap-2 ${
+                      isMarkingComplete
+                        ? 'bg-gray-400 text-white cursor-not-allowed'
+                        : 'bg-green-500 text-white hover:shadow-xl hover:bg-green-600'
+                    }`}
                     style={{ fontFamily: "'Jost', sans-serif" }}
                     type="button"
                   >
-                    <Icon icon="mdi:check-all" className="w-5 h-5" />
-                    Mark as Complete
+                    {isMarkingComplete ? (
+                      <>
+                        <Icon icon="mdi:loading" className="w-5 h-5 animate-spin" />
+                        Marking...
+                      </>
+                    ) : (
+                      <>
+                        <Icon icon="mdi:check-all" className="w-5 h-5" />
+                        Mark as Complete
+                      </>
+                    )}
                   </button>
                 </div>
               )}
@@ -2039,12 +2151,26 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
                     setShowInTransitConfirmModal(false);
                     confirmStatusUpdate('in_transit');
                   }}
-                  className="flex-1 px-4 py-3 bg-purple-500 text-white rounded-xl shadow-lg hover:shadow-xl hover:bg-purple-600 transition-all font-semibold flex items-center justify-center gap-2"
+                  disabled={isMarkingInTransit}
+                  className={`flex-1 px-4 py-3 rounded-xl shadow-lg transition-all font-semibold flex items-center justify-center gap-2 ${
+                    isMarkingInTransit
+                      ? 'bg-gray-400 text-white cursor-not-allowed'
+                      : 'bg-purple-500 text-white hover:shadow-xl hover:bg-purple-600'
+                  }`}
                   style={{ fontFamily: "'Jost', sans-serif" }}
                   type="button"
                 >
-                  <Icon icon="mdi:truck-fast" className="w-5 h-5" />
-                  Yes
+                  {isMarkingInTransit ? (
+                    <>
+                      <Icon icon="mdi:loading" className="w-5 h-5 animate-spin" />
+                      Marking...
+                    </>
+                  ) : (
+                    <>
+                      <Icon icon="mdi:truck-fast" className="w-5 h-5" />
+                      Yes
+                    </>
+                  )}
                 </button>
               </div>
             </div>
