@@ -20,6 +20,9 @@ class EmailService {
         user: process.env.GMAIL_USER || '',
         pass: process.env.GMAIL_APP_PASSWORD || '',
       },
+      connectionTimeout: 10000, // 10 seconds to establish connection
+      greetingTimeout: 10000,   // 10 seconds for SMTP greeting
+      socketTimeout: 10000,     // 10 seconds for socket operations
     };
 
     this.transporter = nodemailer.createTransport(config);
@@ -35,7 +38,13 @@ class EmailService {
         text: options.text,
       };
 
-      const info = await this.transporter.sendMail(mailOptions);
+      // Add timeout wrapper to prevent hanging
+      const emailPromise = this.transporter.sendMail(mailOptions);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Email sending timeout after 15 seconds')), 15000)
+      );
+
+      const info = await Promise.race([emailPromise, timeoutPromise]);
       console.log('Email sent successfully:', info.messageId);
       return info;
     } catch (error) {

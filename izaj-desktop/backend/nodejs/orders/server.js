@@ -441,16 +441,24 @@ router.put('/orders/:id/status', authenticate, async (req, res) => {
             </html>
           `;
           
-          console.log(`📧 [Orders] Sending email to ${userData.user.email} for order ${data.order_number}`);
+          console.log(`📧 [Orders] Queueing shipping fee confirmation email for order ${id}`);
           
-          await emailService.sendEmail({
-            to: userData.user.email,
-            subject: `Confirm Shipping Fee for Order #${data.order_number} - IZAJ`,
-            html: emailHtml,
-            text: `Hello,\n\nYour order #${data.order_number} has been reviewed and the shipping fee has been set to ₱${data.shipping_fee.toFixed(2)}.\n\nPlease confirm this shipping fee by clicking the link below:\n${confirmationUrl}\n\nThank you,\nIZAJ Lighting Centre`
+          // Send email asynchronously without blocking the response
+          setImmediate(async () => {
+            try {
+              await emailService.sendEmail({
+                to: userData.user.email,
+                subject: `Confirm Shipping Fee for Order #${data.order_number} - IZAJ`,
+                html: emailHtml,
+                text: `Hello,\n\nYour order #${data.order_number} has been reviewed and the shipping fee has been set to ₱${data.shipping_fee.toFixed(2)}.\n\nPlease confirm this shipping fee by clicking the link below:\n${confirmationUrl}\n\nThank you,\nIZAJ Lighting Centre`
+              });
+              
+              console.log(`✅ [Orders] Shipping fee confirmation email sent successfully to ${userData.user.email} for order ${id}`);
+            } catch (emailError) {
+              console.error('❌ [Orders] Error sending shipping fee confirmation email:', emailError);
+              console.error('❌ [Orders] Error stack:', emailError.stack);
+            }
           });
-          
-          console.log(`✅ [Orders] Shipping fee confirmation email sent successfully to ${userData.user.email} for order ${id}`);
           
           // Store confirmation token (we'll use a simple approach - store in a separate confirmation record)
           // For now, we'll verify using order ID and a hash
@@ -942,88 +950,92 @@ router.put('/orders/:id/shipping-fee', authenticate, async (req, res) => {
 
     // Send email if shipping fee > 0 and order is pending
     if (parsedFee > 0 && updatedOrder.status === 'pending' && updatedOrder.user_id) {
-      console.log(`📧 [Orders] Sending shipping fee confirmation email for order ${id}`);
-      try {
-        const { data: userData, error: userError } = await supabase.auth.admin.getUserById(updatedOrder.user_id);
-        
-        if (!userError && userData?.user?.email) {
-          const confirmationToken = crypto.randomBytes(32).toString('hex');
-          // Use production URL by default, allow override via environment variables
-          const webAppUrl = process.env.WEB_APP_URL 
-            || process.env.NEXT_PUBLIC_APP_URL 
-            || 'https://izaj-lighting-centre.netlify.app';
-          const confirmationUrl = `${webAppUrl}/confirm-shipping-fee?token=${confirmationToken}&order=${id}`;
+      console.log(`📧 [Orders] Queueing shipping fee confirmation email for order ${id}`);
+      
+      // Send email asynchronously without blocking the response
+      setImmediate(async () => {
+        try {
+          const { data: userData, error: userError } = await supabase.auth.admin.getUserById(updatedOrder.user_id);
           
-          console.log(`📧 [Orders] Shipping Fee Email (Update) - WEB_APP_URL: ${process.env.WEB_APP_URL || 'not set'}, NEXT_PUBLIC_APP_URL: ${process.env.NEXT_PUBLIC_APP_URL || 'not set'}`);
-          console.log(`📧 [Orders] Using webAppUrl: ${webAppUrl}`);
-          console.log(`📧 [Orders] Confirmation URL: ${confirmationUrl}`);
-          
-          const emailHtml = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <meta charset="utf-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>Confirm Shipping Fee - IZAJ</title>
-              <style>
-                body { font-family: 'Jost', sans-serif; line-height: 1.6; color: #000000; background: #ffffff; padding: 20px; }
-                .email-container { max-width: 640px; margin: 0 auto; background: #ffffff; border: 1px solid #e5e5e5; }
-                .header { background: #000000; color: white; padding: 32px 28px; text-align: center; }
-                .logo { font-family: 'Jost', sans-serif; font-size: 28px; font-weight: 700; letter-spacing: 1px; }
-                .content { padding: 28px; }
-                .content p { font-family: 'Jost', sans-serif; color: #333333; margin: 0 0 14px; }
-                .shipping-box { background: #f8f8f8; border-left: 3px solid #000000; padding: 16px; margin: 18px 0; }
-                .shipping-box strong { font-size: 20px; color: #000000; }
-                .button { display: inline-block; background: #000000; color: white; padding: 14px 28px; text-decoration: none; font-family: 'Jost', sans-serif; font-weight: 600; border: 2px solid #000000; border-radius: 4px; }
-                .button:hover { background: #ffffff; color: #000000; }
-                .button-container { text-align: center; margin: 20px 0; }
-                .footer { background: #f8f8f8; padding: 22px; text-align: center; border-top: 1px solid #e5e5e5; }
-                .footer p { font-family: 'Jost', sans-serif; color: #666666; font-size: 13px; margin: 5px 0; }
-              </style>
-            </head>
-            <body>
-              <div class="email-container">
-                <div class="header">
-                  <div class="logo">IZAJ</div>
-                  <div style="margin-top: 8px; opacity: 0.9;">Shipping Fee Confirmation</div>
-                </div>
-                <div class="content">
-                  <p>Hello,</p>
-                  <p>Your order <strong>#${updatedOrder.order_number}</strong> has been reviewed and the shipping fee has been set.</p>
-                  <div class="shipping-box">
-                    <p><strong>Shipping Fee: ₱${parsedFee.toFixed(2)}</strong></p>
-                    <p>Please confirm this shipping fee to proceed with your order approval.</p>
+          if (!userError && userData?.user?.email) {
+            const confirmationToken = crypto.randomBytes(32).toString('hex');
+            // Use production URL by default, allow override via environment variables
+            const webAppUrl = process.env.WEB_APP_URL 
+              || process.env.NEXT_PUBLIC_APP_URL 
+              || 'https://izaj-lighting-centre.netlify.app';
+            const confirmationUrl = `${webAppUrl}/confirm-shipping-fee?token=${confirmationToken}&order=${id}`;
+            
+            console.log(`📧 [Orders] Shipping Fee Email (Update) - WEB_APP_URL: ${process.env.WEB_APP_URL || 'not set'}, NEXT_PUBLIC_APP_URL: ${process.env.NEXT_PUBLIC_APP_URL || 'not set'}`);
+            console.log(`📧 [Orders] Using webAppUrl: ${webAppUrl}`);
+            console.log(`📧 [Orders] Confirmation URL: ${confirmationUrl}`);
+            
+            const emailHtml = `
+              <!DOCTYPE html>
+              <html>
+              <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Confirm Shipping Fee - IZAJ</title>
+                <style>
+                  body { font-family: 'Jost', sans-serif; line-height: 1.6; color: #000000; background: #ffffff; padding: 20px; }
+                  .email-container { max-width: 640px; margin: 0 auto; background: #ffffff; border: 1px solid #e5e5e5; }
+                  .header { background: #000000; color: white; padding: 32px 28px; text-align: center; }
+                  .logo { font-family: 'Jost', sans-serif; font-size: 28px; font-weight: 700; letter-spacing: 1px; }
+                  .content { padding: 28px; }
+                  .content p { font-family: 'Jost', sans-serif; color: #333333; margin: 0 0 14px; }
+                  .shipping-box { background: #f8f8f8; border-left: 3px solid #000000; padding: 16px; margin: 18px 0; }
+                  .shipping-box strong { font-size: 20px; color: #000000; }
+                  .button { display: inline-block; background: #000000; color: white; padding: 14px 28px; text-decoration: none; font-family: 'Jost', sans-serif; font-weight: 600; border: 2px solid #000000; border-radius: 4px; }
+                  .button:hover { background: #ffffff; color: #000000; }
+                  .button-container { text-align: center; margin: 20px 0; }
+                  .footer { background: #f8f8f8; padding: 22px; text-align: center; border-top: 1px solid #e5e5e5; }
+                  .footer p { font-family: 'Jost', sans-serif; color: #666666; font-size: 13px; margin: 5px 0; }
+                </style>
+              </head>
+              <body>
+                <div class="email-container">
+                  <div class="header">
+                    <div class="logo">IZAJ</div>
+                    <div style="margin-top: 8px; opacity: 0.9;">Shipping Fee Confirmation</div>
                   </div>
-                  <div class="button-container">
-                    <a href="${confirmationUrl}" class="button" style="color: white !important; text-decoration: none !important;">Confirm Shipping Fee</a>
+                  <div class="content">
+                    <p>Hello,</p>
+                    <p>Your order <strong>#${updatedOrder.order_number}</strong> has been reviewed and the shipping fee has been set.</p>
+                    <div class="shipping-box">
+                      <p><strong>Shipping Fee: ₱${parsedFee.toFixed(2)}</strong></p>
+                      <p>Please confirm this shipping fee to proceed with your order approval.</p>
+                    </div>
+                    <div class="button-container">
+                      <a href="${confirmationUrl}" class="button" style="color: white !important; text-decoration: none !important;">Confirm Shipping Fee</a>
+                    </div>
+                    <p style="margin-top: 20px; font-size: 12px; color: #666666;">If the button doesn't work, copy and paste this link into your browser:</p>
+                    <p style="font-size: 12px; color: #666666; word-break: break-all;">${confirmationUrl}</p>
                   </div>
-                  <p style="margin-top: 20px; font-size: 12px; color: #666666;">If the button doesn't work, copy and paste this link into your browser:</p>
-                  <p style="font-size: 12px; color: #666666; word-break: break-all;">${confirmationUrl}</p>
+                  <div class="footer">
+                    <p>© ${new Date().getFullYear()} IZAJ Lighting Centre. All rights reserved.</p>
+                    <p>This is an automated message. Please do not reply.</p>
+                  </div>
                 </div>
-                <div class="footer">
-                  <p>© ${new Date().getFullYear()} IZAJ Lighting Centre. All rights reserved.</p>
-                  <p>This is an automated message. Please do not reply.</p>
-                </div>
-              </div>
-            </body>
-            </html>
-          `;
-          
-          await emailService.sendEmail({
-            to: userData.user.email,
-            subject: `Confirm Shipping Fee for Order #${updatedOrder.order_number} - IZAJ`,
-            html: emailHtml,
-            text: `Hello,\n\nYour order #${updatedOrder.order_number} has been reviewed and the shipping fee has been set to ₱${parsedFee.toFixed(2)}.\n\nPlease confirm this shipping fee by clicking the link below:\n${confirmationUrl}\n\nThank you,\nIZAJ Lighting Centre`
-          });
-          
-          console.log(`✅ [Orders] Shipping fee confirmation email sent successfully to ${userData.user.email} for order ${id}`);
-        } else {
-          console.error(`❌ [Orders] Cannot send email - userError: ${userError?.message || 'none'}, email: ${userData?.user?.email || 'not found'}`);
+              </body>
+              </html>
+            `;
+            
+            await emailService.sendEmail({
+              to: userData.user.email,
+              subject: `Confirm Shipping Fee for Order #${updatedOrder.order_number} - IZAJ`,
+              html: emailHtml,
+              text: `Hello,\n\nYour order #${updatedOrder.order_number} has been reviewed and the shipping fee has been set to ₱${parsedFee.toFixed(2)}.\n\nPlease confirm this shipping fee by clicking the link below:\n${confirmationUrl}\n\nThank you,\nIZAJ Lighting Centre`
+            });
+            
+            console.log(`✅ [Orders] Shipping fee confirmation email sent successfully to ${userData.user.email} for order ${id}`);
+          } else {
+            console.error(`❌ [Orders] Cannot send email - userError: ${userError?.message || 'none'}, email: ${userData?.user?.email || 'not found'}`);
+          }
+        } catch (emailError) {
+          console.error('❌ [Orders] Error sending shipping fee confirmation email:', emailError);
+          console.error('❌ [Orders] Error stack:', emailError.stack);
         }
-      } catch (emailError) {
-        console.error('❌ [Orders] Error sending shipping fee confirmation email:', emailError);
-        console.error('❌ [Orders] Error stack:', emailError.stack);
-      }
+      });
     }
 
     // Log audit event
