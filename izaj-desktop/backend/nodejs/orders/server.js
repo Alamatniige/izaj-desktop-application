@@ -375,12 +375,14 @@ router.put('/orders/:id/status', authenticate, async (req, res) => {
         if (!userError && userData?.user?.email) {
           // Generate confirmation token
           const confirmationToken = crypto.randomBytes(32).toString('hex');
-          // Use localhost in development, deployed URL in production
-          const webAppUrl = process.env.NODE_ENV === 'production' 
-            ? (process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://izaj-lighting-centre.netlify.app')
-            : (process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3002');
+          // Use production URL by default, allow override via environment variables
+          const webAppUrl = process.env.WEB_APP_URL 
+            || process.env.NEXT_PUBLIC_APP_URL 
+            || 'https://izaj-lighting-centre.netlify.app';
           const confirmationUrl = `${webAppUrl}/confirm-shipping-fee?token=${confirmationToken}&order=${id}`;
           
+          console.log(`📧 [Orders] Shipping Fee Email - WEB_APP_URL: ${process.env.WEB_APP_URL || 'not set'}, NEXT_PUBLIC_APP_URL: ${process.env.NEXT_PUBLIC_APP_URL || 'not set'}`);
+          console.log(`📧 [Orders] Using webAppUrl: ${webAppUrl}`);
           console.log(`📧 [Orders] Confirmation URL: ${confirmationUrl}`);
           
           // Store token in order metadata or create a separate table entry
@@ -946,12 +948,14 @@ router.put('/orders/:id/shipping-fee', authenticate, async (req, res) => {
         
         if (!userError && userData?.user?.email) {
           const confirmationToken = crypto.randomBytes(32).toString('hex');
-          // Use localhost in development, deployed URL in production
-          const webAppUrl = process.env.NODE_ENV === 'production' 
-            ? (process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://izaj-lighting-centre.netlify.app')
-            : (process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3002');
+          // Use production URL by default, allow override via environment variables
+          const webAppUrl = process.env.WEB_APP_URL 
+            || process.env.NEXT_PUBLIC_APP_URL 
+            || 'https://izaj-lighting-centre.netlify.app';
           const confirmationUrl = `${webAppUrl}/confirm-shipping-fee?token=${confirmationToken}&order=${id}`;
           
+          console.log(`📧 [Orders] Shipping Fee Email (Update) - WEB_APP_URL: ${process.env.WEB_APP_URL || 'not set'}, NEXT_PUBLIC_APP_URL: ${process.env.NEXT_PUBLIC_APP_URL || 'not set'}`);
+          console.log(`📧 [Orders] Using webAppUrl: ${webAppUrl}`);
           console.log(`📧 [Orders] Confirmation URL: ${confirmationUrl}`);
           
           const emailHtml = `
