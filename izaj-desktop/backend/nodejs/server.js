@@ -79,9 +79,19 @@ app.use(cors({
 app.use(express.json());
 
 // Test endpoint to verify API is working
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'IZAJ Desktop API is running!',
+    timestamp: new Date().toISOString(),
+    health: '/api/health'
+  });
+});
+
+// Test endpoint to verify API is working
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    success: true, 
+  res.json({
+    success: true,
     message: 'izaj-desktop API is running!',
     timestamp: new Date().toISOString(),
     health: 'api/health'
