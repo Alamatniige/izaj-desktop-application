@@ -84,7 +84,8 @@ app.get('/api/health', (req, res) => {
   res.json({ 
     success: true, 
     message: 'izaj-desktop API is running!',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    health: 'api/health'
   });
 });
 
@@ -175,4 +176,21 @@ app.listen(PORT, HOST, () => {
   console.log(`✅ [Server] Backend running on http://${HOST}:${PORT}`);
   console.log(`🌐 [Server] Railway URL: https://izaj-desktop-application-production.up.railway.app`);
   console.log(`📡 [Server] Environment: ${process.env.NODE_ENV || 'development'}`);
+});
+
+// Handle uncaught exceptions and unhandled rejections
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  // Don't exit in production, let Railway handle it
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+// Graceful shutdown handler
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully...');
+  // Close server connections here if needed
+  process.exit(0);
 });
