@@ -1,4 +1,4 @@
-import nodemailer from 'nodemailer';
+import sgMail from '@sendgrid/mail';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -20,41 +20,38 @@ try {
 
 class EmailService {
   constructor() {
-    const config = {
-      host: 'smtp.gmail.com',
-      port: 587,
-      secure: true, // true for 465, false for other ports
-      requireTLS: true,
-      auth: {
-        user: process.env.GMAIL_USER || '',
-        pass: process.env.GMAIL_APP_PASSWORD || '',
-      },
-      connectionTimeout: 10000, // 10 seconds to establish connection
-      greetingTimeout: 10000,   // 10 seconds for SMTP greeting
-      socketTimeout: 10000,     // 10 seconds for socket operations
+    const apiKey = process.env.SENDGRID_API_KEY || '';
+    const fromEmail = process.env.SENDGRID_FROM_EMAIL || process.env.GMAIL_USER || '';
 
-      tls: {
-        rejectUnauthorized: false,
-      },
-    };
-
-    if (!config.auth.user || !config.auth.pass) {
-      console.error('❌ [EmailService] Missing Gmail credentials!');
-      console.error('   GMAIL_USER:', config.auth.user ? 'SET' : 'NOT SET');
-      console.error('   GMAIL_APP_PASSWORD:', config.auth.pass ? 'SET' : 'NOT SET');
+    if (!apiKey) {
+      console.error('❌ [EmailService] Missing SendGrid API key!');
+      console.error('   SENDGRID_API_KEY:', apiKey ? 'SET' : 'NOT SET');
     } else {
-      console.log('✅ [EmailService] Gmail credentials configured');
-      console.log('   Using port:', config.port);
-      console.log('   Secure:', config.secure);
+      console.log('✅ [EmailService] SendGrid API key configured');
     }
 
-    this.transporter = nodemailer.createTransport(config);
+    if (!fromEmail) {
+      console.error('❌ [EmailService] Missing sender email address!');
+      console.error('   SENDGRID_FROM_EMAIL:', fromEmail ? 'SET' : 'NOT SET');
+    } else {
+      console.log('✅ [EmailService] Sender email configured:', fromEmail);
+    }
+
+    // Set SendGrid API key
+    if (apiKey) {
+      sgMail.setApiKey(apiKey);
+    }
+
+    this.fromEmail = fromEmail;
   }
 
   async sendEmail(options) {
     try {
-      const mailOptions = {
-        from: `"IZAJ Trading" <${process.env.GMAIL_USER}>`,
+      const msg = {
+        from: {
+          email: this.fromEmail,
+          name: 'IZAJ Trading',
+        },
         to: options.to,
         subject: options.subject,
         html: options.html,
@@ -62,16 +59,19 @@ class EmailService {
       };
 
       // Add timeout wrapper to prevent hanging
-      const emailPromise = this.transporter.sendMail(mailOptions);
+      const emailPromise = sgMail.send(msg);
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Email sending timeout after 15 seconds')), 15000)
       );
 
-      const info = await Promise.race([emailPromise, timeoutPromise]);
-      console.log('Email sent successfully:', info.messageId);
-      return info;
+      const [response] = await Promise.race([emailPromise, timeoutPromise]);
+      console.log('Email sent successfully:', response?.statusCode || 'Success');
+      return response;
     } catch (error) {
       console.error('Error sending email:', error);
+      if (error.response) {
+        console.error('SendGrid error details:', error.response.body);
+      }
       throw new Error('Failed to send email');
     }
   }
