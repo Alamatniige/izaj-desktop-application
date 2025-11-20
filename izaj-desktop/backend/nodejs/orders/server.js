@@ -381,6 +381,8 @@ router.put('/orders/:id/status', authenticate, async (req, res) => {
             || 'https://izaj-lighting-centre.netlify.app';
           const confirmationUrl = `${webAppUrl}/confirm-shipping-fee?token=${confirmationToken}&order=${id}`;
           
+          console.log(`📧 [Orders] Shipping Fee Email - WEB_APP_URL: ${process.env.WEB_APP_URL || 'not set'}, NEXT_PUBLIC_APP_URL: ${process.env.NEXT_PUBLIC_APP_URL || 'not set'}`);
+          console.log(`📧 [Orders] Using webAppUrl: ${webAppUrl}`);
           console.log(`📧 [Orders] Confirmation URL: ${confirmationUrl}`);
           
           // Store token in order metadata or create a separate table entry
@@ -938,6 +940,8 @@ router.put('/orders/:id/shipping-fee', authenticate, async (req, res) => {
             || 'https://izaj-lighting-centre.netlify.app';
           const confirmationUrl = `${webAppUrl}/confirm-shipping-fee?token=${confirmationToken}&order=${id}`;
           
+          console.log(`📧 [Orders] Shipping Fee Email (Update) - WEB_APP_URL: ${process.env.WEB_APP_URL || 'not set'}, NEXT_PUBLIC_APP_URL: ${process.env.NEXT_PUBLIC_APP_URL || 'not set'}`);
+          console.log(`📧 [Orders] Using webAppUrl: ${webAppUrl}`);
           console.log(`📧 [Orders] Confirmation URL: ${confirmationUrl}`);
           
           const emailHtml = `
