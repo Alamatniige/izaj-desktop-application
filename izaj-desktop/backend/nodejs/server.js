@@ -9,8 +9,17 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load environment variables from root .env file (specify exact path)
-dotenv.config({ path: join(process.cwd(), 'izaj-desktop', '.env') });
+// Load environment variables
+// On Railway, environment variables are injected automatically
+// Only load .env file if it exists (for local development)
+const envPath = join(process.cwd(), 'izaj-desktop', '.env');
+try {
+  dotenv.config({ path: envPath });
+  console.log('✅ [Server] Loaded environment variables from .env file');
+} catch (error) {
+  // .env file not found - this is fine on Railway where env vars are injected
+  console.log('ℹ️ [Server] No .env file found, using environment variables from system');
+}
 
 // Python service configuration
 const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL || 'http://localhost:8002';
@@ -35,7 +44,7 @@ const app = express();
 // CORS configuration
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests from localhost (dev), tauri (desktop app), or no origin (Postman/Insomnia)
+    // Allow requests from localhost (dev), tauri (desktop app), Railway, or no origin (Postman/Insomnia)
     const allowedOrigins = [
       'http://localhost:3000',
       'http://localhost:3001',
@@ -45,14 +54,22 @@ app.use(cors({
       'http://127.0.0.1:3002',
       'tauri://localhost',
       'http://tauri.localhost',
-      'https://tauri.localhost'
-    ];
+      'https://tauri.localhost',
+      'https://izaj-desktop-application-production.up.railway.app',
+      'http://izaj-desktop-application-production.up.railway.app',
+      'https://izaj-lighting-centre.netlify.app',
+      process.env.FRONTEND_URL,
+      process.env.WEB_APP_URL,
+      process.env.NEXT_PUBLIC_APP_URL
+    ].filter(Boolean); // Remove undefined values
     
     // Allow if no origin (desktop apps, mobile apps, Postman) or if in allowed list
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(null, true); // For now, allow all origins (you can restrict later)
+      // In production, you might want to restrict this
+      // For now, allow all origins for flexibility
+      callback(null, true);
     }
   },
   credentials: true,
@@ -152,6 +169,10 @@ app.use((req, res) => {
 // SERVER STARTUP
 // =============================================================================
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Backend running on http://localhost:${PORT}`);
+const HOST = process.env.HOST || '0.0.0.0'; // Railway requires binding to 0.0.0.0
+
+app.listen(PORT, HOST, () => {
+  console.log(`✅ [Server] Backend running on http://${HOST}:${PORT}`);
+  console.log(`🌐 [Server] Railway URL: https://izaj-desktop-application-production.up.railway.app`);
+  console.log(`📡 [Server] Environment: ${process.env.NODE_ENV || 'development'}`);
 });

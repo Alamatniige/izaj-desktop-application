@@ -7,8 +7,16 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load environment variables from root .env file
-dotenv.config({ path: join(__dirname, '..', '..', '.env') });
+// Load environment variables
+// On Railway, environment variables are injected automatically
+// Only load .env file if it exists (for local development)
+const envPath = join(__dirname, '..', '..', '.env');
+try {
+  dotenv.config({ path: envPath });
+} catch (error) {
+  // .env file not found - this is fine on Railway where env vars are injected
+  // Environment variables will be available from process.env directly
+}
 
 class EmailService {
   constructor() {
