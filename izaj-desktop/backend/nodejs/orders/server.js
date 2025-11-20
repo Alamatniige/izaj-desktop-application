@@ -244,7 +244,7 @@ router.put('/orders/:id/status', authenticate, async (req, res) => {
     // First, get the current order to log the old status and check access
     const { data: currentOrder, error: fetchError } = await supabase
       .from('orders')
-      .select('order_number, status, branch, assigned_admin_id, shipping_fee, shipping_fee_confirmed, user_id')
+      .select('order_number, status, branch, assigned_admin_id, shipping_fee, shipping_fee_confirmed, user_id, payment_status')
       .eq('id', id)
       .single();
 
@@ -494,7 +494,7 @@ router.put('/orders/:id/status', authenticate, async (req, res) => {
       }
     }
 
-    // Log audit event (don't let this fail the request)
+    // Log audit event for order status (don't let this fail the request)
     try {
       await logAuditEvent(req.user.id, AuditActions.UPDATE_ORDER_STATUS, {
         order_id: id,
@@ -507,6 +507,20 @@ router.put('/orders/:id/status', authenticate, async (req, res) => {
       }, req);
     } catch (auditError) {
       console.error('⚠️ Audit logging failed (non-critical):', auditError);
+    }
+
+    // Log audit event for payment status if it was changed (don't let this fail the request)
+    if (payment_status && payment_status !== currentOrder.payment_status) {
+      try {
+        await logAuditEvent(req.user.id, AuditActions.UPDATE_PAYMENT_STATUS, {
+          order_id: id,
+          order_number: currentOrder.order_number,
+          old_payment_status: currentOrder.payment_status,
+          new_payment_status: payment_status
+        }, req);
+      } catch (auditError) {
+        console.error('⚠️ Payment status audit logging failed (non-critical):', auditError);
+      }
     }
 
     // Removed verbose success log to reduce terminal noise

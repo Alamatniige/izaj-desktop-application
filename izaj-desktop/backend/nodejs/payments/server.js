@@ -1,6 +1,7 @@
 import express from 'express';
 import { supabase } from '../supabaseClient.js';
 import authenticate from '../util/middlerware.js';
+import { logAuditEvent, AuditActions } from '../util/auditLogger.js';
 
 // Use the imported supabase client (already has service role with env variables)
 const supabaseAdmin = supabase;
@@ -244,6 +245,23 @@ router.put('/payments/:id/status', authenticate, async (req, res) => {
       });
     }
 
+    // Fetch current order to get old payment_status and order_number
+    const { data: currentOrder, error: fetchError } = await supabaseAdmin
+      .from('orders')
+      .select('payment_status, order_number')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) {
+      return res.status(404).json({
+        success: false,
+        error: 'Order not found',
+        details: fetchError.message
+      });
+    }
+
+    const oldPaymentStatus = currentOrder.payment_status;
+
     const { data, error } = await supabaseAdmin
       .from('orders')
       .update({ payment_status })
@@ -257,6 +275,18 @@ router.put('/payments/:id/status', authenticate, async (req, res) => {
         error: 'Failed to update payment status',
         details: error.message
       });
+    }
+
+    // Log audit event (don't let this fail the request)
+    try {
+      await logAuditEvent(req.user.id, AuditActions.UPDATE_PAYMENT_STATUS, {
+        order_id: id,
+        order_number: currentOrder.order_number,
+        old_payment_status: oldPaymentStatus,
+        new_payment_status: payment_status
+      }, req);
+    } catch (auditError) {
+      console.error('⚠️ Audit logging failed (non-critical):', auditError);
     }
 
     res.json({
