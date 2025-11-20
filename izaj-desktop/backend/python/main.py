@@ -20,20 +20,42 @@ app = FastAPI(
 )
 
 # CORS configuration
+# Get allowed origins from environment variables
+allowed_origins = [
+    "http://localhost:3000",
+    "http://localhost:3001", 
+    "http://localhost:3002",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+    "http://127.0.0.1:3002",
+    "tauri://localhost",
+    "http://tauri.localhost",
+    "https://tauri.localhost",
+]
+
+# Add Railway URL if provided
+railway_url = os.getenv("RAILWAY_PUBLIC_DOMAIN")
+if railway_url:
+    allowed_origins.extend([
+        f"https://{railway_url}",
+        f"http://{railway_url}"
+    ])
+
+# Add other frontend URLs from environment
+frontend_url = os.getenv("FRONTEND_URL")
+web_app_url = os.getenv("WEB_APP_URL")
+next_public_url = os.getenv("NEXT_PUBLIC_APP_URL")
+
+if frontend_url:
+    allowed_origins.append(frontend_url)
+if web_app_url:
+    allowed_origins.append(web_app_url)
+if next_public_url:
+    allowed_origins.append(next_public_url)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:3001", 
-        "http://localhost:3002",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:3001",
-        "http://127.0.0.1:3002",
-        "tauri://localhost",
-        "http://tauri.localhost",
-        "https://tauri.localhost",
-        "https://izaj-desktop-application.onrender.com"
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
