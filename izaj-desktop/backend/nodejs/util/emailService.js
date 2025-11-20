@@ -22,9 +22,9 @@ class EmailService {
   constructor() {
     const config = {
       host: 'smtp.gmail.com',
-      port: 465,
+      port: 587,
       secure: true, // true for 465, false for other ports
-      requireTLS: false,
+      requireTLS: true,
       auth: {
         user: process.env.GMAIL_USER || '',
         pass: process.env.GMAIL_APP_PASSWORD || '',
