@@ -14,8 +14,9 @@ class EmailService {
   constructor() {
     const config = {
       host: 'smtp.gmail.com',
-      port: 587,
-      secure: false, // true for 465, false for other ports
+      port: 465,
+      secure: true, // true for 465, false for other ports
+      requireTLS: false,
       auth: {
         user: process.env.GMAIL_USER || '',
         pass: process.env.GMAIL_APP_PASSWORD || '',
@@ -23,7 +24,21 @@ class EmailService {
       connectionTimeout: 10000, // 10 seconds to establish connection
       greetingTimeout: 10000,   // 10 seconds for SMTP greeting
       socketTimeout: 10000,     // 10 seconds for socket operations
+
+      tls: {
+        rejectUnauthorized: false,
+      },
     };
+
+    if (!config.auth.user || !config.auth.pass) {
+      console.error('❌ [EmailService] Missing Gmail credentials!');
+      console.error('   GMAIL_USER:', config.auth.user ? 'SET' : 'NOT SET');
+      console.error('   GMAIL_APP_PASSWORD:', config.auth.pass ? 'SET' : 'NOT SET');
+    } else {
+      console.log('✅ [EmailService] Gmail credentials configured');
+      console.log('   Using port:', config.port);
+      console.log('   Secure:', config.secure);
+    }
 
     this.transporter = nodemailer.createTransport(config);
   }
