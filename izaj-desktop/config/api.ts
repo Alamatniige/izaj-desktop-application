@@ -2,6 +2,6 @@ const API_URL: string =
   import.meta.env.VITE_API_URL || 
   (import.meta.env.MODE === 'development'
     ? 'http://localhost:3001'
-    : 'izaj-desktop-application-production.up.railway.app');
+    : 'https://izaj-desktop-application-production.up.railway.app');
 
 export default API_URL;
