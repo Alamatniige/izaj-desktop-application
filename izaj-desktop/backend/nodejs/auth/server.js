@@ -105,7 +105,7 @@ router.post('/forgot-password', async (req, res) => {
       ? process.env.PASSWORD_RESET_REDIRECT_URL
       : (isDevelopment 
           ? 'http://localhost:3000/update-password'
-          : (process.env.FRONTEND_URL || 'https://izaj-admin.vercel.app/update-password'));
+          : (process.env.FRONTEND_URL || 'https://izaj-desktop-application-production.up.railway.app/update-password'));
     
     // Send password reset email using Supabase
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
