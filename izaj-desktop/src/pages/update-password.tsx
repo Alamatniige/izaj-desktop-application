@@ -33,15 +33,31 @@ const UpdatePassword: React.FC = () => {
             const type = hashParams.get('type') || urlParams.get('type');
             const deepLink = `izaj://update-password#access_token=${encodeURIComponent(accessToken)}&refresh_token=${encodeURIComponent(refreshToken)}${type ? `&type=${encodeURIComponent(type)}` : ''}`;
             
-            // Try to redirect to deep link
-            // This will open the desktop app if installed
-            window.location.href = deepLink;
-            
             // Show a message that we're redirecting to the app
             setSuccess('Opening IZAJ app... If the app doesn\'t open, please make sure it is installed.');
             
-            // If deep link doesn't work after a short delay, the user can still use the web form
-            // The form will remain functional as a fallback
+            // Try to redirect to deep link immediately
+            // This will open the desktop app if installed
+            try {
+                window.location.href = deepLink;
+                
+                // Fallback: If deep link doesn't work, try using a hidden iframe
+                // This helps with some browsers that block direct location changes
+                setTimeout(() => {
+                    const iframe = document.createElement('iframe');
+                    iframe.style.display = 'none';
+                    iframe.src = deepLink;
+                    document.body.appendChild(iframe);
+                    
+                    // Remove iframe after a short delay
+                    setTimeout(() => {
+                        document.body.removeChild(iframe);
+                    }, 1000);
+                }, 100);
+            } catch (err) {
+                console.error('Error redirecting to deep link:', err);
+                // If redirect fails, the form will remain functional as a fallback
+            }
         }
         
         if (!accessToken || !refreshToken) {

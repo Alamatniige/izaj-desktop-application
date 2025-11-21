@@ -94,15 +94,23 @@ router.post('/forgot-password', async (req, res) => {
     }
 
     // Determine the redirect URL based on environment
-    // For development, use localhost. For production, use the production URL or a web-based redirect
+    // Use a web URL that will redirect to the deep link (izaj://update-password)
+    // The update-password page will automatically redirect to deep link if opened in browser
     const isDevelopment = process.env.NODE_ENV !== 'production';
-    const redirectUrl = isDevelopment 
-      ? 'http://localhost:3000/update-password'
-      : (process.env.FRONTEND_URL || 'http://localhost:3000/update-password');
+    
+    // For production, use a proper web URL. For development, we can still use localhost
+    // but it will only work if the app is running. For email links, we need a proper web URL.
+    // You can set PASSWORD_RESET_REDIRECT_URL in environment variables for production
+    const redirectUrl = process.env.PASSWORD_RESET_REDIRECT_URL 
+      ? process.env.PASSWORD_RESET_REDIRECT_URL
+      : (isDevelopment 
+          ? 'http://localhost:3000/update-password'
+          : (process.env.FRONTEND_URL || 'https://izaj-admin.vercel.app/update-password'));
     
     // Send password reset email using Supabase
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
       // Use web URL that can be opened in browser, then redirect to deep link
+      // The update-password page will detect if it's opened in browser and redirect to izaj:// deep link
       redirectTo: redirectUrl,
     });
 

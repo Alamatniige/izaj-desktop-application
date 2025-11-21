@@ -272,6 +272,7 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
 
     // Convert orders to CSV format - one row per order item
     const csvHeaders = [
+      'Product ID',
       'Order Number',
       'Item Name',
       'Category',
@@ -310,6 +311,7 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
       // If order has no items, still create one row with order info
       if (!items || items.length === 0) {
         csvRows.push([
+          escapeCsvValue(''), // Product ID - empty if no items
           escapeCsvValue(order.order_number),
           escapeCsvValue(''),
           escapeCsvValue(''),
@@ -343,6 +345,7 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
           const totalDiscount = discountPerUnit * (item.quantity || 0);
           
           csvRows.push([
+            escapeCsvValue(item.product_id || item.id || ''), // Product ID at the beginning
             escapeCsvValue(order.order_number),
             escapeCsvValue(item.product_name || ''),
             escapeCsvValue(categoryStr),
