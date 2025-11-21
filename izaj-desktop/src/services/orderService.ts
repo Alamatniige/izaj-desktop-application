@@ -28,6 +28,7 @@ export interface Order {
   shipping_fee_confirmed?: boolean;
   payment_method: string;
   payment_status: string;
+  payment_reference?: string | null;
   recipient_name: string;
   shipping_phone: string;
   shipping_address_line1: string;

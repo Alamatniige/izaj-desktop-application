@@ -24,6 +24,9 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
   const { orders, isLoading, refetchOrders } = useOrders(session);
   const { updateStatus } = useOrderActions(session, refetchOrders);
 
+  // Ensure orders is always an array to prevent crashes
+  const safeOrders = Array.isArray(orders) ? orders : [];
+
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAdvancedFilter, setShowAdvancedFilter] = useState(false);
@@ -46,7 +49,10 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
 
   // Convert orders to payments format and calculate stats
   const { payments, stats } = useMemo(() => {
-    const paymentsData = orders.map(order => ({
+    // Use safeOrders to prevent errors
+    const ordersArray = safeOrders;
+    
+    const paymentsData = ordersArray.map(order => ({
       id: order.id,
       order_number: order.order_number,
       customer_name: order.recipient_name,
@@ -54,28 +60,28 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
       customer_phone: order.shipping_phone,
       total_amount: order.total_amount + (order.shipping_fee || 0),
       payment_method: order.payment_method,
-      payment_status: order.payment_status,
+      payment_status: order.payment_status || 'pending', // Default to 'pending' if null
       created_at: order.created_at,
       order: order // Keep full order for details
     }));
 
-    // Calculate stats from orders
+    // Calculate stats from orders (treat null payment_status as 'pending')
     const paymentStats = {
-      pending: orders.filter(o => o.payment_status === 'pending').length,
-      paid: orders.filter(o => o.payment_status === 'paid').length,
-      failed: orders.filter(o => o.payment_status === 'failed').length,
-      refunded: orders.filter(o => o.payment_status === 'refunded').length,
-      total: orders.length,
-      total_amount: orders.reduce((sum, o) => sum + (o.total_amount + (o.shipping_fee || 0)), 0),
+      pending: ordersArray.filter(o => !o.payment_status || o.payment_status === 'pending').length,
+      paid: ordersArray.filter(o => o.payment_status === 'paid').length,
+      failed: ordersArray.filter(o => o.payment_status === 'failed').length,
+      refunded: ordersArray.filter(o => o.payment_status === 'refunded').length,
+      total: ordersArray.length,
+      total_amount: ordersArray.reduce((sum, o) => sum + (o.total_amount + (o.shipping_fee || 0)), 0),
       by_method: {
-        gcash: orders.filter(o => o.payment_method === 'gcash').length,
-        maya: orders.filter(o => o.payment_method === 'maya').length,
-        cod: orders.filter(o => o.payment_method === 'cash_on_delivery').length
+        gcash: ordersArray.filter(o => o.payment_method === 'gcash').length,
+        maya: ordersArray.filter(o => o.payment_method === 'maya').length,
+        cod: ordersArray.filter(o => o.payment_method === 'cash_on_delivery').length
       }
     };
 
     return { payments: paymentsData, stats: paymentStats };
-  }, [orders]);
+  }, [safeOrders]);
 
   const handleFilterToggle = (filter: string) => {
     setSelectedFilters(prev => 
@@ -220,7 +226,7 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
 
   const handleRowClick = (payment: typeof payments[0]) => {
     // Find the full order object
-    const fullOrder = orders.find(o => o.id === payment.id);
+    const fullOrder = safeOrders.find(o => o.id === payment.id);
     if (fullOrder) {
       setSelectedPayment(fullOrder);
       setIsOverlayOpen(true);
@@ -236,13 +242,14 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
   const filteredData = payments.filter(payment => {
     // Search filter
     const matchesSearch = searchQuery === '' || 
-      payment.order_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      payment.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      payment.customer_phone.toLowerCase().includes(searchQuery.toLowerCase());
+      (payment.order_number && payment.order_number.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (payment.customer_name && payment.customer_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (payment.customer_phone && payment.customer_phone.toLowerCase().includes(searchQuery.toLowerCase()));
     
-    // Status filter
+    // Status filter (treat null payment_status as 'pending')
+    const paymentStatus = payment.payment_status || 'pending';
     const matchesFilter = selectedFilters.length === 0 || 
-      selectedFilters.includes(payment.payment_status);
+      selectedFilters.includes(paymentStatus);
     
     // Date range filter
     let matchesDate = true;
@@ -277,7 +284,7 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
     
     // Payment method filter
     let matchesMethod = true;
-    if (filterPaymentMethod) {
+    if (filterPaymentMethod && payment.payment_method) {
       const methodMap: Record<string, string> = {
         'gcash': 'gcash',
         'maya': 'maya',
@@ -614,12 +621,12 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
               {paginatedData.map((payment) => (
                 <tr key={payment.id} className="hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors duration-200">
                   <td className="px-6 py-4">
-                    <div className="font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{payment.order_number}</div>
-                    <div className="text-xs text-gray-400 dark:text-slate-500">{formatOrderDate(payment.created_at)}</div>
+                    <div className="font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{payment.order_number || 'N/A'}</div>
+                    <div className="text-xs text-gray-400 dark:text-slate-500">{payment.created_at ? formatOrderDate(payment.created_at) : 'N/A'}</div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="font-medium text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{payment.customer_name}</div>
-                    <div className="text-xs text-gray-500 dark:text-slate-400">{payment.customer_phone}</div>
+                    <div className="font-medium text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{payment.customer_name || 'N/A'}</div>
+                    <div className="text-xs text-gray-500 dark:text-slate-400">{payment.customer_phone || 'N/A'}</div>
                   </td>
                   <td className="px-6 py-4 font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
                     {formatPrice(payment.total_amount)}
@@ -629,19 +636,19 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
                       {payment.payment_method === 'cash_on_delivery' ? 'Cash on Delivery' :
                        payment.payment_method === 'gcash' ? 'GCash' :
                        payment.payment_method === 'maya' ? 'Maya' :
-                       payment.payment_method.replace('_', ' ')}
+                       payment.payment_method ? payment.payment_method.replace('_', ' ') : 'N/A'}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-gray-500 dark:text-slate-400 text-xs">{formatOrderDate(payment.created_at)}</td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex items-center px-3 py-1 rounded-xl text-xs font-bold text-white shadow-sm ${
-                      payment.payment_status === 'pending' ? 'bg-yellow-500' :
+                      payment.payment_status === 'pending' || !payment.payment_status ? 'bg-yellow-500' :
                       payment.payment_status === 'paid' ? 'bg-green-500' :
                       payment.payment_status === 'failed' ? 'bg-red-500' :
                       payment.payment_status === 'refunded' ? 'bg-blue-500' :
                       'bg-gray-500'
                     }`} style={{ fontFamily: "'Jost', sans-serif" }}>
-                      {payment.payment_status.toUpperCase()}
+                      {(payment.payment_status || 'pending').toUpperCase()}
                     </span>
                   </td>
                   <td className="px-6 py-4">
@@ -840,19 +847,27 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
                               {selectedPayment.payment_method === 'cash_on_delivery' ? 'Cash on Delivery' :
                                selectedPayment.payment_method === 'gcash' ? 'GCash' :
                                selectedPayment.payment_method === 'maya' ? 'Maya' :
-                               selectedPayment.payment_method.replace('_', ' ')}
+                               selectedPayment.payment_method ? selectedPayment.payment_method.replace('_', ' ') : 'N/A'}
                             </span>
                           </div>
+                          {selectedPayment.payment_reference && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-gray-500 dark:text-slate-400 text-sm sm:text-base" style={{ fontFamily: "'Jost', sans-serif" }}>Reference Number</span>
+                              <span className="font-mono text-sm sm:text-base text-blue-700 dark:text-blue-400" style={{ fontFamily: "'Jost', sans-serif" }}>
+                                {selectedPayment.payment_reference}
+                              </span>
+                            </div>
+                          )}
                           <div className="flex items-center justify-between">
                             <span className="text-gray-500 dark:text-slate-400 text-sm sm:text-base" style={{ fontFamily: "'Jost', sans-serif" }}>Status</span>
                             <span className={`inline-block px-2 py-1 text-xs font-semibold rounded text-white ${
-                              selectedPayment.payment_status === 'pending' ? 'bg-yellow-500' :
+                              selectedPayment.payment_status === 'pending' || !selectedPayment.payment_status ? 'bg-yellow-500' :
                               selectedPayment.payment_status === 'paid' ? 'bg-green-500' :
                               selectedPayment.payment_status === 'failed' ? 'bg-red-500' :
                               selectedPayment.payment_status === 'refunded' ? 'bg-blue-500' :
                               'bg-gray-500'
                             }`} style={{ fontFamily: "'Jost', sans-serif" }}>
-                              {selectedPayment.payment_status.toUpperCase()}
+                              {(selectedPayment.payment_status || 'pending').toUpperCase()}
                             </span>
                           </div>
                         </div>
@@ -914,7 +929,7 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
                     <div>
                       <span className="block text-xs font-semibold text-yellow-500 uppercase tracking-wider mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Actions</span>
                       <div className="flex flex-wrap gap-2">
-                        {selectedPayment.payment_status === 'pending' && (
+                        {(!selectedPayment.payment_status || selectedPayment.payment_status === 'pending') && (
                           <>
                             <button 
                               onClick={async () => {
