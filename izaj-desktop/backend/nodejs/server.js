@@ -159,10 +159,15 @@ app.use('/api', payments);
 // This is a standalone HTML page served by Express - no React frontend needed!
 // =============================================================================
 app.get('/update-password', (req, res) => {
-  // Get Railway URL dynamically
-  const railwayUrl = process.env.RAILWAY_PUBLIC_DOMAIN 
-    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-    : 'https://izaj-desktop-application-production.up.railway.app';
+  // Get base URL dynamically - use localhost in development, Railway URL in production
+  const isDevelopment = process.env.NODE_ENV !== 'production';
+  const baseUrl = isDevelopment
+    ? `http://localhost:${process.env.PORT || 3001}`
+    : (process.env.RAILWAY_PUBLIC_DOMAIN 
+        ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+        : 'https://izaj-desktop-application-production.up.railway.app');
+  
+  const railwayUrl = baseUrl; // Keep variable name for compatibility with HTML template
 
 const html = `<!DOCTYPE html>
 <html lang="en">

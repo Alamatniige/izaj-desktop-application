@@ -93,11 +93,16 @@ router.post('/forgot-password', async (req, res) => {
     }
     const isDevelopment = process.env.NODE_ENV !== 'production';
     
+    // In development, use localhost with backend port (3001) since /update-password is served by backend
+    // In production, use the production Railway URL
     const redirectUrl = process.env.PASSWORD_RESET_REDIRECT_URL 
       ? process.env.PASSWORD_RESET_REDIRECT_URL
       : (isDevelopment 
-          ? 'http://localhost:3000/update-password'
+          ? 'http://localhost:3001/update-password'
           : (process.env.FRONTEND_URL || 'https://izaj-desktop-application-production.up.railway.app/update-password'));
+    
+    console.log(`[Password Reset] Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`[Password Reset] Redirect URL: ${redirectUrl}`);
     
     // Send password reset email using Supabase
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
