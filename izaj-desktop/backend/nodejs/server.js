@@ -167,14 +167,15 @@ app.get('/update-password', (req, res) => {
         ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
         : 'https://izaj-desktop-application-production.up.railway.app');
   
-  const railwayUrl = baseUrl; // Keep variable name for compatibility with HTML template
+  const apiUrl = baseUrl; // API endpoint URL
+  const logoUrl = baseUrl; // Logo image URL
 
 const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reset Password - IZAJ Lighting Centre</title>
+    <title>Update Password - IZAJ Lighting Centre</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Playfair+Display:wght@400;700;900&display=swap" rel="stylesheet">
@@ -225,23 +226,49 @@ const html = `<!DOCTYPE html>
             position: relative;
             z-index: 10;
         }
-        .logo-container {
-            margin-bottom: 12px;
+        .logo-wrapper {
+            position: absolute;
+            top: -48px;
+            left: 50%;
+            transform: translateX(-50%);
         }
         .logo-img {
-            width: 112px;
-            height: 112px;
+            width: 96px;
+            height: 96px;
             border-radius: 50%;
             object-fit: cover;
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            margin-bottom: 16px;
+        }
+        .logo-fallback {
+            width: 96px;
+            height: 96px;
+            border-radius: 50%;
+            background: #f3f4f6;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .header {
+            margin-top: 48px;
+            margin-bottom: 8px;
+        }
+        .brand-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 36px;
+            font-weight: 700;
+            color: #1f2937;
+            letter-spacing: 8px;
+            margin-bottom: 4px;
+            text-shadow: -2px 0px 2px rgba(0, 0, 0, 0.5);
         }
         .admin-label {
             color: #4b5563;
             font-weight: 600;
             letter-spacing: 0.3em;
             font-size: 12px;
-            margin-bottom: 4px;
+            margin-bottom: 8px;
             font-family: 'Jost', sans-serif;
         }
         .divider {
@@ -249,80 +276,186 @@ const html = `<!DOCTYPE html>
             height: 2px;
             background: linear-gradient(to right, #d1d5db, #cbd5e1);
             border-radius: 9999px;
-            margin: 0 auto;
+            margin: 0 auto 24px;
         }
-        .title {
+        .form-title {
             color: #4b5563;
             font-size: 14px;
             font-weight: 500;
-            margin: 24px 0;
+            margin-bottom: 24px;
             font-family: 'Jost', sans-serif;
         }
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .form-label {
+            display: block;
+            color: #374151;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 8px;
+            font-family: 'Jost', sans-serif;
+        }
+        .input-wrapper {
+            position: relative;
+        }
+        .input-icon {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            color: #6b7280;
+            pointer-events: none;
+        }
+        .form-input {
+            width: 100%;
+            padding: 12px 48px 12px 48px;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 14px;
+            font-family: 'Jost', sans-serif;
+            background: rgba(249, 250, 251, 0.5);
+            transition: all 0.2s;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: #9ca3af;
+            box-shadow: 0 0 0 3px rgba(156, 163, 175, 0.1);
+            background: white;
+        }
+        .form-input:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .toggle-password {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #6b7280;
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s;
+        }
+        .toggle-password:hover {
+            color: #374151;
+        }
+        .toggle-password:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .toggle-icon {
+            width: 20px;
+            height: 20px;
+        }
+        .alert {
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            font-family: 'Jost', sans-serif;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .alert-error {
+            color: #dc2626;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+        }
+        .alert-success {
+            color: #16a34a;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+        }
+        .alert-icon {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+        .submit-btn {
+            width: 100%;
+            padding: 12px 24px;
+            background: #1f2937;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: 'Jost', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .submit-btn:hover:not(:disabled) {
+            background: #111827;
+            transform: translateY(-1px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .submit-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
         .spinner {
-            border: 3px solid #f3f4f6;
-            border-top: 3px solid #1f2937;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
+            width: 16px;
+            height: 16px;
+            animation: spin 0.8s linear infinite;
         }
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        .message {
-            color: #6b7280;
-            font-size: 14px;
-            line-height: 1.6;
-            margin-bottom: 8px;
-            font-family: 'Jost', sans-serif;
-        }
-        .sub-message {
-            font-size: 14px;
-            color: #9ca3af;
-            font-family: 'Jost', sans-serif;
-        }
-        .error {
-            color: #dc2626;
-            background: #fef2f2;
-            padding: 12px 16px;
+        .success-message {
+            margin-top: 20px;
+            padding: 16px;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
             border-radius: 12px;
-            margin-top: 20px;
-            border: 1px solid #fecaca;
-            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            display: none;
-            font-family: 'Jost', sans-serif;
+            color: #16a34a;
             font-size: 14px;
+            font-family: 'Jost', sans-serif;
+            display: none;
         }
-        .fallback-link {
+        .app-link {
             display: inline-block;
-            margin-top: 20px;
-            padding: 12px 24px;
+            margin-top: 12px;
+            padding: 10px 20px;
             background: #1f2937;
             color: white;
             text-decoration: none;
-            border-radius: 12px;
-            transition: all 0.2s;
+            border-radius: 8px;
+            font-size: 14px;
             font-weight: 600;
             font-family: 'Jost', sans-serif;
-            font-size: 14px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: all 0.2s;
         }
-        .fallback-link:hover {
+        .app-link:hover {
             background: #111827;
             transform: translateY(-1px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
         .footer {
             margin-top: 24px;
             padding-top: 16px;
             border-top: 1px solid #e5e7eb;
-        }
-        .footer-text {
-            font-size: 12px;
-            color: #6b7280;
-            font-family: 'Jost', sans-serif;
         }
         .footer-badge {
             display: flex;
@@ -339,15 +472,20 @@ const html = `<!DOCTYPE html>
         }
         .footer-label {
             font-weight: 500;
+            font-size: 12px;
+            color: #6b7280;
             font-family: 'Jost', sans-serif;
         }
-        .debug-info {
-            display: none;
-            font-size: 10px;
-            color: #9ca3af;
-            margin-top: 10px;
-            font-family: monospace;
-            word-break: break-all;
+        .footer-text {
+            font-size: 12px;
+            color: #6b7280;
+            font-family: 'Jost', sans-serif;
+        }
+        input[type="password"]::-webkit-credentials-auto-fill-button,
+        input[type="password"]::-webkit-strong-password-toggle-button {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
         }
     </style>
 </head>
@@ -356,24 +494,98 @@ const html = `<!DOCTYPE html>
     <div class="bg-decoration bg-decoration-2"></div>
     
     <div class="container">
-        <div class="logo-container">
-            <img src="${railwayUrl}/izaj.jpg" alt="IZAJ Logo" class="logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-            <div style="display: none; width: 112px; height: 112px; border-radius: 50%; background: #f3f4f6; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 32px;">🔐</div>
+        <div class="logo-wrapper">
+            <img src="${logoUrl}/izaj.jpg" alt="IZAJ Logo" class="logo-img" onerror="this.classList.add('hidden'); this.nextElementSibling.style.display='flex';">
+            <div class="logo-fallback">🔐</div>
+        </div>
+
+        <div class="header">
+            <h1 class="brand-title">IZAJ</h1>
             <div class="admin-label">ADMIN PANEL</div>
             <div class="divider"></div>
         </div>
 
-        <div class="title">Opening IZAJ App...</div>
-        
-        <div class="spinner"></div>
-        
-        <p class="message">Please wait while we redirect you to the desktop application.</p>
-        <p class="sub-message">If the app doesn't open automatically, make sure it is installed.</p>
-        
-        <div id="error" class="error"></div>
-        <a href="#" id="fallback-link" class="fallback-link" style="display: none;">Click here to open app</a>
-        
-        <div id="debug-info" class="debug-info"></div>
+        <div class="form-title">Update Your Password</div>
+
+        <form id="password-form">
+            <div id="error-alert" class="alert alert-error">
+                <svg class="alert-icon" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                </svg>
+                <span id="error-text"></span>
+            </div>
+
+            <div id="success-alert" class="alert alert-success">
+                <svg class="alert-icon" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+                <span id="success-text"></span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="password">New Password</label>
+                <div class="input-wrapper">
+                    <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                    </svg>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        class="form-input" 
+                        placeholder="Enter new password" 
+                        required 
+                        autofocus
+                        minlength="6"
+                    />
+                    <button type="button" class="toggle-password" id="toggle-password" aria-label="Toggle password visibility">
+                        <svg class="toggle-icon" id="eye-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                        <svg class="toggle-icon" id="eye-off-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display: none;">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="confirm-password">Confirm Password</label>
+                <div class="input-wrapper">
+                    <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                    </svg>
+                    <input 
+                        type="password" 
+                        id="confirm-password" 
+                        class="form-input" 
+                        placeholder="Confirm new password" 
+                        required 
+                        minlength="6"
+                    />
+                    <button type="button" class="toggle-password" id="toggle-confirm-password" aria-label="Toggle password visibility">
+                        <svg class="toggle-icon" id="eye-icon-confirm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                        <svg class="toggle-icon" id="eye-off-icon-confirm" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display: none;">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <button type="submit" id="submit-btn" class="submit-btn">
+                <span id="submit-text">Update Password</span>
+                <div id="submit-spinner" class="spinner" style="display: none;"></div>
+            </button>
+
+            <div id="success-message" class="success-message">
+                <p>Password updated successfully!</p>
+                <p style="margin-top: 8px; font-size: 13px;">Please open the IZAJ desktop application and log in with your new password.</p>
+                <a href="izaj://login" id="open-app-link" class="app-link">Open IZAJ Application</a>
+            </div>
+        </form>
 
         <div class="footer">
             <div class="footer-badge">
@@ -387,88 +599,130 @@ const html = `<!DOCTYPE html>
 
     <script>
         (function() {
-            console.log('[Password Reset] Starting deep link redirect...');
-            console.log('[Password Reset] Current URL:', window.location.href);
+            const form = document.getElementById('password-form');
+            const passwordInput = document.getElementById('password');
+            const confirmPasswordInput = document.getElementById('confirm-password');
+            const submitBtn = document.getElementById('submit-btn');
+            const submitText = document.getElementById('submit-text');
+            const submitSpinner = document.getElementById('submit-spinner');
+            const errorAlert = document.getElementById('error-alert');
+            const errorText = document.getElementById('error-text');
+            const successAlert = document.getElementById('success-alert');
+            const successText = document.getElementById('success-text');
+            const successMessage = document.getElementById('success-message');
+            const openAppLink = document.getElementById('open-app-link');
             
+            // Extract tokens from URL
             const urlParams = new URLSearchParams(window.location.search);
             const hash = window.location.hash;
             const hashParams = new URLSearchParams(hash.substring(1));
             
             const accessToken = hashParams.get('access_token') || urlParams.get('access_token');
             const refreshToken = hashParams.get('refresh_token') || urlParams.get('refresh_token');
-            const type = hashParams.get('type') || urlParams.get('type') || 'recovery';
             
-            console.log('[Password Reset] Extracted tokens:', {
-                hasAccessToken: !!accessToken,
-                hasRefreshToken: !!refreshToken,
-                accessTokenLength: accessToken ? accessToken.length : 0,
-                refreshTokenLength: refreshToken ? refreshToken.length : 0,
-                type: type
-            });
-            
+            // Check if tokens are present
             if (!accessToken || !refreshToken) {
-                console.error('[Password Reset] Missing tokens!');
-                document.getElementById('error').style.display = 'block';
-                document.getElementById('error').textContent = 'Invalid or missing reset link. Please request a new password reset.';
-                document.querySelector('.spinner').style.display = 'none';
+                errorAlert.style.display = 'flex';
+                errorText.textContent = 'Invalid or missing reset link. Please request a new password reset.';
+                form.style.display = 'none';
                 return;
             }
             
-            // Construct deep link - ensure proper encoding
-            const encodedAccessToken = encodeURIComponent(accessToken);
-            const encodedRefreshToken = encodeURIComponent(refreshToken);
-            const encodedType = encodeURIComponent(type);
-            
-            // Deep link format: izaj://update-password#access_token=...&refresh_token=...&type=...
-            const deepLink = 'izaj://update-password#access_token=' + encodedAccessToken + '&refresh_token=' + encodedRefreshToken + '&type=' + encodedType;
-            
-            console.log('[Password Reset] Generated deep link:', deepLink.substring(0, 100) + '...');
-            console.log('[Password Reset] Deep link length:', deepLink.length);
-            
-            // Show debug info (hidden by default, can be enabled for troubleshooting)
-            const debugInfo = document.getElementById('debug-info');
-            if (window.location.search.includes('debug=true')) {
-                debugInfo.style.display = 'block';
-                debugInfo.textContent = 'Deep Link: ' + deepLink;
+            // Toggle password visibility
+            function setupTogglePassword(inputId, toggleId, eyeIconId, eyeOffIconId) {
+                const input = document.getElementById(inputId);
+                const toggle = document.getElementById(toggleId);
+                const eyeIcon = document.getElementById(eyeIconId);
+                const eyeOffIcon = document.getElementById(eyeOffIconId);
+                
+                toggle.addEventListener('click', () => {
+                    const isPassword = input.type === 'password';
+                    input.type = isPassword ? 'text' : 'password';
+                    eyeIcon.style.display = isPassword ? 'none' : 'block';
+                    eyeOffIcon.style.display = isPassword ? 'block' : 'none';
+                });
             }
             
-            try {
-                console.log('[Password Reset] Attempting redirect to deep link...');
-                window.location.href = deepLink;
+            setupTogglePassword('password', 'toggle-password', 'eye-icon', 'eye-off-icon');
+            setupTogglePassword('confirm-password', 'toggle-confirm-password', 'eye-icon-confirm', 'eye-off-icon-confirm');
+            
+            // Form submission
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
                 
-                // Fallback: Show manual link after 2 seconds
-                setTimeout(() => {
-                    const fallbackLink = document.getElementById('fallback-link');
-                    fallbackLink.href = deepLink;
-                    fallbackLink.style.display = 'inline-block';
-                    console.log('[Password Reset] Fallback link displayed');
-                }, 2000);
+                const password = passwordInput.value;
+                const confirmPassword = confirmPasswordInput.value;
                 
-                // Additional fallback: Try iframe method
-                setTimeout(() => {
-                    try {
-                        const iframe = document.createElement('iframe');
-                        iframe.style.display = 'none';
-                        iframe.src = deepLink;
-                        document.body.appendChild(iframe);
-                        console.log('[Password Reset] Iframe fallback attempted');
-                        setTimeout(() => {
-                            if (iframe.parentNode) {
-                                document.body.removeChild(iframe);
-                            }
-                        }, 1000);
-                    } catch (iframeErr) {
-                        console.error('[Password Reset] Iframe fallback error:', iframeErr);
+                // Hide previous alerts
+                errorAlert.style.display = 'none';
+                successAlert.style.display = 'none';
+                successMessage.style.display = 'none';
+                
+                // Validation
+                if (password.length < 6) {
+                    errorAlert.style.display = 'flex';
+                    errorText.textContent = 'Password must be at least 6 characters long.';
+                    return;
+                }
+                
+                if (password !== confirmPassword) {
+                    errorAlert.style.display = 'flex';
+                    errorText.textContent = 'Passwords do not match.';
+                    return;
+                }
+                
+                // Disable form and show loading
+                submitBtn.disabled = true;
+                submitText.textContent = 'Updating...';
+                submitSpinner.style.display = 'block';
+                passwordInput.disabled = true;
+                confirmPasswordInput.disabled = true;
+                
+                try {
+                    const response = await fetch('${apiUrl}/api/admin/update-password', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            password: password,
+                            access_token: accessToken,
+                            refresh_token: refreshToken
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Failed to update password');
                     }
-                }, 100);
-            } catch (err) {
-                console.error('[Password Reset] Redirect error:', err);
-                document.getElementById('error').style.display = 'block';
-                document.getElementById('error').textContent = 'Failed to open app. Please click the link below.';
-                const fallbackLink = document.getElementById('fallback-link');
-                fallbackLink.href = deepLink;
-                fallbackLink.style.display = 'inline-block';
-            }
+                    
+                    // Success
+                    form.style.display = 'none';
+                    successMessage.style.display = 'block';
+                    
+                    // Try to open the app
+                    try {
+                        window.location.href = 'izaj://login';
+                        setTimeout(() => {
+                            openAppLink.style.display = 'inline-block';
+                        }, 2000);
+                    } catch (err) {
+                        openAppLink.style.display = 'inline-block';
+                    }
+                    
+                } catch (err) {
+                    errorAlert.style.display = 'flex';
+                    errorText.textContent = err.message || 'Something went wrong. Please try again.';
+                    
+                    // Re-enable form
+                    submitBtn.disabled = false;
+                    submitText.textContent = 'Update Password';
+                    submitSpinner.style.display = 'none';
+                    passwordInput.disabled = false;
+                    confirmPasswordInput.disabled = false;
+                }
+            });
         })();
     </script>
 </body>
