@@ -13,12 +13,6 @@ postcss.config.mjs
 eslint.config.js
 index.html
 
-# Exclude Python backend (if deploying Node.js only)
-backend/python/
-
-# Exclude config files
-config/
-
 # Exclude build artifacts
 *.log
 .DS_Store
