@@ -4,6 +4,7 @@ import { supabaseProduct as supabase, supabase as supabaseClient } from '../lib/
 import toast from 'react-hot-toast';
 import { OrderService, Order } from '../services/orderService';
 import { useSessionContext } from './sessionContext';
+import API_URL from '../../config/api';
 
 interface NotificationItem {
   id: number;
@@ -68,6 +69,13 @@ export const NotificationsProvider = ({ children, isAuthenticated = true }: Noti
   });
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { session } = useSessionContext();
+  const [adminContext, setAdminContext] = useState<{
+    is_super_admin: boolean;
+    role: string | null;
+  }>({
+    is_super_admin: false,
+    role: null,
+  });
   
   console.log('🔔 [Notifications] Provider rendered', { hasSession: !!session, isAuthenticated, notificationCount: notifications.length });
   
@@ -75,6 +83,35 @@ export const NotificationsProvider = ({ children, isAuthenticated = true }: Noti
   const previousOrdersRef = useRef<Map<string, { status: string; payment_status: string; updated_at: string }>>(new Map());
   const previousProductsRef = useRef<Set<string>>(new Set());
   const welcomeNotifShownRef = useRef(false);
+
+  // Check if user is regular admin (not super admin)
+  const isRegularAdmin = adminContext.role === 'Admin' && !adminContext.is_super_admin;
+
+  // Fetch admin context
+  useEffect(() => {
+    if (session?.user?.id) {
+      fetch(`${API_URL}/api/admin/me`, {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setAdminContext({
+              is_super_admin: data.is_super_admin === true,
+              role: data.role || null,
+            });
+          }
+        })
+        .catch(error => {
+          console.error('Failed to fetch admin context:', error);
+          setAdminContext({ is_super_admin: false, role: null });
+        });
+    } else {
+      setAdminContext({ is_super_admin: false, role: null });
+    }
+  }, [session]);
 
   // Save notifications to localStorage whenever they change
   useEffect(() => {
@@ -104,6 +141,12 @@ export const NotificationsProvider = ({ children, isAuthenticated = true }: Noti
 
   // Helper function to add notification
   const addNotification = (notif: NotificationItem) => {
+    // Filter: Regular admins should only see product and stock notifications
+    if (isRegularAdmin && notif.type !== 'product' && notif.type !== 'stock') {
+      console.log('🔔 [Notifications] Skipping notification for regular admin:', notif.type);
+      return;
+    }
+
     console.log('🔔 [Notifications] Adding notification:', notif);
     setNotifications((prev) => {
       // Check if notification already exists (prevent duplicates)
@@ -135,6 +178,12 @@ export const NotificationsProvider = ({ children, isAuthenticated = true }: Noti
   const checkOrdersAndPayments = async () => {
     if (!session || !isAuthenticated) {
       console.log('🔔 [Notifications] Skipping check - no session or not authenticated', { session: !!session, isAuthenticated });
+      return;
+    }
+
+    // Regular admins should not receive order/payment notifications
+    if (isRegularAdmin) {
+      console.log('🔔 [Notifications] Skipping order/payment check - regular admin');
       return;
     }
 
@@ -465,14 +514,20 @@ export const NotificationsProvider = ({ children, isAuthenticated = true }: Noti
       clearInterval(productsPollInterval);
       cleanupProductRealtime.then((cleanup) => cleanup?.());
     };
-  }, [isAuthenticated, session]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, session, adminContext]);
 
 
+
+  // Filter notifications based on user role before providing to context
+  const filteredNotifications = isRegularAdmin
+    ? notifications.filter(n => n.type === 'product' || n.type === 'stock')
+    : notifications;
 
   return (
     <NotificationsContext.Provider
       value={{
-        notifications,
+        notifications: filteredNotifications,
         toggleNotifications,
         notificationsOpen,
         handleNotificationClick,

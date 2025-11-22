@@ -20,18 +20,6 @@ import API_URL from '../config/api';
 
 function App() {
   const location = useLocation();
-  
-  // Handle update-password route FIRST, before any other logic
-  // This ensures it's rendered even if user is not logged in
-  if (location.pathname === '/update-password') {
-    return <UpdatePassword />;
-  }
-  
-  // Handle accept-invite route
-  if (location.pathname === '/accept-invite') {
-    return <AcceptInvite />;
-  }
-  
   const { session, setSession } = useSessionContext();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [currentPage, setCurrentPage] = useState('DASHBOARD');
@@ -58,6 +46,14 @@ function App() {
     avatar: "/profile.jpg",
   });
 
+  const [adminContext, setAdminContext] = useState<{
+    is_super_admin: boolean;
+    role: string | null;
+  }>({
+    is_super_admin: false,
+    role: null,
+  });
+
   useEffect(() => {
     if (session?.user?.id) {
       fetch(`${API_URL}/api/profile/${session.user.id}`, {
@@ -70,6 +66,26 @@ function App() {
           if (data.success && data.profile) {
             setProfile(data.profile);
           }
+        });
+
+      // Fetch admin context
+      fetch(`${API_URL}/api/admin/me`, {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setAdminContext({
+              is_super_admin: data.is_super_admin === true,
+              role: data.role || null,
+            });
+          }
+        })
+        .catch(error => {
+          console.error('Failed to fetch admin context:', error);
+          setAdminContext({ is_super_admin: false, role: null });
         });
     }
   }, [session]);
@@ -93,11 +109,41 @@ function App() {
     };
   }, []);
 
+  // Handle update-password route - after all hooks are called
+  // This ensures it's rendered even if user is not logged in
+  if (location.pathname === '/update-password') {
+    return <UpdatePassword />;
+  }
+  
+  // Handle accept-invite route
+  if (location.pathname === '/accept-invite') {
+    return <AcceptInvite />;
+  }
+
   const handleNavigation = (page: string) => {
+    // Check if regular admin is trying to access restricted pages
+    const isRegularAdmin = adminContext.role === 'Admin' && !adminContext.is_super_admin;
+    const restrictedPages = ['ORDERS', 'PAYMENTS', 'FEEDBACKS', 'SETTINGS'];
+    
+    if (isRegularAdmin && restrictedPages.includes(page)) {
+      // Redirect to dashboard if regular admin tries to access restricted page
+      setCurrentPage('DASHBOARD');
+      return;
+    }
+    
     setCurrentPage(page);
   };
 
   const renderContent = () => {
+    // Check if regular admin is trying to access restricted pages
+    const isRegularAdmin = adminContext.role === 'Admin' && !adminContext.is_super_admin;
+    const restrictedPages = ['ORDERS', 'PAYMENTS', 'FEEDBACKS', 'SETTINGS'];
+    
+    // If regular admin tries to access restricted page, redirect to dashboard
+    if (isRegularAdmin && restrictedPages.includes(currentPage)) {
+      return <Dashboard session={session} onNavigate={handleNavigation} isActive={currentPage === 'DASHBOARD'} />;
+    }
+
     switch (currentPage) {
       case 'PRODUCTS':
         return <Products  
@@ -119,7 +165,7 @@ function App() {
         return <UpdatePassword />;
       case 'DASHBOARD':
       default:
-        return <Dashboard session={session} onNavigate={handleNavigation} isActive={currentPage === 'DASHBOARD'} />;
+        return <Dashboard session={session} onNavigate={handleNavigation} isActive={currentPage === 'DASHBOARD'} adminContext={adminContext} />;
     }
   };
 
@@ -135,6 +181,7 @@ function App() {
           currentPage={currentPage}
           handleNavigation={handleNavigation}
           setIsLoggedIn={setIsLoggedIn}
+          adminContext={adminContext}
         />
 
         {/* Main Content Area */}

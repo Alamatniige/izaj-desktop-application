@@ -12,9 +12,13 @@ interface SidebarProps {
   currentPage: string;
   handleNavigation: (page: string) => void;
   setIsLoggedIn: (loggedIn: boolean) => void;
+  adminContext: {
+    is_super_admin: boolean;
+    role: string | null;
+  };
 }
 
-const navigationItems = [
+const allNavigationItems = [
   { icon: 'mdi:view-dashboard', label: 'DASHBOARD' },
   { icon: 'mdi:shopping-outline', label: 'PRODUCTS' },
   { icon: 'mdi:clipboard-list-outline', label: 'ORDERS' },
@@ -30,9 +34,21 @@ const Sidebar = ({
   currentPage,
   handleNavigation,
   setIsLoggedIn,
-  session
+  session,
+  adminContext
 }: SidebarProps) => 
   {
+    // Filter navigation items based on admin role
+    // Regular admins (role === 'Admin' and !is_super_admin) should not see ORDERS, PAYMENTS, FEEDBACKS
+    const isRegularAdmin = adminContext.role === 'Admin' && !adminContext.is_super_admin;
+    const restrictedLabels = ['ORDERS', 'PAYMENTS', 'FEEDBACKS'];
+    
+    const navigationItems = allNavigationItems.filter(item => {
+      if (isRegularAdmin && restrictedLabels.includes(item.label)) {
+        return false;
+      }
+      return true;
+    });
 
     const handleLogout = async () => {
     await fetch(`${API_URL}/api/admin/logout`, {
@@ -173,26 +189,29 @@ const Sidebar = ({
                 } hover:text-gray-900 dark:hover:text-gray-100`} style={{ fontFamily: "'Jost', sans-serif" }}>Profile</span>
               )}
             </button>
-            <button
-              className={`flex items-center w-full transition-all duration-200 active:scale-95 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl ${
-                sidebarCollapsed ? 'justify-center px-2 py-3' : 'gap-3 justify-start px-3 py-3'
-              } ${
-                currentPage === 'SETTINGS' ? 'bg-gray-50 dark:bg-gray-700 shadow-sm' : ''
-              }`}
-              onClick={() => handleNavigation('SETTINGS')}
-            >
-              <Icon
-                icon="mdi:cog-outline"
-                className={`${sidebarCollapsed ? 'w-6 h-6' : 'w-5 h-5'} ${
-                  currentPage === 'SETTINGS' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'
+            {/* Only show Settings button if user is SuperAdmin */}
+            {!isRegularAdmin && (
+              <button
+                className={`flex items-center w-full transition-all duration-200 active:scale-95 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl ${
+                  sidebarCollapsed ? 'justify-center px-2 py-3' : 'gap-3 justify-start px-3 py-3'
+                } ${
+                  currentPage === 'SETTINGS' ? 'bg-gray-50 dark:bg-gray-700 shadow-sm' : ''
                 }`}
-              />
-              {!sidebarCollapsed && (
-                <span className={`text-sm font-semibold ${
-                  currentPage === 'SETTINGS' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-600 dark:text-gray-400'
-                } hover:text-gray-900 dark:hover:text-gray-100`} style={{ fontFamily: "'Jost', sans-serif" }}>Settings</span>
-              )}
-            </button>
+                onClick={() => handleNavigation('SETTINGS')}
+              >
+                <Icon
+                  icon="mdi:cog-outline"
+                  className={`${sidebarCollapsed ? 'w-6 h-6' : 'w-5 h-5'} ${
+                    currentPage === 'SETTINGS' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'
+                  }`}
+                />
+                {!sidebarCollapsed && (
+                  <span className={`text-sm font-semibold ${
+                    currentPage === 'SETTINGS' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-600 dark:text-gray-400'
+                  } hover:text-gray-900 dark:hover:text-gray-100`} style={{ fontFamily: "'Jost', sans-serif" }}>Settings</span>
+                )}
+              </button>
+            )}
 
             {/* Logout Button */}
             <button

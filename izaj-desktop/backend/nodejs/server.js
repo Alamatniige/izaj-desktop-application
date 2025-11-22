@@ -168,7 +168,6 @@ app.get('/update-password', (req, res) => {
         : 'https://izaj-desktop-application-production.up.railway.app');
   
   const apiUrl = baseUrl; // API endpoint URL
-  const logoUrl = baseUrl; // Logo image URL
 
 const html = `<!DOCTYPE html>
 <html lang="en">
@@ -495,17 +494,14 @@ const html = `<!DOCTYPE html>
     
     <div class="container">
         <div class="logo-wrapper">
-            <img src="${logoUrl}/izaj.jpg" alt="IZAJ Logo" class="logo-img" onerror="this.classList.add('hidden'); this.nextElementSibling.style.display='flex';">
             <div class="logo-fallback">🔐</div>
         </div>
 
         <div class="header">
             <h1 class="brand-title">IZAJ</h1>
-            <div class="admin-label">ADMIN PANEL</div>
+            <div class="admin-label">Update Your Password</div>
             <div class="divider"></div>
         </div>
-
-        <div class="form-title">Update Your Password</div>
 
         <form id="password-form">
             <div id="error-alert" class="alert alert-error">
@@ -581,7 +577,7 @@ const html = `<!DOCTYPE html>
             </button>
 
             <div id="success-message" class="success-message">
-                <p>Password updated successfully!</p>
+                <p>Your Password Successfully Updated</p>
                 <p style="margin-top: 8px; font-size: 13px;">Please open the IZAJ desktop application and log in with your new password.</p>
                 <a href="izaj://login" id="open-app-link" class="app-link">Open IZAJ Application</a>
             </div>

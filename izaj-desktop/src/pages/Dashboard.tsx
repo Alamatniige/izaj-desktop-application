@@ -9,9 +9,13 @@ interface DashboardProps {
   session: Session | null;
   onNavigate?: (page: string) => void;
   isActive?: boolean;
+  adminContext?: {
+    is_super_admin: boolean;
+    role: string | null;
+  };
 }
 
-const Dashboard = ({ session, isActive = true }: DashboardProps) => {
+const Dashboard = ({ session, isActive = true, adminContext }: DashboardProps) => {
   const {
     stats,
     salesReport,
@@ -50,6 +54,13 @@ const Dashboard = ({ session, isActive = true }: DashboardProps) => {
   
   const [salesExpanded, setSalesExpanded] = useState(false);
   const [cardOrder, setCardOrder] = useState(['customer', 'order', 'earning']);
+
+  // Remove 'order' from cardOrder if user is regular admin
+  useEffect(() => {
+    if (adminContext?.role === 'Admin' && !adminContext?.is_super_admin) {
+      setCardOrder(prev => prev.filter(card => card !== 'order'));
+    }
+  }, [adminContext]);
 
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
@@ -134,13 +145,28 @@ const Dashboard = ({ session, isActive = true }: DashboardProps) => {
                   isCombineEnabled={false}
                   ignoreContainerClipping={false}  
                   >
-                    {(provided) => (
+                    {(provided) => {
+                      // Filter cards based on admin role
+                      const visibleCards = cardOrder.filter(cardId => {
+                        // Hide order status card for regular admins
+                        if (cardId === 'order' && adminContext?.role === 'Admin' && !adminContext?.is_super_admin) {
+                          return false;
+                        }
+                        return true;
+                      });
+                      
+                      // Adjust grid columns based on number of visible cards
+                      const gridCols = visibleCards.length === 2 
+                        ? 'grid-cols-1 lg:grid-cols-2' 
+                        : 'grid-cols-1 lg:grid-cols-3';
+                      
+                      return (
                       <div
-                        className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+                        className={`grid ${gridCols} gap-8`}
                         ref={provided.innerRef}
                         {...provided.droppableProps}
                       >
-                      {cardOrder.map((cardId, index) => {
+                      {visibleCards.map((cardId, index) => {
                         switch (cardId) {
                           case 'customer':
                             return (
@@ -274,188 +300,191 @@ const Dashboard = ({ session, isActive = true }: DashboardProps) => {
                       })}
                       {provided.placeholder}
                       </div>
-                    )}
+                      );
+                    }}
                   </Droppable>
                 </DragDropContext>
               </div>
 
-              {/* Sales Report - Full Width */}
-              <div className="mb-8">
-                <div
-                  className={`bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-slate-700 dark:to-slate-800 rounded-2xl shadow-lg border border-indigo-100 dark:border-slate-600 p-6 transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl hover:border-indigo-200 dark:hover:border-slate-500 cursor-pointer
-                    ${salesExpanded ? 'h-auto' : 'h-[400px]'}
-                  `}
-                  onClick={() => setSalesExpanded((prev) => !prev)}
-                >
-                <div className="flex items-center gap-2 mb-6">
-                  <Icon icon="mdi:chart-line" className="text-indigo-400 w-6 h-6" />
-                  <h3 className="text-lg font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Sales Report</h3>
-                  <select 
-                    className="text-sm text-gray-500 dark:text-slate-300 border border-gray-300 dark:border-slate-600 rounded px-3 py-1 bg-white dark:bg-slate-700"
-                    style={{ fontFamily: "'Jost', sans-serif" }}
-                    value={selectedYear}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      setSelectedYear(Number(e.target.value));
-                    }}
-                    onClick={(e) => e.stopPropagation()}
+              {/* Sales Report - Full Width - Hidden for Regular Admins */}
+              {!(adminContext?.role === 'Admin' && !adminContext?.is_super_admin) && (
+                <div className="mb-8">
+                  <div
+                    className={`bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-slate-700 dark:to-slate-800 rounded-2xl shadow-lg border border-indigo-100 dark:border-slate-600 p-6 transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl hover:border-indigo-200 dark:hover:border-slate-500 cursor-pointer
+                      ${salesExpanded ? 'h-auto' : 'h-[400px]'}
+                    `}
+                    onClick={() => setSalesExpanded((prev) => !prev)}
                   >
-                    <option value={new Date().getFullYear()}>Year ({new Date().getFullYear()})</option>
-                    <option value={new Date().getFullYear() - 1}>Year ({new Date().getFullYear() - 1})</option>
-                  </select>
-                  <span className="ml-auto">
-                    <Icon
-                      icon={salesExpanded ? "mdi:chevron-up" : "mdi:chevron-down"}
-                      className="w-6 h-6 text-gray-400"
-                    />
-                  </span>
-                </div>
-                <div className="h-72 relative">
-                  <ReactECharts
-                    option={{
-                      grid: {
-                        left: '10%',
-                        right: '10%',
-                        top: '10%',
-                        bottom: '20%',
-                        containLabel: true
-                      },
-                      xAxis: {
-                        type: 'category',
-                        data: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-                        axisLine: {
-                          show: false
+                  <div className="flex items-center gap-2 mb-6">
+                    <Icon icon="mdi:chart-line" className="text-indigo-400 w-6 h-6" />
+                    <h3 className="text-lg font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Sales Report</h3>
+                    <select 
+                      className="text-sm text-gray-500 dark:text-slate-300 border border-gray-300 dark:border-slate-600 rounded px-3 py-1 bg-white dark:bg-slate-700"
+                      style={{ fontFamily: "'Jost', sans-serif" }}
+                      value={selectedYear}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        setSelectedYear(Number(e.target.value));
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <option value={new Date().getFullYear()}>Year ({new Date().getFullYear()})</option>
+                      <option value={new Date().getFullYear() - 1}>Year ({new Date().getFullYear() - 1})</option>
+                    </select>
+                    <span className="ml-auto">
+                      <Icon
+                        icon={salesExpanded ? "mdi:chevron-up" : "mdi:chevron-down"}
+                        className="w-6 h-6 text-gray-400"
+                      />
+                    </span>
+                  </div>
+                  <div className="h-72 relative">
+                    <ReactECharts
+                      option={{
+                        grid: {
+                          left: '10%',
+                          right: '10%',
+                          top: '10%',
+                          bottom: '20%',
+                          containLabel: true
                         },
-                        axisTick: {
-                          show: false
-                        },
-                        axisLabel: {
-                          color: '#9CA3AF',
-                          fontSize: 12,
-                          fontFamily: "'Jost', sans-serif"
-                        }
-                      },
-                      yAxis: {
-                        type: 'value',
-                        axisLine: {
-                          show: false
-                        },
-                        axisTick: {
-                          show: false
-                        },
-                        axisLabel: {
-                          color: '#9CA3AF',
-                          fontSize: 12,
-                          fontFamily: "'Jost', sans-serif",
-                          formatter: (value: number) => formatCurrency(value)
-                        },
-                        splitLine: {
-                          lineStyle: {
-                            color: '#E5E7EB',
-                            type: 'dashed'
+                        xAxis: {
+                          type: 'category',
+                          data: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                          axisLine: {
+                            show: false
+                          },
+                          axisTick: {
+                            show: false
+                          },
+                          axisLabel: {
+                            color: '#9CA3AF',
+                            fontSize: 12,
+                            fontFamily: "'Jost', sans-serif"
                           }
-                        }
-                      },
-                      tooltip: {
-                        trigger: 'axis',
-                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                        borderColor: '#E5E7EB',
-                        borderWidth: 1,
-                        borderRadius: 8,
-                        textStyle: {
-                          color: '#374151',
-                          fontFamily: "'Jost', sans-serif",
-                          fontSize: 12
                         },
-                        formatter: (params: Array<{name: string, value: number}>) => {
-                          const data = params[0];
-                          return `
-                            <div style="padding: 8px;">
-                              <div style="font-weight: 600; margin-bottom: 4px;">${data.name}</div>
-                              <div style="display: flex; align-items: center;">
-                                <span style="display: inline-block; width: 8px; height: 8px; background-color: #3B82F6; border-radius: 50%; margin-right: 8px;"></span>
-                                <span>Sales: ${formatCurrency(data.value)}</span>
+                        yAxis: {
+                          type: 'value',
+                          axisLine: {
+                            show: false
+                          },
+                          axisTick: {
+                            show: false
+                          },
+                          axisLabel: {
+                            color: '#9CA3AF',
+                            fontSize: 12,
+                            fontFamily: "'Jost', sans-serif",
+                            formatter: (value: number) => formatCurrency(value)
+                          },
+                          splitLine: {
+                            lineStyle: {
+                              color: '#E5E7EB',
+                              type: 'dashed'
+                            }
+                          }
+                        },
+                        tooltip: {
+                          trigger: 'axis',
+                          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                          borderColor: '#E5E7EB',
+                          borderWidth: 1,
+                          borderRadius: 8,
+                          textStyle: {
+                            color: '#374151',
+                            fontFamily: "'Jost', sans-serif",
+                            fontSize: 12
+                          },
+                          formatter: (params: Array<{name: string, value: number}>) => {
+                            const data = params[0];
+                            return `
+                              <div style="padding: 8px;">
+                                <div style="font-weight: 600; margin-bottom: 4px;">${data.name}</div>
+                                <div style="display: flex; align-items: center;">
+                                  <span style="display: inline-block; width: 8px; height: 8px; background-color: #3B82F6; border-radius: 50%; margin-right: 8px;"></span>
+                                  <span>Sales: ${formatCurrency(data.value)}</span>
+                                </div>
                               </div>
-                            </div>
-                          `;
-                        }
-                      },
-                      series: [{
-                        data: monthlyEarnings,
-                        type: 'line',
-                        smooth: true,
-                        symbol: 'circle',
-                        symbolSize: 6,
-                        lineStyle: {
-                          color: '#3B82F6',
-                          width: 3
-                        },
-                        itemStyle: {
-                          color: '#3B82F6',
-                          borderColor: '#FFFFFF',
-                          borderWidth: 2
-                        },
-                        areaStyle: {
-                          color: {
-                            type: 'linear',
-                            x: 0,
-                            y: 0,
-                            x2: 0,
-                            y2: 1,
-                            colorStops: [{
-                              offset: 0,
-                              color: 'rgba(59, 130, 246, 0.3)'
-                            }, {
-                              offset: 1,
-                              color: 'rgba(59, 130, 246, 0)'
-                            }]
+                            `;
                           }
                         },
-                        emphasis: {
+                        series: [{
+                          data: monthlyEarnings,
+                          type: 'line',
+                          smooth: true,
+                          symbol: 'circle',
+                          symbolSize: 6,
+                          lineStyle: {
+                            color: '#3B82F6',
+                            width: 3
+                          },
                           itemStyle: {
                             color: '#3B82F6',
                             borderColor: '#FFFFFF',
-                            borderWidth: 3,
-                            shadowBlur: 10,
-                            shadowColor: 'rgba(59, 130, 246, 0.5)'
+                            borderWidth: 2
+                          },
+                          areaStyle: {
+                            color: {
+                              type: 'linear',
+                              x: 0,
+                              y: 0,
+                              x2: 0,
+                              y2: 1,
+                              colorStops: [{
+                                offset: 0,
+                                color: 'rgba(59, 130, 246, 0.3)'
+                              }, {
+                                offset: 1,
+                                color: 'rgba(59, 130, 246, 0)'
+                              }]
+                            }
+                          },
+                          emphasis: {
+                            itemStyle: {
+                              color: '#3B82F6',
+                              borderColor: '#FFFFFF',
+                              borderWidth: 3,
+                              shadowBlur: 10,
+                              shadowColor: 'rgba(59, 130, 246, 0.5)'
+                            }
                           }
-                        }
-                      }],
-                      animation: true,
-                      animationDuration: 1000,
-                      animationEasing: 'cubicOut'
-                    }}
-                    style={{ height: '100%', width: '100%' }}
-                    opts={{ renderer: 'svg' }}
-                  />
-                </div>
-                {/* Expanded content */}
-                {salesExpanded && salesReport && (
-                  <div className="mt-8 transition-all duration-300">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="bg-indigo-50 dark:bg-slate-700 rounded-xl p-4 flex flex-col items-center">
-                        <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-300" style={{ fontFamily: "'Jost', sans-serif" }}>
-                          {formatCurrency(salesReport.summary.totalSales)}
-                        </span>
-                        <span className="text-xs text-gray-500 dark:text-slate-400 mt-1" style={{ fontFamily: "'Jost', sans-serif" }}>Total Sales</span>
-                      </div>
-                      <div className="bg-indigo-50 dark:bg-slate-700 rounded-xl p-4 flex flex-col items-center">
-                        <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-300" style={{ fontFamily: "'Jost', sans-serif" }}>
-                          {salesReport.summary.averageGrowth}%
-                        </span>
-                        <span className="text-xs text-gray-500 dark:text-slate-400 mt-1" style={{ fontFamily: "'Jost', sans-serif" }}>Growth Rate</span>
-                      </div>
-                      <div className="bg-indigo-50 dark:bg-slate-700 rounded-xl p-4 flex flex-col items-center">
-                        <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-300" style={{ fontFamily: "'Jost', sans-serif" }}>
-                          {salesReport.summary.totalOrders}
-                        </span>
-                        <span className="text-xs text-gray-500 dark:text-slate-400 mt-1" style={{ fontFamily: "'Jost', sans-serif" }}>Transactions</span>
+                        }],
+                        animation: true,
+                        animationDuration: 1000,
+                        animationEasing: 'cubicOut'
+                      }}
+                      style={{ height: '100%', width: '100%' }}
+                      opts={{ renderer: 'svg' }}
+                    />
+                  </div>
+                  {/* Expanded content */}
+                  {salesExpanded && salesReport && (
+                    <div className="mt-8 transition-all duration-300">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="bg-indigo-50 dark:bg-slate-700 rounded-xl p-4 flex flex-col items-center">
+                          <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-300" style={{ fontFamily: "'Jost', sans-serif" }}>
+                            {formatCurrency(salesReport.summary.totalSales)}
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-slate-400 mt-1" style={{ fontFamily: "'Jost', sans-serif" }}>Total Sales</span>
+                        </div>
+                        <div className="bg-indigo-50 dark:bg-slate-700 rounded-xl p-4 flex flex-col items-center">
+                          <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-300" style={{ fontFamily: "'Jost', sans-serif" }}>
+                            {salesReport.summary.averageGrowth}%
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-slate-400 mt-1" style={{ fontFamily: "'Jost', sans-serif" }}>Growth Rate</span>
+                        </div>
+                        <div className="bg-indigo-50 dark:bg-slate-700 rounded-xl p-4 flex flex-col items-center">
+                          <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-300" style={{ fontFamily: "'Jost', sans-serif" }}>
+                            {salesReport.summary.totalOrders}
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-slate-400 mt-1" style={{ fontFamily: "'Jost', sans-serif" }}>Transactions</span>
+                        </div>
                       </div>
                     </div>
+                  )}
                   </div>
-                )}
                 </div>
-              </div>
+              )}
 
               {/* Bottom Row Stats Cards */}
               <div className="mb-8">
