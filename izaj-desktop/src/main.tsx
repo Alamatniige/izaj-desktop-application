@@ -20,25 +20,19 @@ function parseDeepLink(url: string) {
     try {
       u = new URL(url);
       
-      // Extract route from pathname (for izaj://update-password, pathname might be '/update-password' or empty)
-      route = u.pathname.replace(/^\/+/, ''); // Remove leading slashes
+      route = u.pathname.replace(/^\/+/, '');
       
-      // If no pathname, check if host contains the route (for izaj://update-password format)
       if (!route && u.host) {
         route = u.host;
       }
       
-      // Extract hash fragment
       fragment = u.hash.startsWith('#') ? u.hash.slice(1) : u.hash;
     } catch (urlError) {
-      // If URL constructor fails, try manual parsing for custom protocols
       console.log('[DeepLink] URL constructor failed, trying manual parsing:', urlError);
       
-      // Manual parsing for izaj:// protocol
-      // Pattern: izaj://route#fragment or izaj://route?query#fragment
       const izajMatch = url.match(/^izaj:\/\/([^#?]+)(?:#(.+))?/);
       if (izajMatch) {
-        route = izajMatch[1].replace(/^\/+/, ''); // Remove leading slashes
+        route = izajMatch[1].replace(/^\/+/, '');
         fragment = izajMatch[2] || '';
         console.log('[DeepLink] Manual parse - route:', route, 'fragment:', fragment ? fragment.substring(0, 50) + '...' : 'empty');
       } else {
@@ -46,19 +40,13 @@ function parseDeepLink(url: string) {
       }
     }
     
-    // If still no route, try one more fallback
     if (!route) {
-      // For izaj://update-password, try extracting directly from URL
       const pathMatch = url.match(/izaj:\/\/([^#?]+)/);
       if (pathMatch) {
         route = pathMatch[1].replace(/^\/+/, '');
       }
     }
     
-    console.log('[DeepLink] Extracted route:', route);
-    console.log('[DeepLink] Hash fragment:', fragment ? fragment.substring(0, 50) + '...' : 'empty');
-    
-    // Parse parameters from hash fragment
     const params = new URLSearchParams(fragment);
     const accessToken = params.get('access_token') ?? undefined;
     const refreshToken = params.get('refresh_token') ?? undefined;
