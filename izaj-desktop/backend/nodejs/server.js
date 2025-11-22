@@ -155,6 +155,111 @@ app.use('/api', orders);
 app.use('/api', payments);
 
 // =============================================================================
+// PASSWORD RESET PAGE - Serves HTML page that redirects to deep link
+// This is a standalone HTML page served by Express - no React frontend needed!
+// =============================================================================
+app.get('/update-password', (req, res) => {
+  // Get Railway URL dynamically
+  const railwayUrl = process.env.RAILWAY_PUBLIC_DOMAIN 
+    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+    : 'https://izaj-desktop-application-production.up.railway.app';
+  
+  // Serve a simple HTML page with embedded JavaScript
+  // This page extracts tokens from URL and redirects to izaj:// deep link
+  const html = `<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Reset Password - IZAJ Lighting Centre</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+            }
+            .container {
+                background: white;
+                border-radius: 16px;
+                padding: 40px;
+                max-width: 500px;
+                width: 100%;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                text-align: center;
+            }
+            .logo { width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 20px; background: #f0f0f0; display: flex; align-items: center; justify-content: center; font-size: 32px; }
+            h1 { color: #333; margin-bottom: 10px; font-size: 24px; }
+            p { color: #666; margin-bottom: 20px; line-height: 1.6; }
+            .spinner { border: 3px solid #f3f3f3; border-top: 3px solid #667eea; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+            .error { color: #e74c3c; background: #fee; padding: 15px; border-radius: 8px; margin-top: 20px; display: none; }
+            .fallback-link { display: inline-block; margin-top: 20px; padding: 12px 24px; background: #667eea; color: white; text-decoration: none; border-radius: 8px; transition: background 0.3s; }
+            .fallback-link:hover { background: #5568d3; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="logo">🔐</div>
+            <h1>Opening IZAJ App...</h1>
+            <p>Please wait while we redirect you to the desktop application.</p>
+            <div class="spinner"></div>
+            <p style="font-size: 14px; color: #999;">If the app doesn't open automatically, make sure it is installed.</p>
+            <div id="error" class="error"></div>
+            <a href="#" id="fallback-link" class="fallback-link" style="display: none;">Click here to open app</a>
+        </div>
+        <script>
+            (function() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const hash = window.location.hash;
+                const hashParams = new URLSearchParams(hash.substring(1));
+                const accessToken = hashParams.get('access_token') || urlParams.get('access_token');
+                const refreshToken = hashParams.get('refresh_token') || urlParams.get('refresh_token');
+                const type = hashParams.get('type') || urlParams.get('type') || 'recovery';
+                
+                if (!accessToken || !refreshToken) {
+                    document.getElementById('error').style.display = 'block';
+                    document.getElementById('error').textContent = 'Invalid or missing reset link. Please request a new password reset.';
+                    document.querySelector('.spinner').style.display = 'none';
+                    return;
+                }
+                
+                const deepLink = 'izaj://update-password#access_token=' + encodeURIComponent(accessToken) + '&refresh_token=' + encodeURIComponent(refreshToken) + (type ? '&type=' + encodeURIComponent(type) : '');
+                
+                try {
+                    window.location.href = deepLink;
+                    setTimeout(() => {
+                        const fallbackLink = document.getElementById('fallback-link');
+                        fallbackLink.href = deepLink;
+                        fallbackLink.style.display = 'inline-block';
+                    }, 2000);
+                    setTimeout(() => {
+                        const iframe = document.createElement('iframe');
+                        iframe.style.display = 'none';
+                        iframe.src = deepLink;
+                        document.body.appendChild(iframe);
+                        setTimeout(() => { if (iframe.parentNode) document.body.removeChild(iframe); }, 1000);
+                    }, 100);
+                } catch (err) {
+                    console.error('Error:', err);
+                    document.getElementById('error').style.display = 'block';
+                    document.getElementById('error').textContent = 'Failed to open app. Please click the link below.';
+                    document.getElementById('fallback-link').href = deepLink;
+                    document.getElementById('fallback-link').style.display = 'inline-block';
+                }
+            })();
+        </script>
+    </body>
+    </html>`;
+  
+  res.send(html);
+});
+
+// =============================================================================
 // ERROR HANDLING MIDDLEWARE
 // =============================================================================
 
