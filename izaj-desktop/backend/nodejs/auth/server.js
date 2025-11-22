@@ -92,10 +92,6 @@ router.post('/forgot-password', async (req, res) => {
     if (!email) {
       return res.status(400).json({ error: 'Email is required' });
     }
-
-    // Determine the redirect URL based on environment
-    // Use a web URL that will redirect to the deep link (izaj://update-password)
-    // The update-password page will automatically redirect to deep link if opened in browser
     const isDevelopment = process.env.NODE_ENV !== 'production';
     
     // For production, use a proper web URL. For development, we can still use localhost
