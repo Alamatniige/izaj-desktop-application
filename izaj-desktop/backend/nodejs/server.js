@@ -163,10 +163,8 @@ app.get('/update-password', (req, res) => {
   const railwayUrl = process.env.RAILWAY_PUBLIC_DOMAIN 
     ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
     : 'https://izaj-desktop-application-production.up.railway.app';
-  
-  // Serve a simple HTML page with embedded JavaScript
-  // This page extracts tokens from URL and redirects to izaj:// deep link
-  const html = `<!DOCTYPE html>
+
+const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">

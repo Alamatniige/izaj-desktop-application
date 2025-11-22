@@ -28,7 +28,6 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: error.message });
     }
 
-    // Enforce email confirmation before allowing login (using service key requires manual check)
     if (!data?.user?.email_confirmed_at) {
       await logAuditEvent(null, AuditActions.LOGIN, {
         email,
@@ -94,9 +93,6 @@ router.post('/forgot-password', async (req, res) => {
     }
     const isDevelopment = process.env.NODE_ENV !== 'production';
     
-    // For production, use a proper web URL. For development, we can still use localhost
-    // but it will only work if the app is running. For email links, we need a proper web URL.
-    // You can set PASSWORD_RESET_REDIRECT_URL in environment variables for production
     const redirectUrl = process.env.PASSWORD_RESET_REDIRECT_URL 
       ? process.env.PASSWORD_RESET_REDIRECT_URL
       : (isDevelopment 
@@ -105,8 +101,6 @@ router.post('/forgot-password', async (req, res) => {
     
     // Send password reset email using Supabase
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-      // Use web URL that can be opened in browser, then redirect to deep link
-      // The update-password page will detect if it's opened in browser and redirect to izaj:// deep link
       redirectTo: redirectUrl,
     });
 
@@ -147,7 +141,6 @@ router.post('/update-password', async (req, res) => {
       return res.status(400).json({ error: 'Password and tokens are required' });
     }
 
-    // First, set the session with the provided tokens
     const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
       access_token: access_token,
       refresh_token: refresh_token
@@ -164,7 +157,6 @@ router.post('/update-password', async (req, res) => {
       });
     }
 
-    // Now update the password using the authenticated session
     const { data, error } = await supabase.auth.updateUser({
       password: password
     });
