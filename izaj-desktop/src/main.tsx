@@ -13,7 +13,6 @@ function parseDeepLink(url: string) {
   try {
     console.log('[DeepLink] Parsing URL:', url);
     
-    // Handle custom protocol URLs like izaj://update-password#access_token=...
     let u: URL;
     let route = '';
     let fragment = '';
