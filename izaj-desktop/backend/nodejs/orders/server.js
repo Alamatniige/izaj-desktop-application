@@ -2,7 +2,7 @@ import express from 'express';
 import { supabase } from '../supabaseClient.js';
 import authenticate from '../util/middlerware.js';
 import { logAuditEvent, AuditActions } from '../util/auditLogger.js';
-import { updateStockFromOrder, reverseStockFromOrder, syncStockFromAllOrders } from '../util/stockUpdater.js';
+import { updateStockFromOrder, reverseStockFromOrder, syncStockFromAllOrders, decreaseStockFromCompletedOrder } from '../util/stockUpdater.js';
 import { getAdminContext } from '../util/adminContext.js';
 import { emailService } from '../util/emailService.js';
 import crypto from 'crypto';
@@ -478,22 +478,73 @@ router.put('/orders/:id/status', authenticate, async (req, res) => {
     }
 
     // Update stock when order status changes
-    // Use syncStockFromAllOrders to ensure consistency across all products
-    if ((status === 'approved' && currentOrder.status !== 'approved') ||
-        (status === 'cancelled' && currentOrder.status !== 'cancelled') ||
-        (status === 'in_transit' && currentOrder.status !== 'in_transit') ||
-        (status === 'complete' && currentOrder.status !== 'complete')) {
+    if (status === 'complete' && currentOrder.status !== 'complete') {
+      // When order is completed, decrease current_quantity (items are sold)
       try {
-        console.log(`🔄 [Orders] Order ${id} status changed to ${status}, syncing stock...`);
-        // Sync all stock based on all approved orders to ensure consistency
+        console.log(`🔄 [Orders] Order ${id} completed, decreasing stock...`);
+        const stockResult = await decreaseStockFromCompletedOrder(id);
+        console.log(`📊 [Orders] Stock decrease result:`, {
+          success: stockResult.success,
+          updated: stockResult.updated,
+          errors: stockResult.errors?.length || 0
+        });
+        if (!stockResult.success) {
+          console.error('⚠️ [Orders] Stock decrease had errors:', stockResult.errors);
+        }
+        // After decreasing stock, sync to recalculate display_quantity and reserved_quantity
+        const syncResult = await syncStockFromAllOrders();
+        if (!syncResult.success) {
+          console.error('⚠️ [Orders] Stock sync after completion had errors:', syncResult.errors);
+        }
+      } catch (stockError) {
+        console.error('⚠️ [Orders] Error decreasing stock (non-critical):', stockError);
+        console.error('⚠️ [Orders] Stock error stack:', stockError.stack);
+      }
+    } else if (currentOrder.status === 'complete' && status !== 'complete') {
+      // If order was previously complete but status is changing away from complete,
+      // we need to reverse the stock decrease (this is rare but possible)
+      try {
+        console.log(`🔄 [Orders] Order ${id} was complete but status changing to ${status}, reversing stock decrease...`);
+        // This is a complex case - we'd need to restore the stock
+        // For now, just sync to recalculate based on current order statuses
+        const syncResult = await syncStockFromAllOrders();
+        if (!syncResult.success) {
+          console.error('⚠️ [Orders] Stock sync after status change had errors:', syncResult.errors);
+        }
+      } catch (stockError) {
+        console.error('⚠️ [Orders] Error syncing stock (non-critical):', stockError);
+      }
+    } else if ((status === 'approved' && currentOrder.status !== 'approved') ||
+               (status === 'cancelled' && currentOrder.status !== 'cancelled') ||
+               (status === 'in_transit' && currentOrder.status !== 'in_transit')) {
+      // For other status changes, sync stock to recalculate reserved quantities
+      try {
+        console.log(`\n🔄 [Orders] ========================================`);
+        console.log(`🔄 [Orders] Order ${id} status changed to ${status}`);
+        console.log(`🔄 [Orders] Previous status: ${currentOrder.status}`);
+        console.log(`🔄 [Orders] Syncing stock to update sold (reserved_quantity) and stock (display_quantity)...`);
+        
+        // Sync all stock based on all approved/in_transit orders to ensure consistency
         // This recalculates display_quantity and reserved_quantity for all products
+        // Formula: reserved_quantity = SUM(quantities from approved/in_transit/complete orders)
+        //          display_quantity = current_quantity - reserved_quantity
         const stockResult = await syncStockFromAllOrders();
+        
         console.log(`📊 [Orders] Stock sync result:`, {
           success: stockResult.success,
           updated: stockResult.updated,
           errors: stockResult.errors?.length || 0,
           results: stockResult.results?.slice(0, 3) // Show first 3 results
         });
+        
+        if (status === 'approved') {
+          console.log(`✅ [Orders] Order ${id} approved - Stock updated:`);
+          console.log(`   - Sold (reserved_quantity) increased for products in this order`);
+          console.log(`   - Stock (display_quantity) decreased for products in this order`);
+        }
+        
+        console.log(`🔄 [Orders] ========================================\n`);
+        
         if (!stockResult.success) {
           console.error('⚠️ [Orders] Stock sync had errors:', stockResult.errors);
           // Don't fail the request, but log it

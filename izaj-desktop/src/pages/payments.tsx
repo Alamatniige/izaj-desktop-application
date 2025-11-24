@@ -70,7 +70,6 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
       pending: ordersArray.filter(o => !o.payment_status || o.payment_status === 'pending').length,
       paid: ordersArray.filter(o => o.payment_status === 'paid').length,
       failed: ordersArray.filter(o => o.payment_status === 'failed').length,
-      refunded: ordersArray.filter(o => o.payment_status === 'refunded').length,
       total: ordersArray.length,
       total_amount: ordersArray.reduce((sum, o) => sum + (o.total_amount + (o.shipping_fee || 0)), 0),
       by_method: {
@@ -335,7 +334,7 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
         </div>
 
         {/* Stats Cards */}
-        <div className="max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-8">
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-700 p-4 hover:shadow-xl transition-all duration-200">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-gray-600 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>Pending</span>
@@ -363,15 +362,6 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
             </div>
             <div className="text-2xl font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{stats?.failed || 0}</div>
           </div>
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-700 p-4 hover:shadow-xl transition-all duration-200">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-gray-600 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>Refunds</span>
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-500 rounded-lg flex items-center justify-center shadow-md">
-                <Icon icon="mdi:cash-refund" className="w-4 h-4 text-white" />
-              </div>
-            </div>
-            <div className="text-2xl font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{stats?.refunded || 0}</div>
-          </div>
         </div>
 
         {/* Filter Section */}
@@ -397,24 +387,21 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
                   <Icon icon="mdi:credit-card-multiple" className="w-4 h-4" />
                   All Payments
                 </button>
-                {['pending', 'paid', 'failed', 'refunded'].map((status) => {
+                {['pending', 'paid', 'failed'].map((status) => {
                   const labels: Record<string, string> = {
                     'pending': 'Pending',
                     'paid': 'Paid',
-                    'failed': 'Failed',
-                    'refunded': 'Refunded'
+                    'failed': 'Failed'
                   };
                   const icons: Record<string, string> = {
                     'pending': 'mdi:clock-outline',
                     'paid': 'mdi:check-circle',
-                    'failed': 'mdi:close-circle',
-                    'refunded': 'mdi:cash-refund'
+                    'failed': 'mdi:close-circle'
                   };
                   const colors: Record<string, string> = {
                     'pending': 'bg-yellow-500',
                     'paid': 'bg-green-500',
-                    'failed': 'bg-red-500',
-                    'refunded': 'bg-blue-500'
+                    'failed': 'bg-red-500'
                   };
                   
                   return (
@@ -645,7 +632,6 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
                       payment.payment_status === 'pending' || !payment.payment_status ? 'bg-yellow-500' :
                       payment.payment_status === 'paid' ? 'bg-green-500' :
                       payment.payment_status === 'failed' ? 'bg-red-500' :
-                      payment.payment_status === 'refunded' ? 'bg-blue-500' :
                       'bg-gray-500'
                     }`} style={{ fontFamily: "'Jost', sans-serif" }}>
                       {(payment.payment_status || 'pending').toUpperCase()}
@@ -864,7 +850,6 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
                               selectedPayment.payment_status === 'pending' || !selectedPayment.payment_status ? 'bg-yellow-500' :
                               selectedPayment.payment_status === 'paid' ? 'bg-green-500' :
                               selectedPayment.payment_status === 'failed' ? 'bg-red-500' :
-                              selectedPayment.payment_status === 'refunded' ? 'bg-blue-500' :
                               'bg-gray-500'
                             }`} style={{ fontFamily: "'Jost', sans-serif" }}>
                               {(selectedPayment.payment_status || 'pending').toUpperCase()}
@@ -957,20 +942,6 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
                               <span style={{ fontFamily: "'Jost', sans-serif" }}>Mark as Failed</span>
                             </button>
                           </>
-                        )}
-                        {selectedPayment.payment_status === 'paid' && (
-                          <button 
-                            onClick={async () => {
-                              await updateStatus(selectedPayment.id, selectedPayment.status, {
-                                payment_status: 'refunded'
-                              });
-                              closeModal();
-                            }}
-                            className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg text-xs sm:text-sm font-medium hover:bg-blue-100 dark:hover:bg-blue-900/50 transition flex items-center gap-1 border border-blue-200 dark:border-blue-800"
-                          >
-                            <Icon icon="mdi:cash-refund" className="w-4 h-4" />
-                            <span style={{ fontFamily: "'Jost', sans-serif" }}>Process Refund</span>
-                          </button>
                         )}
                         <button className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gray-50 dark:bg-slate-700 text-gray-600 dark:text-slate-200 rounded-lg text-xs sm:text-sm font-medium hover:bg-gray-100 dark:hover:bg-slate-600 transition flex items-center gap-1 border border-gray-200 dark:border-slate-600">
                           <Icon icon="mdi:printer" className="w-4 h-4" />

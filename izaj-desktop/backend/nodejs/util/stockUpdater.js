@@ -143,12 +143,16 @@ export async function updateStockFromOrder(orderId) {
  * Returns the total quantity that should be reserved for each product
  * Formula: reserved_quantity = SUM(order_items.quantity) from approved/in_transit/complete orders
  *          display_quantity = current_quantity - reserved_quantity
+ * Note: Complete orders are included in reserved_quantity (sold items)
+ *       current_quantity remains constant, only display_quantity and reserved_quantity change
  * @returns {Promise<Map<string, number>>}
  */
 async function calculateExpectedReservedStock() {
   try {
-    // Get all approved, in_transit, and complete orders ONLY
-    // These are the orders that should reserve stock
+    // Get all approved, in_transit, AND complete orders
+    // Complete orders are sold, so they should be in reserved_quantity
+    // This makes display_quantity decrease (less available stock)
+    // current_quantity stays the same
     const { data: orders, error: ordersError } = await supabase
       .from('orders')
       .select('id, status, order_number')
@@ -211,25 +215,24 @@ async function calculateExpectedReservedStock() {
 }
 
 /**
- * Sync stock based on all approved orders - calculates expected values and updates to match
+ * Sync stock based on all orders - calculates expected values and updates to match
  * This is idempotent - safe to run multiple times
+ * Note: current_quantity is NOT changed - only display_quantity and reserved_quantity are updated
+ * Formula: reserved_quantity = SUM(quantities from approved/in_transit/complete orders)
+ *          display_quantity = current_quantity - reserved_quantity
  * @returns {Promise<{success: boolean, updated: number, errors: Array}>}
  */
 export async function syncStockFromAllOrders() {
   try {
     // Removed verbose log to reduce terminal noise
 
-    // Calculate expected reserved quantities from all approved orders
+    // Calculate expected reserved quantities from all orders (approved/in_transit/complete)
     const expectedReservedMap = await calculateExpectedReservedStock();
     
+    // Even if there are no orders, we should still sync all products to ensure display_quantity is correct
+    // This ensures products without orders have reserved_quantity = 0 and display_quantity = current_quantity
     if (expectedReservedMap.size === 0) {
-      // Removed verbose log to reduce terminal noise
-      return {
-        success: true,
-        updated: 0,
-        errors: [],
-        message: 'No approved orders to process'
-      };
+      console.log(`📦 [StockUpdater] No orders found, but will still sync all products to ensure consistency`);
     }
 
     // Removed verbose log to reduce terminal noise
@@ -380,7 +383,7 @@ export async function syncStockFromAllOrders() {
         
         // Calculate expected display_quantity based on current_quantity (which we don't touch)
         // Formula: display_quantity = current_quantity - reserved_quantity
-        // Where reserved_quantity = EXACT SUM of all order_items.quantity from approved orders ONLY
+        // Where reserved_quantity = SUM of all order_items.quantity from approved/in_transit/complete orders
         const expectedDisplayQty = Math.max(0, numCurrentQty - numReservedQty);
 
         const needsUpdate = currentDisplayQty !== expectedDisplayQty || currentReservedQty !== numReservedQty;
@@ -392,164 +395,146 @@ export async function syncStockFromAllOrders() {
           expected_reserved: numReservedQty,
           expected_display: expectedDisplayQty,
           calculation: `${numCurrentQty} - ${numReservedQty} = ${expectedDisplayQty}`,
-          needs_update: needsUpdate
+          needs_update: needsUpdate,
+          display_will_change: currentDisplayQty !== expectedDisplayQty,
+          reserved_will_change: currentReservedQty !== numReservedQty
         });
 
-        // Always update to ensure display_quantity is correct (even if values appear the same)
-        // Use UPDATE for existing records (more reliable)
-        const updateData = {
+        // ALWAYS update to ensure display_quantity is correct
+        // This is critical - display_quantity must always reflect: current_quantity - reserved_quantity
+        // Use UPSERT to ensure it works whether record exists or not
+        const upsertData = {
+          product_id: normalizedProductId,
+          current_quantity: numCurrentQty, // Keep current_quantity unchanged
           display_quantity: expectedDisplayQty, // Calculate: current - reserved
-          reserved_quantity: numReservedQty, // From order_items sum (use number)
+          reserved_quantity: numReservedQty, // From order_items sum (includes complete orders)
           updated_at: new Date().toISOString()
         };
 
-        // Always use UPDATE (will fail if record doesn't exist, then we'll handle it)
-        console.log(`🔄 [StockUpdater] Updating product ${normalizedProductId}:`, {
-          update_data: updateData,
-          reason: needsUpdate ? 'values changed' : 'ensuring consistency'
+        // Force update using UPSERT - this ensures it works whether record exists or not
+        console.log(`🔄 [StockUpdater] FORCING UPSERT for product ${normalizedProductId}:`, {
+          upsert_data: upsertData,
+          old_values: {
+            display: currentDisplayQty,
+            reserved: currentReservedQty,
+            current: numCurrentQty
+          },
+          new_values: {
+            display: expectedDisplayQty,
+            reserved: numReservedQty,
+            current: numCurrentQty
+          },
+          calculation: `display_quantity = ${numCurrentQty} - ${numReservedQty} = ${expectedDisplayQty}`
         });
         
-        const { data: updatedStock, error: updateError } = await supabase
+        const { data: updatedStock, error: upsertError } = await supabase
           .from('product_stock')
-          .update(updateData)
-          .eq('product_id', normalizedProductId)
+          .upsert(upsertData, {
+            onConflict: 'product_id'
+          })
           .select()
           .single();
 
         // Log update result immediately
-        if (updateError) {
-          console.error(`❌ [StockUpdater] Update failed for ${normalizedProductId}:`, {
-            error_code: updateError.code,
-            error_message: updateError.message,
-            update_data: updateData
-          });
-        } else {
-          console.log(`✅ [StockUpdater] Update successful for ${normalizedProductId}:`, {
-            updated_record: updatedStock,
-            update_data: updateData
-          });
-        }
-
-        // If update failed because record doesn't exist, create it
-        if (updateError && updateError.code === 'PGRST116') {
-          console.log(`➕ [StockUpdater] Record doesn't exist, creating for product ${normalizedProductId}`);
-          const upsertData = {
-            product_id: normalizedProductId,
-            current_quantity: numCurrentQty,
-            ...updateData
-          };
-
-          const { data: createdStock, error: createError } = await supabase
-            .from('product_stock')
-            .upsert(upsertData, {
-              onConflict: 'product_id'
-            })
-            .select()
-            .single();
-          
-          if (createError) {
-            console.error(`❌ [StockUpdater] Error creating stock record for ${normalizedProductId}:`, createError);
-            errors.push({
-              product_id: normalizedProductId,
-              error: createError.message
-            });
-            continue;
-          } else {
-            console.log(`✅ [StockUpdater] Created stock record for product ${normalizedProductId}`);
-            // Continue to verification below
-            const { data: verifyStock } = await supabase
-              .from('product_stock')
-              .select('display_quantity, reserved_quantity, current_quantity')
-              .eq('product_id', normalizedProductId)
-              .single();
-            
-            if (verifyStock) {
-              const isCorrect = verifyStock.display_quantity === expectedDisplayQty && 
-                verifyStock.reserved_quantity === numReservedQty;
-              
-              console.log(`✅ [StockUpdater] Product ${normalizedProductId} created and verified:`, {
-                expected: { display: expectedDisplayQty, reserved: numReservedQty },
-                actual: { 
-                  display: verifyStock.display_quantity, 
-                  reserved: verifyStock.reserved_quantity,
-                  current: verifyStock.current_quantity
-                },
-                matches: isCorrect
-              });
-            }
-            
-            updateResults.push({
-              product_id: normalizedProductId,
-              current_quantity: numCurrentQty,
-              expected_display: expectedDisplayQty,
-              expected_reserved: numReservedQty,
-              old_display: currentDisplayQty,
-              old_reserved: currentReservedQty,
-              calculation: `${numCurrentQty} - ${numReservedQty} = ${expectedDisplayQty}`,
-              action: 'created'
-            });
-            continue;
-          }
-        }
-
-        if (updateError) {
-          console.error(`❌ [StockUpdater] Error updating stock for ${normalizedProductId}:`, updateError);
-          console.error(`❌ [StockUpdater] Error details:`, {
-            code: updateError.code,
-            message: updateError.message,
-            details: updateError.details,
-            hint: updateError.hint
+        if (upsertError) {
+          console.error(`❌ [StockUpdater] UPSERT failed for ${normalizedProductId}:`, {
+            error_code: upsertError.code,
+            error_message: upsertError.message,
+            error_details: upsertError.details,
+            upsert_data: upsertData
           });
           errors.push({
             product_id: normalizedProductId,
-            error: updateError.message
+            error: upsertError.message
           });
+          continue;
         } else {
-          // Immediately verify the update was correct
-          const { data: verifyStock, error: verifyError } = await supabase
-            .from('product_stock')
-            .select('display_quantity, reserved_quantity, current_quantity')
-            .eq('product_id', normalizedProductId)
-            .single();
-          
-          if (verifyError) {
-            console.error(`❌ [StockUpdater] Error verifying update for ${normalizedProductId}:`, verifyError);
-          } else {
-            const isCorrect = verifyStock && 
-              verifyStock.display_quantity === expectedDisplayQty && 
-              verifyStock.reserved_quantity === numReservedQty;
+          console.log(`✅ [StockUpdater] UPSERT successful for ${normalizedProductId}:`, {
+            updated_record: updatedStock,
+            expected: {
+              display: expectedDisplayQty,
+              reserved: numReservedQty,
+              current: numCurrentQty
+            },
+            actual: updatedStock ? {
+              display: updatedStock.display_quantity,
+              reserved: updatedStock.reserved_quantity,
+              current: updatedStock.current_quantity
+            } : 'null'
+          });
+        }
 
-            console.log(`✅ [StockUpdater] Product ${normalizedProductId} update result:`, {
-              success: !updateError,
-              expected: { display: expectedDisplayQty, reserved: numReservedQty },
+        // Immediately verify the upsert was correct
+        const { data: verifyStock, error: verifyError } = await supabase
+          .from('product_stock')
+          .select('display_quantity, reserved_quantity, current_quantity')
+          .eq('product_id', normalizedProductId)
+          .single();
+        
+        if (verifyError) {
+          console.error(`❌ [StockUpdater] Error verifying upsert for ${normalizedProductId}:`, verifyError);
+        } else {
+          const isCorrect = verifyStock && 
+            verifyStock.display_quantity === expectedDisplayQty && 
+            verifyStock.reserved_quantity === numReservedQty;
+
+          console.log(`✅ [StockUpdater] Product ${normalizedProductId} upsert verification:`, {
+            success: !upsertError,
+            expected: { display: expectedDisplayQty, reserved: numReservedQty, current: numCurrentQty },
+            actual: verifyStock ? { 
+              display: verifyStock.display_quantity, 
+              reserved: verifyStock.reserved_quantity,
+              current: verifyStock.current_quantity
+            } : 'null',
+            matches: isCorrect
+          });
+
+          if (!isCorrect) {
+            console.error(`❌ [StockUpdater] Product ${normalizedProductId}: UPSERT verification FAILED!`, {
+              expected: { display: expectedDisplayQty, reserved: numReservedQty, current: numCurrentQty },
               actual: verifyStock ? { 
                 display: verifyStock.display_quantity, 
                 reserved: verifyStock.reserved_quantity,
                 current: verifyStock.current_quantity
               } : 'null',
-              matches: isCorrect
+              difference: verifyStock ? {
+                display: verifyStock.display_quantity - expectedDisplayQty,
+                reserved: verifyStock.reserved_quantity - numReservedQty,
+                current: verifyStock.current_quantity - numCurrentQty
+              } : 'null'
             });
-
-            if (!isCorrect) {
-              console.warn(`⚠️ [StockUpdater] Product ${normalizedProductId}: Update verification failed!`, {
-                expected: { display: expectedDisplayQty, reserved: numReservedQty },
-                actual: verifyStock ? { display: verifyStock.display_quantity, reserved: verifyStock.reserved_quantity } : 'null'
+            
+            // Try to fix it by upserting again
+            console.log(`🔄 [StockUpdater] Attempting to fix ${normalizedProductId} by upserting again...`);
+            const { error: retryError } = await supabase
+              .from('product_stock')
+              .upsert(upsertData, {
+                onConflict: 'product_id'
               });
+            
+            if (retryError) {
+              console.error(`❌ [StockUpdater] Retry upsert also failed for ${normalizedProductId}:`, retryError);
+              errors.push({
+                product_id: normalizedProductId,
+                error: `Upsert verification failed and retry also failed: ${retryError.message}`
+              });
+            } else {
+              console.log(`✅ [StockUpdater] Retry upsert succeeded for ${normalizedProductId}`);
             }
           }
-
-          updateResults.push({
-            product_id: normalizedProductId,
-            current_quantity: numCurrentQty,
-            expected_display: expectedDisplayQty,
-            expected_reserved: numReservedQty,
-            old_display: currentDisplayQty,
-            old_reserved: currentReservedQty,
-            calculation: `${numCurrentQty} - ${numReservedQty} = ${expectedDisplayQty}`,
-            updated: updatedStock,
-            verified: verifyStock
-          });
         }
+
+        updateResults.push({
+          product_id: normalizedProductId,
+          current_quantity: numCurrentQty,
+          expected_display: expectedDisplayQty,
+          expected_reserved: numReservedQty,
+          old_display: currentDisplayQty,
+          old_reserved: currentReservedQty,
+          calculation: `${numCurrentQty} - ${numReservedQty} = ${expectedDisplayQty}`,
+          updated: updatedStock,
+          verified: verifyStock
+        });
         // Removed verbose log to reduce terminal noise
       } catch (itemError) {
         console.error(`❌ [StockUpdater] Error processing product ${normalizedProductId}:`, itemError);
@@ -624,6 +609,66 @@ export async function syncStockFromAllOrders() {
     };
   } catch (error) {
     console.error('❌ [StockUpdater] Unexpected error in sync:', error);
+    return {
+      success: false,
+      error: error.message,
+      updated: 0,
+      errors: [{ error: error.message }]
+    };
+  }
+}
+
+/**
+ * Update stock when an order is completed (items are sold)
+ * Increases reserved_quantity and decreases display_quantity
+ * Note: current_quantity is NOT changed - only display_quantity and reserved_quantity
+ * @param {string} orderId - The order ID
+ * @returns {Promise<{success: boolean, updated: number, errors: Array}>}
+ */
+export async function decreaseStockFromCompletedOrder(orderId) {
+  try {
+    // Get order items
+    const { data: orderItems, error: itemsError } = await supabase
+      .from('order_items')
+      .select('product_id, quantity')
+      .eq('order_id', orderId);
+
+    if (itemsError) {
+      console.error('❌ [StockUpdater] Error fetching order items:', itemsError);
+      return {
+        success: false,
+        error: `Failed to fetch order items: ${itemsError.message}`,
+        updated: 0,
+        errors: []
+      };
+    }
+
+    if (!orderItems || orderItems.length === 0) {
+      return {
+        success: true,
+        updated: 0,
+        errors: [],
+        message: 'No order items to process'
+      };
+    }
+
+    // Don't update anything here - just let syncStockFromAllOrders() handle it
+    // The sync function will recalculate reserved_quantity (including complete orders)
+    // and display_quantity will automatically decrease based on: display_quantity = current_quantity - reserved_quantity
+    
+    console.log(`✅ [StockUpdater] Order ${orderId} completed - stock will be synced`);
+
+    return {
+      success: true,
+      updated: orderItems.length,
+      errors: [],
+      results: orderItems.map(item => ({
+        product_id: item.product_id,
+        quantity: item.quantity
+      }))
+    };
+  } catch (error) {
+    console.error('❌ [StockUpdater] Unexpected error:', error);
     return {
       success: false,
       error: error.message,
