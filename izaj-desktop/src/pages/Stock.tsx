@@ -298,6 +298,7 @@ function Stock({ onViewChange, session }: StockProps) {
               <table className="w-full min-w-[800px]">
                 <thead>
                   <tr className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-700 dark:to-slate-800 border-b-2 border-gray-200 dark:border-slate-700">
+                    <th className="font-semibold text-left py-4 px-4 text-gray-700 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Product Code</th>
                     <th className="font-semibold text-left py-4 px-4 text-gray-700 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Product</th>
                     <th className="font-semibold text-left py-4 px-4 text-gray-700 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Price</th>
                     <th className="font-semibold text-left py-4 px-4 text-gray-700 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Sold</th>
@@ -309,7 +310,7 @@ function Stock({ onViewChange, session }: StockProps) {
                 <tbody>
                   {filteredProducts.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="text-center py-12">
+                      <td colSpan={7} className="text-center py-12">
                         <div className="flex flex-col items-center justify-center">
                           <Icon icon="mdi:package-variant-closed" className="text-6xl text-gray-300 dark:text-slate-600 mb-4" />
                           <h3 className="text-lg font-medium text-gray-500 dark:text-slate-400 mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>
@@ -326,6 +327,11 @@ function Stock({ onViewChange, session }: StockProps) {
                   ) : (
                     filteredProducts.map((product) => (
                       <tr key={product.id} className="border-b border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 transition-all duration-200">
+                        <td className="py-5 px-4">
+                          <span className="text-base font-medium text-gray-700 dark:text-slate-300" style={{ fontFamily: "'Jost', sans-serif" }}>
+                            {product.product_id}
+                          </span>
+                        </td>
                         <td className="py-5 px-4">
                           <div>
                             <p className="font-semibold text-gray-800 dark:text-slate-100 text-base leading-tight" style={{ fontFamily: "'Jost', sans-serif" }}>{product.product_name}</p>

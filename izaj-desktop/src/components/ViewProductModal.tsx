@@ -1,5 +1,5 @@
 import { Icon } from '@iconify/react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useProducts } from '../hooks/useProducts';
 import { Session } from '@supabase/supabase-js';
 import { FetchedProduct } from '../types/product';
@@ -28,7 +28,7 @@ export function ViewProductModal({
   const [currentProduct, setCurrentProduct] = useState(product);
   const [isUpdatingPickup, setIsUpdatingPickup] = useState(false);
   const [isUpdatingPublish, setIsUpdatingPublish] = useState(false);
-  const [isMounted, setIsMounted] = useState(true);
+  const isMountedRef = useRef(true);
 
   const mediaUrls = currentProduct.mediaUrl || [];
   const hasMultipleMedia = mediaUrls.length > 1;
@@ -37,9 +37,9 @@ export function ViewProductModal({
 
   // Cleanup on unmount
   useEffect(() => {
-    setIsMounted(true);
+    isMountedRef.current = true;
     return () => {
-      setIsMounted(false);
+      isMountedRef.current = false;
     };
   }, []);
   
@@ -59,7 +59,7 @@ export function ViewProductModal({
       console.log('✅ ViewProductModal: Product ID changed, updating currentProduct');
       setCurrentProduct(product);
     }
-  }, [product?.id, currentProduct?.id]);
+  }, [product, currentProduct]);
 
   // Ensure display_quantity is up-to-date from stock-status
   useEffect(() => {
@@ -77,15 +77,15 @@ export function ViewProductModal({
             const nextQty = match.display_quantity;
             // Do not downgrade from non-zero to zero
             const finalQty = nextQty === 0 && prevQty > 0 ? prevQty : nextQty;
-            return { ...prev, display_quantity: finalQty };
+            return { ...prev, display_quantity: finalQty ?? prevQty };
           });
         }
-      } catch (e) {
+      } catch {
         // silent
       }
     };
     ensureStock();
-  }, [session?.access_token, product.product_id]);
+  }, [session, product.product_id]);
 
   // Fallback: fetch exact product stock directly if still missing/zero
   useEffect(() => {
@@ -98,15 +98,15 @@ export function ViewProductModal({
             const prevQty = prev.display_quantity ?? 0;
             const nextQty = single.display_quantity ?? 0;
             const finalQty = nextQty === 0 && prevQty > 0 ? prevQty : nextQty;
-            return { ...prev, display_quantity: finalQty } as FetchedProduct;
+            return { ...prev, display_quantity: finalQty ?? prevQty } as FetchedProduct;
           });
         }
-      } catch (_e) {
+      } catch {
         // ignore
       }
     };
     fetchSingleStock();
-  }, [session?.access_token, product.product_id]);
+  }, [session, product.product_id]);
   
   const handlePrevMedia = () => {
     setCurrentMediaIndex((prev) => (prev - 1 + mediaUrls.length) % mediaUrls.length);
@@ -131,7 +131,7 @@ export function ViewProductModal({
     }
     
     // Check if component is still mounted
-    if (!isMounted) {
+    if (!isMountedRef.current) {
       console.log('⚠️ Component unmounted, skipping update');
       return;
     }
@@ -165,7 +165,7 @@ export function ViewProductModal({
     
     try {
       // Optimistically update local state first (only if mounted)
-      if (isMounted) {
+      if (isMountedRef.current) {
         // Create a safe copy to avoid mutation issues
         const updatedProduct: FetchedProduct = {
           ...currentProduct,
@@ -187,14 +187,14 @@ export function ViewProductModal({
       } catch (dbError) {
         console.error('❌ Database update failed:', dbError);
         // Revert optimistic update only if still mounted
-        if (isMounted) {
+        if (isMountedRef.current) {
           setCurrentProduct(prev => ({ ...prev, pickup_available: originalState }));
         }
         throw dbError;
       }
       
       // Update parent component - use a longer delay to ensure state is stable
-      if (onProductUpdate && isMounted) {
+      if (onProductUpdate && isMountedRef.current) {
         // Use a longer delay to ensure React has finished all state updates
         setTimeout(() => {
           try {
@@ -222,7 +222,7 @@ export function ViewProductModal({
       }
       
       // Show success toast only if still mounted
-      if (isMounted) {
+      if (isMountedRef.current) {
         const status = pickupAvailable ? 'Available for Pickup' : 'Unavailable for Pickup';
         toast.success(`Product marked as ${status}!`, {
           icon: pickupAvailable ? '✅' : '❌',
@@ -235,12 +235,12 @@ export function ViewProductModal({
       console.error('❌ Error saving pickup availability:', error);
       
       // Ensure we revert to original state only if still mounted
-      if (isMounted) {
+      if (isMountedRef.current) {
         setCurrentProduct(prev => ({ ...prev, pickup_available: originalState }));
       }
       
       // Show user-friendly error message
-      if (isMounted) {
+      if (isMountedRef.current) {
         const errorMessage = error instanceof Error 
           ? error.message 
           : 'Failed to save pickup status. Please try again.';
@@ -249,7 +249,7 @@ export function ViewProductModal({
         });
       }
     } finally {
-      if (isMounted) {
+      if (isMountedRef.current) {
         setIsUpdatingPickup(false);
       }
     }
@@ -352,7 +352,10 @@ export function ViewProductModal({
             </p>
             <div className="flex gap-3">
               <button
-                onClick={() => setDeleteProduct(false)}
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setDeleteProduct(false);
+                }}
                 className="flex-1 px-4 py-2.5 rounded-xl border-2 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 font-medium hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
               >
                 Cancel
@@ -606,6 +609,17 @@ export function ViewProductModal({
                         </span>
                       )}
                     </div>
+                  </div>
+                  
+                  {/* Product Code */}
+                  <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 rounded-2xl p-5 border border-indigo-100 dark:border-indigo-800">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Icon icon="mdi:barcode" className="text-lg text-indigo-600 dark:text-indigo-400" />
+                      <span className="text-sm text-indigo-600 dark:text-indigo-400 font-semibold uppercase tracking-wide">Product Code</span>
+                    </div>
+                    <span className="text-xl font-bold text-indigo-700 dark:text-indigo-300" style={{ fontFamily: "'Jost', sans-serif" }}>
+                      {currentProduct.product_id}
+                    </span>
                   </div>
                   
                   {/* Created Date */}

@@ -1,4 +1,4 @@
-import { FetchedProduct, FilterType } from '../types/product';
+import { FetchedProduct, FilterType, StockItem } from '../types/product';
 
 export const formatPrice = (price: number | string): string => {
   const numPrice = typeof price === 'number' ? price : parseFloat(price) || 0;
@@ -71,7 +71,7 @@ export const filterProducts = (
 
 export const mergeStockIntoProducts = (
   products: FetchedProduct[],
-  stockData: Array<{ product_id: string; display_quantity: number }>
+  stockData: Array<Pick<StockItem, 'product_id' | 'display_quantity'>>
 ): FetchedProduct[] => {
   const stockMap = new Map<string, number>();
   

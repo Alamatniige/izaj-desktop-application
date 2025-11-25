@@ -52,8 +52,7 @@ const updateProductStock = async (productId, inventoryQuantity) => {
         .from('product_stock')
         .update({
           current_quantity: inventoryQuantity,
-          display_quantity: inventoryQuantity, // Sync with current
-          last_sync_at: timestamp,
+          // Leave display_quantity untouched so modal can confirm update
           updated_at: timestamp
         })
         .eq('product_id', productId);
@@ -70,7 +69,8 @@ const updateProductStock = async (productId, inventoryQuantity) => {
         .insert([{
           product_id: productId,
           current_quantity: inventoryQuantity,
-          display_quantity: inventoryQuantity,
+          // Initialize display_quantity to 0 so admins can review and approve updates
+          display_quantity: 0,
           reserved_quantity: 0,
           last_sync_at: timestamp,
           updated_at: timestamp
@@ -112,12 +112,13 @@ router.get('/products', authenticate, async (req, res) => {
         category:category ( category_name ),
         branch:branch ( location )
       `)
+      .order('updated_at', { ascending: false })
       .order('created_at', { ascending: true })
       .limit(parseInt(limit, 10));
 
-    // If force sync, ignore the 'after' timestamp to fetch all products
-    // This allows re-syncing deleted products
-    if (after) invQuery = invQuery.gt('created_at', after);
+    if (after) {
+      invQuery = invQuery.or(`created_at.gt.${after},updated_at.gt.${after}`);
+    }
 
     const { data: invRows, error: fetchErr } = await invQuery;
     
@@ -1990,10 +1991,11 @@ router.get('/products/stock-status', authenticate, async (req, res) => {
       }
       
       // Use ?? instead of || to preserve actual 0 values vs missing values
-      const currentQty = stock.current_quantity ?? 0;
-      const displayQty = stock.display_quantity ?? 0;
-      const reservedQty = stock.reserved_quantity ?? 0;
-      const needsSync = currentQty !== displayQty;
+      const currentQty = Number(stock.current_quantity ?? 0);
+      const displayQty = Number(stock.display_quantity ?? 0);
+      const reservedQty = Number(stock.reserved_quantity ?? 0);
+      const syncedDisplay = displayQty + reservedQty;
+      const needsSync = currentQty !== syncedDisplay;
 
       return {
         product_id: product.product_id,
@@ -2001,8 +2003,10 @@ router.get('/products/stock-status', authenticate, async (req, res) => {
         current_quantity: currentQty,
         display_quantity: displayQty,
         reserved_quantity: reservedQty,
+        effective_display: syncedDisplay,
         last_sync_at: stock.last_sync_at,
         needs_sync: needsSync,
+        difference: needsSync ? currentQty - syncedDisplay : 0,
         has_stock_entry: !!(stock.current_quantity !== undefined || stock.display_quantity !== undefined)
       };
     });

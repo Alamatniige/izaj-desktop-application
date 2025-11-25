@@ -414,15 +414,138 @@ export const NotificationsProvider = ({ children, isAuthenticated = true }: Noti
             table: 'centralized_product',
           },
           (payload) => {
+            const oldData = payload.old || {};
+            const newData = payload.new || {};
+            const productName = newData.product_name || oldData.product_name || 'Unknown Product';
+            
+            // Track which fields changed
+            const changes: string[] = [];
+            
+            // Check quantity changes
+            if (oldData.quantity !== undefined && newData.quantity !== undefined && oldData.quantity !== newData.quantity) {
+              changes.push(`quantity: ${oldData.quantity} → ${newData.quantity}`);
+              const newNotif: NotificationItem = {
+                id: Date.now() + Math.random(),
+                title: 'Product Quantity Updated',
+                message: `${productName}: Quantity changed from ${oldData.quantity} to ${newData.quantity}. Click Sync to update stock.`,
+                time: new Date().toLocaleTimeString(),
+                read: false,
+                type: 'stock',
+              };
+              addNotification(newNotif);
+              return; // Return early for quantity changes as they're most important
+            }
+            
+            // Check price changes
+            if (oldData.price !== undefined && newData.price !== undefined && oldData.price !== newData.price) {
+              changes.push(`price: ${oldData.price} → ${newData.price}`);
+              const newNotif: NotificationItem = {
+                id: Date.now() + Math.random(),
+                title: 'Product Price Updated',
+                message: `${productName}: Price changed from ₱${oldData.price} to ₱${newData.price}. Sync to update.`,
+                time: new Date().toLocaleTimeString(),
+                read: false,
+                type: 'product',
+              };
+              addNotification(newNotif);
+            }
+            
+            // Check product name changes
+            if (oldData.product_name && newData.product_name && oldData.product_name !== newData.product_name) {
+              changes.push(`name: "${oldData.product_name}" → "${newData.product_name}"`);
+              const newNotif: NotificationItem = {
+                id: Date.now() + Math.random(),
+                title: 'Product Name Updated',
+                message: `Product renamed from "${oldData.product_name}" to "${newData.product_name}". Sync to update.`,
+                time: new Date().toLocaleTimeString(),
+                read: false,
+                type: 'product',
+              };
+              addNotification(newNotif);
+            }
+            
+            // Check status changes
+            if (oldData.status && newData.status && oldData.status !== newData.status) {
+              changes.push(`status: ${oldData.status} → ${newData.status}`);
+              const newNotif: NotificationItem = {
+                id: Date.now() + Math.random(),
+                title: 'Product Status Updated',
+                message: `${productName}: Status changed from ${oldData.status} to ${newData.status}. Sync to update.`,
+                time: new Date().toLocaleTimeString(),
+                read: false,
+                type: 'product',
+              };
+              addNotification(newNotif);
+            }
+            
+            // Check category changes
+            if (oldData.category !== undefined && newData.category !== undefined && oldData.category !== newData.category) {
+              changes.push(`category: ${oldData.category} → ${newData.category}`);
+              const newNotif: NotificationItem = {
+                id: Date.now() + Math.random(),
+                title: 'Product Category Updated',
+                message: `${productName}: Category changed. Sync to update.`,
+                time: new Date().toLocaleTimeString(),
+                read: false,
+                type: 'product',
+              };
+              addNotification(newNotif);
+            }
+            
+            // Check branch changes
+            if (oldData.branch !== undefined && newData.branch !== undefined && oldData.branch !== newData.branch) {
+              changes.push(`branch: ${oldData.branch} → ${newData.branch}`);
+              const newNotif: NotificationItem = {
+                id: Date.now() + Math.random(),
+                title: 'Product Branch Updated',
+                message: `${productName}: Branch location changed. Sync to update.`,
+                time: new Date().toLocaleTimeString(),
+                read: false,
+                type: 'product',
+              };
+              addNotification(newNotif);
+            }
+            
+            // If no specific changes detected but update occurred, send general notification
+            if (changes.length === 0) {
+              const newNotif: NotificationItem = {
+                id: Date.now() + Math.random(),
+                title: 'Product Updated',
+                message: `${productName} has been updated in centralized inventory. Sync to apply changes.`,
+                time: new Date().toLocaleTimeString(),
+                read: false,
+                type: 'product',
+              };
+              addNotification(newNotif);
+            }
+          }
+        );
+      
+      // Add DELETE listener for product removals
+      const deleteChannel = supabase
+        .channel('delete-centralized-product')
+        .on(
+          'postgres_changes',
+          {
+            event: 'DELETE',
+            schema: 'public',
+            table: 'centralized_product',
+          },
+          (payload) => {
+            const productName = payload.old?.product_name || 'Unknown Product';
             const newNotif: NotificationItem = {
               id: Date.now() + Math.random(),
-              title: 'Product Updated',
-              message: `Product ${payload.old.product_name} has been updated.`,
+              title: 'Product Removed',
+              message: `${productName} has been removed from centralized inventory.`,
               time: new Date().toLocaleTimeString(),
               read: false,
               type: 'product',
             };
             addNotification(newNotif);
+            // Remove from previous products set
+            if (payload.old?.id) {
+              previousProductsRef.current.delete(payload.old.id.toString());
+            }
           }
         );
 
@@ -430,6 +553,7 @@ export const NotificationsProvider = ({ children, isAuthenticated = true }: Noti
         insertChannel.subscribe(),
         stockUpdateChannel.subscribe(),
         updateChannel.subscribe(),
+        deleteChannel.subscribe(),
       ]);
 
       return () => {

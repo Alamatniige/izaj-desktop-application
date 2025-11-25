@@ -143,7 +143,7 @@ export function AddProductModal({
       // Only clear selections when category is explicitly cleared
       setSaleData(prev => ({ ...prev, selectedProductIds: [] }));
     }
-  }, [selectedCategory, fetchProductsByCategory]);
+  }, [selectedCategory, fetchProductsByCategory, setSaleData]);
 
   // Toggle product selection
   const toggleProductSelection = (productId: string) => {
@@ -430,7 +430,7 @@ export function AddProductModal({
             </div>
             <div className="p-6 space-y-5">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-3 flex items-center gap-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-3 items-center gap-2" style={{ fontFamily: "'Jost', sans-serif" }}>
                   <Icon icon="mdi:tag-multiple" className="text-gray-500 dark:text-slate-400" />
                   Discount Type
                 </label>
@@ -451,7 +451,7 @@ export function AddProductModal({
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-3 flex items-center gap-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-3 items-center gap-2" style={{ fontFamily: "'Jost', sans-serif" }}>
                   <Icon icon="mdi:currency-usd" className="text-gray-500 dark:text-slate-400" />
                   Discount Value
                 </label>
@@ -497,7 +497,7 @@ export function AddProductModal({
             </div>
             <div className="p-6 space-y-5">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-3 flex items-center gap-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-3 items-center gap-2" style={{ fontFamily: "'Jost', sans-serif" }}>
                   <Icon icon="mdi:calendar-start" className="text-gray-500 dark:text-slate-400" />
                   Start Date
                 </label>
@@ -511,7 +511,7 @@ export function AddProductModal({
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-3 flex items-center gap-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-3 items-center gap-2" style={{ fontFamily: "'Jost', sans-serif" }}>
                   <Icon icon="mdi:calendar-end" className="text-gray-500 dark:text-slate-400" />
                   End Date
                 </label>

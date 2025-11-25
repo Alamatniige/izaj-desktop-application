@@ -1,6 +1,6 @@
 import { Session } from '@supabase/supabase-js';
 import API_URL from '../../config/api';
-import { FetchedProduct, ApiResponse } from '../types/product';
+import { FetchedProduct, ApiResponse, StockItem, StockStatus } from '../types/product';
 
 export class ProductService {
   private static getHeaders(session: Session | null) {
@@ -91,9 +91,29 @@ export class ProductService {
     return data.products || [];
   }
 
+  private static normalizeStockItems(items?: StockItem[]): StockItem[] {
+    return (items || []).map((item) => {
+      const currentQty = Number(item.current_quantity ?? 0);
+      const displayQty = Number(item.display_quantity ?? 0);
+      const reservedQty = Number(item.reserved_quantity ?? 0);
+      const effectiveDisplay = displayQty + reservedQty;
+      const difference = currentQty - effectiveDisplay;
+
+      return {
+        ...item,
+        current_quantity: currentQty,
+        display_quantity: displayQty,
+        reserved_quantity: reservedQty,
+        effective_display: effectiveDisplay,
+        needs_sync: currentQty !== effectiveDisplay,
+        difference,
+      };
+    });
+  }
+
   static async fetchStockStatus(session: Session | null): Promise<{
-    products: Array<{ product_id: string; display_quantity: number }>;
-    summary: { needsSync: number; total: number };
+    products: StockItem[];
+    summary: StockStatus;
     success: boolean;
   }> {
     const response = await fetch(`${API_URL}/api/products/stock-status`, {
@@ -104,7 +124,21 @@ export class ProductService {
       throw new Error('Failed to fetch stock status');
     }
 
-    return await response.json();
+    const payload = await response.json();
+    const normalizedProducts = this.normalizeStockItems(payload.products);
+    const derivedNeedsSync = normalizedProducts.filter((p) => p.needs_sync).length;
+    const baseSummary = payload.summary ?? {};
+    const summary: StockStatus = {
+      ...baseSummary,
+      total: normalizedProducts.length,
+      needsSync: derivedNeedsSync,
+    };
+
+    return {
+      ...payload,
+      products: normalizedProducts,
+      summary,
+    };
   }
 
   static async fetchProductStatus(session: Session | null): Promise<{ statusList: boolean[] }> {

@@ -44,13 +44,20 @@ export interface ApiResponse {
 
 export interface StockItem {
   product_id: string;
-  display_quantity: number;
+  product_name?: string;
+  current_quantity?: number;
+  display_quantity?: number;
   reserved_quantity?: number;
+  last_sync_at?: string;
+  needs_sync?: boolean;
+  effective_display?: number;
+  difference?: number;
 }
 
 export interface StockStatus {
   needsSync: number;
   total: number;
+  withoutStock?: number;
   products?: StockItem[];
 }
 

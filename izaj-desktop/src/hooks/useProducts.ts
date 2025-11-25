@@ -177,9 +177,18 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
     setIsLoadingStock(true);
     try {
       const data = await ProductService.fetchStockStatus(session);
-      setStockStatus(data.summary || { needsSync: 0, total: 0 });
+      const normalizedProducts = Array.isArray(data.products) ? data.products : [];
+      const summary = data.summary || { needsSync: 0, total: 0 };
+
+      setStockStatus({
+        ...summary,
+        needsSync: summary.needsSync ?? normalizedProducts.filter((p) => p.needs_sync).length,
+        total: summary.total ?? normalizedProducts.length,
+        products: normalizedProducts,
+      });
     } catch (error) {
       console.error('Error checking stock status:', error);
+      setStockStatus({ needsSync: 0, total: 0 });
     } finally {
       setIsLoadingStock(false);
     }
@@ -218,6 +227,9 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
           console.log('📦 [useProducts] Reloaded products after incremental sync (0 new):', deduplicated.length);
         }
         
+        // Check stock status after sync to detect products needing sync
+        await checkStockStatus();
+        
         if (isManualSync) {
           toast.success(`Sync completed. No new products to fetch. (${data.synced || 0} synced, ${data.skipped || 0} skipped)`);
         }
@@ -240,6 +252,9 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
           setHasLoadedFromDB(true);
           console.log('📦 [useProducts] Reloaded products after first sync (0 new):', deduplicated.length);
         }
+        
+        // Check stock status after sync to detect products needing sync
+        await checkStockStatus();
         
         if (isManualSync) {
           toast.success('Sync completed successfully. No products found in centralized database.');
@@ -291,12 +306,13 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
       console.warn('⚠️ [useProducts] No products loaded from DB after sync');
     }
 
+    // Check stock status after sync to detect products needing sync
+    await checkStockStatus();
+
     if (isManualSync) {
       const successMessage = generateSyncMessage(newProducts.length, data.synced, data.skipped);
       toast.success(successMessage);
     }
-
-    await checkStockStatus();
   } catch (error) {
     const errorMessage = error instanceof Error 
       ? error.message 

@@ -3,13 +3,13 @@ import { Session } from '@supabase/supabase-js';
 
 interface FetchedProduct {
   id: string;
+  product_id: string;
   product_name: string;
   price: number;
   status: string; 
   category: string | { category_name: string } | null;
   branch: string | { location: string } | null;
   description: string | null;
-  image_url: string | null;   
   created_at?: string;
   display_quantity: number;
 }
@@ -38,7 +38,7 @@ export function FetchedProductSlide({ fetchedProducts, currentIndex, handlePrev,
 
   return (
     <div className="w-full flex flex-col items-center justify-center relative px-8 py-6" style={{ minHeight: '400px' }}>
-      {/* Product Name - Above Image */}
+      {/* Product Name */}
       <div className="w-full max-w-2xl mb-4">
         <h3 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-slate-100 text-center" style={{ fontFamily: "'Jost', sans-serif" }}>
           {product.product_name}
@@ -52,7 +52,7 @@ export function FetchedProductSlide({ fetchedProducts, currentIndex, handlePrev,
         </span>
       </div>
 
-      {/* Image Preview Area with Navigation */}
+      {/* Product Information Area with Navigation */}
       <div className="relative w-full max-w-2xl flex items-center justify-center">
         {/* Left Navigation Button */}
         <button
@@ -63,20 +63,48 @@ export function FetchedProductSlide({ fetchedProducts, currentIndex, handlePrev,
           <Icon icon="mdi:chevron-left" className="text-2xl text-yellow-500 dark:text-yellow-400" />
         </button>
 
-        {/* Large White Image Preview Area */}
-        <div className="w-full bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden" style={{ minHeight: '400px', maxHeight: '500px' }}>
-          {product.image_url ? (
-            <img
-              src={product.image_url}
-              alt={product.product_name}
-              className="w-full h-full object-cover"
-              style={{ minHeight: '400px', maxHeight: '500px' }}
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gray-50 dark:bg-slate-700" style={{ minHeight: '400px', maxHeight: '500px' }}>
-              <Icon icon="mdi:image-off" className="text-6xl text-gray-300 dark:text-slate-600" />
+        {/* Product Information Display Area */}
+        <div className="w-full bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm p-8" style={{ minHeight: '300px' }}>
+          <div className="flex flex-col gap-6">
+            {/* Product Code */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-5 border border-blue-100 dark:border-blue-800">
+              <div className="flex items-center gap-3 mb-2">
+                <Icon icon="mdi:barcode" className="text-xl text-blue-600 dark:text-blue-400" />
+                <span className="text-sm text-blue-600 dark:text-blue-400 font-semibold uppercase tracking-wide" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  Product Code
+                </span>
+              </div>
+              <p className="text-lg font-mono font-semibold text-blue-700 dark:text-blue-300" style={{ fontFamily: "'Jost', sans-serif" }}>
+                {product.product_id || 'N/A'}
+              </p>
             </div>
-          )}
+
+            {/* Category */}
+            <div className="bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 rounded-xl p-5 border border-purple-100 dark:border-purple-800">
+              <div className="flex items-center gap-3 mb-2">
+                <Icon icon="mdi:tag-outline" className="text-xl text-purple-600 dark:text-purple-400" />
+                <span className="text-sm text-purple-600 dark:text-purple-400 font-semibold uppercase tracking-wide" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  Category
+                </span>
+              </div>
+              <p className="text-lg font-semibold text-purple-700 dark:text-purple-300" style={{ fontFamily: "'Jost', sans-serif" }}>
+                {categoryName}
+              </p>
+            </div>
+
+            {/* Product Name */}
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-5 border border-green-100 dark:border-green-800">
+              <div className="flex items-center gap-3 mb-2">
+                <Icon icon="mdi:package-variant" className="text-xl text-green-600 dark:text-green-400" />
+                <span className="text-sm text-green-600 dark:text-green-400 font-semibold uppercase tracking-wide" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  Product Name
+                </span>
+              </div>
+              <p className="text-lg font-semibold text-green-700 dark:text-green-300" style={{ fontFamily: "'Jost', sans-serif" }}>
+                {product.product_name}
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Right Navigation Button */}

@@ -95,7 +95,7 @@ class AnalyticsService:
         )
     
     async def get_sales_report(self, year: int = None) -> SalesReport:
-        """Get monthly sales data for chart"""
+        """Get monthly sales data keyed by completion date with MoM growth (None = N/A)"""
         if year is None:
             year = datetime.now().year
         
@@ -103,53 +103,70 @@ class AnalyticsService:
         end_date = datetime(year, 12, 31, 23, 59, 59)
         
         # Get completed orders for the year
-        orders_response = self.supabase.table('orders').select('total_amount, created_at, status').gte('created_at', start_date.isoformat()).lte('created_at', end_date.isoformat()).eq('status', 'complete').execute()
+        start_iso = start_date.isoformat()
+        end_iso = end_date.isoformat()
+        
+        orders_response = (
+            self.supabase.table('orders')
+            .select('total_amount, completed_at, created_at, status')
+            .gte('completed_at', start_iso)
+            .lte('completed_at', end_iso)
+            .eq('status', 'complete')
+            .execute()
+        )
         orders_data = orders_response.data or []
+        monthly_totals = {i: {'sales': 0.0, 'orders': 0} for i in range(1, 13)}
         
         # Process with pandas
         if orders_data:
             df_orders = pd.DataFrame(orders_data)
             df_orders['total_amount'] = pd.to_numeric(df_orders['total_amount'], errors='coerce').fillna(0)
-            df_orders['created_at'] = pd.to_datetime(df_orders['created_at']).dt.tz_localize(None)
-            df_orders['month'] = df_orders['created_at'].dt.month
+            # Fallback to created_at when completed_at missing
+            df_orders['completed_at'] = df_orders['completed_at'].fillna(df_orders['created_at'])
+            df_orders['completed_at'] = pd.to_datetime(df_orders['completed_at']).dt.tz_localize(None)
+            df_orders['month'] = df_orders['completed_at'].dt.month
             
             # Group by month
-            monthly_data = df_orders.groupby('month').agg({
-                'total_amount': 'sum',
-                'created_at': 'count'
-            }).rename(columns={'created_at': 'orders'})
+            monthly_data = (
+                df_orders.groupby('month')
+                .agg({'total_amount': 'sum', 'completed_at': 'count'})
+                .rename(columns={'completed_at': 'orders'})
+            )
+            for month, data in monthly_data.iterrows():
+                monthly_totals[int(month)] = {
+                    'sales': float(data['total_amount']),
+                    'orders': int(data['orders'])
+                }
+        
+        monthly_array = []
+        previous_sales = None
+        for i in range(1, 13):
+            month_name = datetime(year, i, 1).strftime('%B')
+            sales = monthly_totals[i]['sales']
+            orders = monthly_totals[i]['orders']
             
-            # Create monthly array
-            monthly_array = []
-            for i in range(1, 13):
-                month_name = datetime(year, i, 1).strftime('%B')
-                sales = monthly_data.loc[i, 'total_amount'] if i in monthly_data.index else 0
-                orders = monthly_data.loc[i, 'orders'] if i in monthly_data.index else 0
-                
-                # Calculate growth
-                growth = "0"
-                if i > 1:
-                    prev_sales = monthly_data.loc[i-1, 'total_amount'] if i-1 in monthly_data.index else 0
-                    if prev_sales > 0:
-                        growth = f"{((sales - prev_sales) / prev_sales * 100):.1f}"
-                
-                monthly_array.append(SalesReportMonth(
-                    month=month_name,
-                    sales=float(sales),
-                    orders=int(orders),
-                    growth=growth
-                ))
-        else:
-            monthly_array = [
-                SalesReportMonth(month=datetime(year, i, 1).strftime('%B'), sales=0, orders=0, growth="0")
-                for i in range(1, 13)
-            ]
+            # Preserve None when there is no prior baseline so UI can render N/A
+            growth = None
+            if previous_sales is not None:
+                if previous_sales > 0:
+                    growth = f"{((sales - previous_sales) / previous_sales * 100):.1f}"
+                elif previous_sales == 0:
+                    growth = "0.0" if sales == 0 else None
+            
+            monthly_array.append(SalesReportMonth(
+                month=month_name,
+                sales=float(sales),
+                orders=int(orders),
+                growth=growth
+            ))
+            previous_sales = sales
         
         # Calculate summary
         total_sales = sum(month.sales for month in monthly_array)
         total_orders = sum(month.orders for month in monthly_array)
-        growth_values = [float(month.growth) for month in monthly_array[1:] if month.growth != "0"]
-        average_growth = f"{np.mean(growth_values):.1f}" if growth_values else "0"
+        # Average only across months with a real percentage (None represents N/A)
+        growth_values = [float(month.growth) for month in monthly_array if month.growth not in (None, "N/A")]
+        average_growth = f"{np.mean(growth_values):.1f}" if growth_values else "0.0"
         
         return SalesReport(
             monthly=monthly_array,

@@ -88,18 +88,22 @@ router.get('/stock-status', authenticate, async (req, res) => {
 
       const stockStatus = combinedData.map(product => {
         const stock = product.product_stock || {};
-        const currentQty = stock.current_quantity || 0;
-        const displayQty = stock.display_quantity || 0;
+        const currentQty = Number(stock.current_quantity) || 0;
+        const displayQty = Number(stock.display_quantity) || 0;
+        const reservedQty = Number(stock.reserved_quantity) || 0;
+        const syncedDisplay = displayQty + reservedQty;
+        const needsSync = currentQty !== syncedDisplay;
 
         return {
           product_id: product.product_id,
           product_name: product.product_name,
           current_quantity: currentQty,
           display_quantity: displayQty,
-          reserved_quantity: stock.reserved_quantity || 0,
-          needs_sync: currentQty !== displayQty,
+          reserved_quantity: reservedQty,
+          effective_display: syncedDisplay,
+          needs_sync: needsSync,
           last_sync_at: stock.last_sync_at,
-          difference: currentQty - displayQty,
+          difference: needsSync ? currentQty - syncedDisplay : 0,
           has_stock_entry: !!stock.product_id
         };
       });
@@ -123,18 +127,22 @@ router.get('/stock-status', authenticate, async (req, res) => {
 
     const stockStatus = data.map(product => {
       const stock = product.product_stock || {};
-      const currentQty = stock.current_quantity || 0;
-      const displayQty = stock.display_quantity || 0;
+      const currentQty = Number(stock.current_quantity) || 0;
+      const displayQty = Number(stock.display_quantity) || 0;
+      const reservedQty = Number(stock.reserved_quantity) || 0;
+      const syncedDisplay = displayQty + reservedQty;
+      const needsSync = currentQty !== syncedDisplay;
 
       return {
         product_id: product.product_id,
         product_name: product.product_name,
         current_quantity: currentQty,
         display_quantity: displayQty,
-        reserved_quantity: stock.reserved_quantity || 0,
-        needs_sync: currentQty !== displayQty,
+        reserved_quantity: reservedQty,
+        effective_display: syncedDisplay,
+        needs_sync: needsSync,
         last_sync_at: stock.last_sync_at,
-        difference: currentQty - displayQty,
+        difference: needsSync ? currentQty - syncedDisplay : 0,
         has_stock_entry: !!stock.current_quantity || !!stock.display_quantity
       };
     });

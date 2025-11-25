@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Izaj Lighting Centre",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "identifier": "com.izaj.lightingcentre",
   "build": {
     "frontendDist": "../dist",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Izaj Lighting Centre v1.0.2",
+        "title": "Izaj Lighting Centre v1.0.3",
         "width": 1024,
         "height": 768,
         "resizable": true,
@@ -23,7 +23,9 @@
       "csp": null,
       "assetProtocol": {
         "enable": true,
-        "scope": ["**"]
+        "scope": [
+          "**"
+        ]
       }
     },
     "withGlobalTauri": true
@@ -41,7 +43,9 @@
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["izaj"]
+        "schemes": [
+          "izaj"
+        ]
       }
     }
   }

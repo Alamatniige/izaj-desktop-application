@@ -2,6 +2,7 @@ import { Icon } from '@iconify/react';
 import { useState, useCallback } from 'react';
 import { AddProductModal } from '../components/AddProductModal';
 import { ViewProductModal } from '../components/ViewProductModal';
+import { ManageStockModal } from '../components/ManageStockModal';
 import Stock from './Stock';
 import Sale from './sale';
 import { ViewType } from '../types';
@@ -20,7 +21,7 @@ import {
   getBranchName
 } from '../utils/productUtils';
 import { useFilter } from '../hooks/useFilter';
-import { FetchedProduct } from '../types/product';
+import { FetchedProduct, StockItem } from '../types/product';
 import { useEffect } from 'react';
 
 interface ProductsProps {
@@ -35,6 +36,7 @@ export function Products({ showAddProductModal, setShowAddProductModal, session,
   const [view, setView] = useState<ViewType>('products');
   const [selectedProductForView, setSelectedProductForView] = useState<FetchedProduct | null>(null);
   const [showAddSaleModal, setShowAddSaleModal] = useState(false);
+  const [showManageStockModal, setShowManageStockModal] = useState(false);
   
   const {
     publishedProducts,
@@ -54,6 +56,7 @@ export function Products({ showAddProductModal, setShowAddProductModal, session,
     updatePublishedProducts,
     mediaUrlsMap,
     removeProduct,
+    checkStockStatus,
   } = useProducts(session);
 
   const { 
@@ -102,6 +105,22 @@ const handleViewChange = (newView: ViewType) => {
     }
   }, [refreshProductsData, setShowAddProductModal]);
 
+  const handleManageStockModalClose = useCallback(async (shouldRefresh: boolean = false) => {
+    setShowManageStockModal(false);
+
+    if (shouldRefresh) {
+      await refreshProductsData();
+      // Check stock status after syncing to update the "Sync Stock" button visibility
+      await checkStockStatus();
+    }
+  }, [refreshProductsData, checkStockStatus]);
+
+  const handleSyncProductsClick = useCallback(async () => {
+    await handleFetchProducts(true);
+    // After syncing products, check stock status to see if sync stock button should appear
+    // The sync stock button will appear automatically if there are products needing sync
+  }, [handleFetchProducts]);
+
   // Ensure product cards reflect latest stock once initial data is loaded
   useEffect(() => {
     if (hasLoadedFromDB) {
@@ -117,7 +136,7 @@ const handleViewChange = (newView: ViewType) => {
     }
     const pidStr = String(p.product_id).trim();
     const pidNum = Number(pidStr);
-    const match = stockStatus.products.find((s: { product_id: string; display_quantity: number }) => {
+    const match = stockStatus.products.find((s: StockItem) => {
       const sidStr = String(s.product_id).trim();
       if (sidStr === pidStr) return true;
       const sidNum = Number(sidStr);
@@ -221,7 +240,7 @@ const handleViewChange = (newView: ViewType) => {
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
                   {/* Sync Products Button */}
                   <button
-                    onClick={() => handleFetchProducts(true)}
+                    onClick={handleSyncProductsClick}
                     disabled={isFetching}
                     className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 ${
                       fetchSuccess && !isFetching
@@ -229,7 +248,7 @@ const handleViewChange = (newView: ViewType) => {
                         : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
                     }`}
                     style={{ fontFamily: "'Jost', sans-serif" }}
-                    title="Sync new products (incremental)"
+                    title="Sync products from centralized inventory (updates current_quantity only)"
                   >
                     <Icon 
                       icon={isFetching ? "mdi:loading" : fetchSuccess ? "mdi:check" : "mdi:refresh"} 
@@ -237,6 +256,24 @@ const handleViewChange = (newView: ViewType) => {
                     />
                     <span className="text-sm">{isFetching ? 'Syncing...' : fetchSuccess ? 'Synced' : 'Sync Products'}</span>
                   </button>
+
+                  {/* Sync Stock Button - Only show when there are products needing sync */}
+                  {stockStatus?.needsSync > 0 && (
+                    <button
+                      onClick={() => setShowManageStockModal(true)}
+                      className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 bg-yellow-500 text-white hover:bg-yellow-600 relative"
+                      style={{ fontFamily: "'Jost', sans-serif" }}
+                      title="Sync stock quantities (update display_quantity from current_quantity)"
+                    >
+                      <Icon icon="mdi:sync" className="text-lg" />
+                      <span className="text-sm">Sync Stock</span>
+                      {stockStatus.needsSync > 0 && (
+                        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5 shadow-lg">
+                          {stockStatus.needsSync}
+                        </span>
+                      )}
+                    </button>
+                  )}
 
                   {/* Add Product button */}
                   <button
@@ -459,6 +496,14 @@ const handleViewChange = (newView: ViewType) => {
                 fetchedProducts={pendingProducts}
               />
             )}
+            {/* Manage Stock Modal */}
+            {showManageStockModal && (
+              <ManageStockModal
+                session={session}
+                onClose={handleManageStockModalClose}
+              />
+            )}
+
             {/* View Product Modal */}
             {selectedProductForView && (
             <ViewProductModal

@@ -273,19 +273,10 @@ const Dashboard = ({ session, isActive = true, adminContext }: DashboardProps) =
                                         <option value={new Date().getFullYear() - 1}>{new Date().getFullYear() - 1}</option>
                                       </select>
                                     </div>
-                                    <div className="flex flex-col items-center gap-2 mb-6">
-                                      <span className="text-4xl font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
+                                    <div className="flex flex-col items-center justify-center gap-2 mb-6 min-h-[140px]">
+                                      <span className="text-4xl font-bold text-gray-800 dark:text-slate-100 text-center" style={{ fontFamily: "'Jost', sans-serif" }}>
                                         {stats?.earnings.total ? formatCurrency(stats.earnings.total) : '₱0.00'}
                                       </span>
-                                      {stats && stats.earnings.growth && parseFloat(stats.earnings.growth) !== 0 && (
-                                        <span className={`text-sm font-medium px-2 py-1 rounded-full ${
-                                          parseFloat(stats.earnings.growth) >= 0 
-                                            ? 'text-green-600 bg-green-100' 
-                                            : 'text-red-600 bg-red-100'
-                                        }`} style={{ fontFamily: "'Jost', sans-serif" }}>
-                                          {stats.earnings.growth}%
-                                        </span>
-                                      )}
                                     </div>
                                     <div className="text-gray-400 dark:text-gray-500 text-xs" style={{ fontFamily: "'Jost', sans-serif" }}>
                                       Revenue from completed orders

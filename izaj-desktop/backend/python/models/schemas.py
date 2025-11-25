@@ -32,7 +32,7 @@ class SalesReportMonth(BaseModel):
     month: str
     sales: float
     orders: int
-    growth: str
+    growth: Optional[str] = None
 
 class SalesReportSummary(BaseModel):
     totalSales: str
