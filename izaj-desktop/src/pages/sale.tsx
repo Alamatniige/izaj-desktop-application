@@ -12,6 +12,7 @@ import {
   getStatusText,
   getCategoryName,
 } from "../utils/productUtils";
+import { RefreshButton } from "../components/RefreshButton";
 
 interface SaleProps {
   showAddSaleModal: boolean;
@@ -177,10 +178,10 @@ export default function Sale({
 
           { /* Filter and search controls */}
           <div className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-700 dark:to-slate-800 rounded-2xl p-6 mb-4 border border-gray-100 dark:border-slate-700 shadow-sm">
-            <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 xl:gap-8">
-              {/* Search and Filter Controls */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto">
-                {/* Search Bar */}
+            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
+              {/* Search, Filter, and Refresh Controls */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full">
+                {/* Search Bar (left) */}
                 <div className="relative flex-1 sm:flex-none sm:w-80">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Icon icon="mdi:magnify" className="h-5 w-5 text-gray-400 dark:text-slate-500" />
@@ -195,7 +196,10 @@ export default function Sale({
                   />
                 </div>
 
-                {/* Category Filter */}
+                {/* Spacer */}
+                <div className="flex-1 hidden sm:block" />
+
+                {/* Category Filter (right) */}
                 <div className="relative">
                   <select
                     value={selectedCategory}
@@ -216,6 +220,8 @@ export default function Sale({
                     <Icon icon="mdi:chevron-down" className="h-5 w-5 text-gray-400 dark:text-slate-400" />
                   </div>
                 </div>
+                
+                <RefreshButton onClick={refreshProductsData} tooltip="Refresh Sales" />
               </div>
             </div>
           </div>

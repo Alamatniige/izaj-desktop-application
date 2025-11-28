@@ -80,7 +80,6 @@ export const mergeStockIntoProducts = (
     const productId = String(item.product_id).trim();
     const displayQty = item.display_quantity ?? 0;
     stockMap.set(productId, displayQty);
-    console.log(`📦 [mergeStock] Product ${productId}: display_quantity = ${displayQty}`);
   });
 
   // Merge stock data into products
@@ -99,7 +98,6 @@ export const mergeStockIntoProducts = (
     };
   });
 
-  console.log(`✅ [mergeStock] Merged stock data for ${merged.length} products`);
   return merged;
 };
 

@@ -60,7 +60,7 @@ async def get_sales_report(year: Optional[int] = Query(None, description="Year f
 
 @router.get("/best-selling", response_model=BestSellingResponse)
 async def get_best_selling_products(
-    limit: int = Query(10, description="Number of products to return"),
+    limit: int = Query(3, description="Number of products to return"),
     category: Optional[str] = Query(None, description="Filter by category")
 ):
     """Get best selling products"""
@@ -101,7 +101,7 @@ async def get_monthly_earnings(year: Optional[int] = Query(None, description="Ye
         raise HTTPException(status_code=500, detail=f"Failed to fetch monthly earnings: {str(e)}")
 
 @router.get("/category-sales", response_model=CategorySalesResponse)
-async def get_category_sales(limit: int = Query(10, description="Number of categories to return")):
+async def get_category_sales(limit: int = Query(3, description="Number of categories to return")):
     """Get sales data grouped by category"""
     try:
         logger.info(f"Fetching category sales - limit: {limit}")

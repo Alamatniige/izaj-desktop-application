@@ -11,33 +11,17 @@ const AcceptInvite: React.FC = () => {
 
     useEffect(() => {
         const activateInvite = async () => {
-            // Extract tokens from URL hash or query parameters
+            // Extract custom invite token from query parameters (new flow)
             const urlParams = new URLSearchParams(window.location.search);
-            const hash = window.location.hash;
-            
+            const inviteToken = urlParams.get('token');
+
             // Log for debugging
             console.log('🔍 [Accept Invite] Current URL:', window.location.href);
-            console.log('🔍 [Accept Invite] URL hash:', hash);
             console.log('🔍 [Accept Invite] URL search:', window.location.search);
-            
-            // Try to get tokens from URL hash (Supabase format)
-            // Supabase puts tokens in hash, but sometimes also in query params
-            const hashParams = new URLSearchParams(hash.substring(1));
-            const accessToken = hashParams.get('access_token') || urlParams.get('access_token');
-            const refreshToken = hashParams.get('refresh_token') || urlParams.get('refresh_token');
-            const type = hashParams.get('type') || urlParams.get('type');
-            
-            console.log('🔍 [Accept Invite] Access token found:', !!accessToken);
-            console.log('🔍 [Accept Invite] Refresh token found:', !!refreshToken);
-            console.log('🔍 [Accept Invite] Type:', type);
-            
-            // Validate token format (access token should be a JWT)
-            if (accessToken && !accessToken.includes('.')) {
-                console.warn('⚠️ [Accept Invite] Access token format looks invalid');
-            }
-            
-            if (!accessToken || !refreshToken) {
-                console.error('❌ [Accept Invite] Missing tokens in URL');
+            console.log('🔍 [Accept Invite] Invite token:', inviteToken);
+
+            if (!inviteToken) {
+                console.error('❌ [Accept Invite] Missing invite token in URL');
                 setError('Invalid or missing invite link. Please request a new invitation.');
                 return;
             }
@@ -47,15 +31,14 @@ const AcceptInvite: React.FC = () => {
             setSuccess('');
 
             try {
-                // Call backend to activate user account
-                const response = await fetch(`${API_URL}/api/admin/activate-invite`, {
+                // Call backend to accept invite using custom token
+                const response = await fetch(`${API_URL}/api/admin/accept-invite`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        access_token: accessToken,
-                        refresh_token: refreshToken
+                        token: inviteToken
                     })
                 });
 
@@ -75,33 +58,16 @@ const AcceptInvite: React.FC = () => {
                     throw new Error(data.error || 'Failed to activate account');
                 }
 
-                // Mark invite as processed to prevent redirect loop
-                const inviteToken = `${accessToken}_${refreshToken}`;
-                localStorage.setItem('invite_processed', inviteToken);
-                localStorage.removeItem('invite_processing');
-
                 setSuccess('Account activated successfully! Redirecting to login...');
 
-                // Check if we're in a browser (not Tauri app)
-                const isTauri = typeof window !== 'undefined' && (window as any).__TAURI__ !== undefined;
-                
-                if (!isTauri && accessToken && refreshToken) {
-                    // Immediately redirect to deep link to open in desktop app
-                    const deepLink = `izaj://login#access_token=${encodeURIComponent(accessToken)}&refresh_token=${encodeURIComponent(refreshToken)}${type ? `&type=${encodeURIComponent(type)}` : ''}`;
-                    
-                    // Wait a bit to show success message, then redirect to deep link
-                    setTimeout(() => {
-                        // Try to redirect to deep link
-                        // This will open the desktop app if installed
-                        window.location.href = deepLink;
-                    }, 1500);
-                } else {
-                    // In Tauri app or no tokens, redirect to login page without tokens
-                    setTimeout(() => {
-                        // Clear URL completely and redirect to clean login page
-                        window.location.href = '/';
-                    }, 2000);
-                }
+                // For custom invite flow, always try to open the desktop app via deep link
+                const deepLink = 'izaj://login';
+
+                // Wait a bit to show success message, then redirect to deep link
+                setTimeout(() => {
+                    // Try to redirect to deep link (opens desktop app if installed)
+                    window.location.href = deepLink;
+                }, 1500);
             } catch (err) {
                 console.error('Error activating invite:', err);
                 setError(err instanceof Error ? err.message : 'Something went wrong. Please contact administrator.');

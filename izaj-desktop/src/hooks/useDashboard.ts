@@ -92,7 +92,7 @@ export const useDashboard = (session: Session | null) => {
             return { type: 'salesReport', error: true };
           }),
         
-        retryFetch(() => DashboardService.getBestSelling(session, 10))
+        retryFetch(() => DashboardService.getBestSelling(session, 3))
           .then(response => {
             if (abortController.signal.aborted) throw new Error('Aborted');
             return { type: 'bestSelling', data: response };
@@ -103,7 +103,7 @@ export const useDashboard = (session: Session | null) => {
             return { type: 'bestSelling', error: true };
           }),
         
-        retryFetch(() => DashboardService.getCategorySales(session, 10))
+        retryFetch(() => DashboardService.getCategorySales(session, 3))
           .then(response => {
             if (abortController.signal.aborted) throw new Error('Aborted');
             return { type: 'categorySales', data: response };

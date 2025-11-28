@@ -1,15 +1,13 @@
 import express from 'express';
+import crypto from 'crypto';
 import { supabase } from '../supabaseClient.js';
 import authenticate from '../util/middlerware.js';
 import { logAuditEvent, AuditActions } from '../util/auditLogger.js';
 import { isSuperAdmin } from '../util/adminContext.js';
+import { emailService } from '../util/emailService.js';
 
 const router = express.Router();
 
-
-// POST - Create new admin desktop side user (SuperAdmin only)
-// IMPORTANT: Admin users are ONLY stored in adminUser table, NOT in profiles table
-// Any profile entries that might be auto-created by database triggers are immediately deleted
 router.post('/addUsers', authenticate, async (req, res) => {
   try {
     // Check if requester is SuperAdmin
@@ -34,15 +32,10 @@ router.post('/addUsers', authenticate, async (req, res) => {
     
     const defaultPassword = 'admin1234';
     
-    // Use admin.createUser instead of signUp to ensure the user is immediately
-    // available in auth.users for the foreign key constraint
-    // email_confirm: false means they still need to confirm their email before logging in
-    // NOTE: This might trigger a database function that auto-creates a profile entry,
-    // but we will immediately delete it to ensure admin users only exist in adminUser table
     const { data, error } = await supabase.auth.admin.createUser({
       email,
       password: defaultPassword,
-      email_confirm: false, // User must confirm email before first login
+      email_confirm: true, // User is confirmed immediately
     });
 
     if (error) {
@@ -56,6 +49,10 @@ router.post('/addUsers', authenticate, async (req, res) => {
     }
 
     const userId = data.user.id;
+
+    // Generate invite token and expiration (7 days from now)
+    const inviteToken = crypto.randomBytes(32).toString('hex');
+    const inviteExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
     
     // Prepare adminUser data
     const adminUserData = {
@@ -75,10 +72,6 @@ router.post('/addUsers', authenticate, async (req, res) => {
       }
     }
 
-    // Insert into adminUser table
-    // The user_id references auth.users(id) which was created by admin.createUser above
-    // admin.createUser ensures the user is immediately available in auth.users
-    // Set initial status to false (inactive) - will be set to true when user accepts invite
     adminUserData.status = false;
     
     const { error: dbError } = await supabase
@@ -95,14 +88,24 @@ router.post('/addUsers', authenticate, async (req, res) => {
       return res.status(500).json({ error: dbError.message });
     }
 
-    // CRITICAL: Clean up any profile entry that might have been auto-created for this admin user
-    // Admin users should ONLY exist in adminUser table, NOT in profiles table
-    // This prevents admin users from being counted as customers in dashboard stats
+    // Store invite token in admin_invites table
+    const { error: inviteDbError } = await supabase
+      .from('admin_invites')
+      .insert([{
+        user_id: userId,
+        email,
+        token: inviteToken,
+        expires_at: inviteExpiresAt
+      }]);
+
+    if (inviteDbError) {
+      console.error('❌ [Invite] Failed to store invite token:', inviteDbError.message);
+      return res.status(500).json({ error: 'Failed to create invite token' });
+    }
+
     try {
-      // Wait a brief moment in case there's a database trigger that creates the profile asynchronously
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Delete from profiles table
       const { error: profileDeleteError, data: deletedProfiles } = await supabase
         .from('profiles')
         .delete()
@@ -169,39 +172,57 @@ router.post('/addUsers', authenticate, async (req, res) => {
       // Non-fatal error, but log it for monitoring
     }
 
-    // Send invitation email via Supabase (uses your configured SMTP — set Gmail in Supabase Auth settings)
+    // Send invitation email via SendGrid (using EmailService)
+    let inviteEmailSent = false;
     try {
       // Determine the redirect URL based on environment
       // For development, use localhost. For production, use the production URL
       const isDevelopment = process.env.NODE_ENV !== 'production';
-      const redirectUrl = isDevelopment 
+      const baseRedirectUrl = isDevelopment 
         ? 'http://localhost:3000/accept-invite'
         : (process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/accept-invite` : 'http://localhost:3000/accept-invite');
+
+      const inviteUrl = `${baseRedirectUrl}?token=${inviteToken}`;
       
-      console.log(`📧 [Invite] Sending invite to ${email} with redirect URL: ${redirectUrl}`);
-      console.log(`📧 [Invite] IMPORTANT: Make sure "${redirectUrl}" is added to Supabase Dashboard > Authentication > URL Configuration > Redirect URLs`);
-      console.log(`📧 [Invite] Also check: Site URL should be set to your frontend URL (e.g., http://localhost:3000)`);
+      console.log(`📧 [Invite] Sending invite (SendGrid) to ${email} with invite URL: ${inviteUrl}`);
       
-      // Use data parameter to get the invite link if needed
-      const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
-        redirectTo: redirectUrl,
-        data: {
-          redirect_url: redirectUrl // Additional data that might be used
-        }
+      const subject = 'You have been invited to IZAJ Admin';
+
+      const html = `
+        <p>Hi ${name || ''},</p>
+        <p>You have been invited to access the IZAJ Admin panel${role ? ` as <strong>${role}</strong>` : ''}.</p>
+        <p>Please click the button below to activate your account and open the app:</p>
+        <p>
+          <a href="${inviteUrl}" style="display:inline-block;padding:10px 20px;background-color:#000;color:#fff;text-decoration:none;border-radius:4px;">
+            Accept Invite
+          </a>
+        </p>
+        <p>If the button does not work, copy and paste this link into your browser:</p>
+        <p><a href="${inviteUrl}">${inviteUrl}</a></p>
+        <p>Thank you,<br/>IZAJ Trading</p>
+      `;
+
+      const text = `Hi ${name || ''},
+
+You have been invited to access the IZAJ Admin panel${role ? ` as ${role}` : ''}.
+
+Please open this link to activate your account and open the app:
+${inviteUrl}
+
+Thank you,
+IZAJ Trading`;
+
+      await emailService.sendEmail({
+        to: email,
+        subject,
+        html,
+        text,
       });
-      
-      if (inviteError) {
-        // Non-fatal: user is created; frontend can offer manual resend later
-        console.error('❌ [Invite] Failed to send invite email:', inviteError.message);
-        console.error('❌ [Invite] Error details:', JSON.stringify(inviteError, null, 2));
-      } else {
-        console.log(`✅ [Invite] Invite email sent successfully to ${email}`);
-        if (inviteData) {
-          console.log(`📧 [Invite] Invite data:`, JSON.stringify(inviteData, null, 2));
-        }
-      }
+
+      inviteEmailSent = true;
+      console.log(`✅ [Invite] Invite email sent successfully via SendGrid to ${email}`);
     } catch (inviteEx) {
-      console.error('❌ [Invite] Exception sending invite email:', inviteEx);
+      console.error('❌ [Invite] Exception sending invite email via SendGrid:', inviteEx);
     }
 
     await logAuditEvent(req.user.id, AuditActions.CREATE_USER, {
@@ -212,12 +233,18 @@ router.post('/addUsers', authenticate, async (req, res) => {
         role,
         is_super_admin: isSuperAdminUser
       },
-      success: true
+      success: true,
+      meta: {
+        inviteEmailSent
+      }
     }, req);
 
     res.status(201).json({
       success: true,
-      message: 'User created. Confirmation email sent.',
+      message: inviteEmailSent
+        ? 'User created. Confirmation email sent via SendGrid.'
+        : 'User created. Failed to send confirmation email via SendGrid. You can resend the invite later.',
+      inviteEmailSent,
       user: { id: userId, email, name, role, is_super_admin: isSuperAdminUser }
     });
   } catch (error) {
@@ -397,6 +424,87 @@ router.delete('/users/:id', authenticate, async (req, res) => {
   }
 });
 
+// POST - Accept invite using custom token (no authentication required)
+router.post('/accept-invite', async (req, res) => {
+  try {
+    const { token } = req.body || {};
+
+    if (!token) {
+      return res.status(400).json({ success: false, error: 'Missing invite token' });
+    }
+
+    // Look up invite by token
+    const { data: invite, error: inviteError } = await supabase
+      .from('admin_invites')
+      .select('id, user_id, email, expires_at, used_at')
+      .eq('token', token)
+      .maybeSingle();
+
+    if (inviteError) {
+      console.error('❌ [Accept Invite] Error fetching invite:', inviteError.message);
+      return res.status(500).json({ success: false, error: 'Failed to lookup invite token' });
+    }
+
+    if (!invite) {
+      return res.status(400).json({ success: false, error: 'Invalid invite token' });
+    }
+
+    // Check if already used
+    if (invite.used_at) {
+      return res.status(400).json({ success: false, error: 'Invite link has already been used' });
+    }
+
+    // Check expiration
+    if (invite.expires_at) {
+      const now = new Date();
+      const expiresAt = new Date(invite.expires_at);
+      if (expiresAt < now) {
+        return res.status(400).json({ success: false, error: 'Invite link has expired' });
+      }
+    }
+
+    // Activate admin user account
+    const { error: updateError } = await supabase
+      .from('adminUser')
+      .update({ status: true })
+      .eq('user_id', invite.user_id);
+
+    if (updateError) {
+      console.error('❌ [Accept Invite] Failed to activate admin user:', updateError.message);
+      return res.status(500).json({ success: false, error: 'Failed to activate user account' });
+    }
+
+    try {
+      await supabase.auth.admin.updateUserById(invite.user_id, {
+        email_confirmed_at: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('❌ [Accept Invite] Failed to confirm email:', error.message);
+    }
+
+    // Mark invite as used (non-fatal if this fails)
+    const usedAt = new Date().toISOString();
+    const { error: markUsedError } = await supabase
+      .from('admin_invites')
+      .update({ used_at: usedAt })
+      .eq('id', invite.id);
+
+    if (markUsedError) {
+      console.warn('⚠️ [Accept Invite] Failed to mark invite as used:', markUsedError.message);
+    }
+
+    return res.json({
+      success: true,
+      message: 'Invite accepted. You can now log in.',
+      user_id: invite.user_id,
+      email: invite.email,
+    });
+  } catch (error) {
+    console.error('❌ [Accept Invite] Unexpected error:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error', details: error.message });
+  }
+});
+
 // GET - Get admin assignments (categories and branches)
 router.get('/users/:id/assignments', authenticate, async (req, res) => {
   try {
@@ -509,35 +617,20 @@ router.put('/users/:id/assignments', authenticate, async (req, res) => {
   }
 });
 
-// POST - Activate user when they accept invite (no auth required, uses tokens from invite)
+// POST - Activate user when they accept invite (no auth required, uses user_id from client)
 router.post('/activate-invite', async (req, res) => {
   try {
-    const { access_token, refresh_token } = req.body;
+    const { user_id } = req.body || {};
 
-    if (!access_token || !refresh_token) {
-      return res.status(400).json({ error: 'Access token and refresh token are required' });
+    if (!user_id) {
+      return res.status(400).json({ error: 'user_id is required' });
     }
-
-    // Set session using the tokens from invite
-    const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-      access_token: access_token,
-      refresh_token: refresh_token
-    });
-
-    if (sessionError || !sessionData.session) {
-      console.error('Invalid invite tokens:', sessionError?.message);
-      return res.status(400).json({ 
-        error: sessionError?.message || 'Invalid or expired invite tokens. Please request a new invitation.' 
-      });
-    }
-
-    const userId = sessionData.session.user.id;
 
     // Check if user exists in adminUser table
     const { data: adminUser, error: fetchError } = await supabase
       .from('adminUser')
       .select('user_id, name, role, status')
-      .eq('user_id', userId)
+      .eq('user_id', user_id)
       .single();
 
     if (fetchError || !adminUser) {
@@ -550,21 +643,39 @@ router.post('/activate-invite', async (req, res) => {
       const { error: updateError } = await supabase
         .from('adminUser')
         .update({ status: true })
-        .eq('user_id', userId);
+        .eq('user_id', user_id);
 
       if (updateError) {
         console.error('Error updating user status:', updateError.message);
         return res.status(500).json({ error: 'Failed to activate account. Please contact administrator.' });
       }
 
-      console.log(`✅ User ${adminUser.name} (${userId}) activated after accepting invite`);
+      console.log(`✅ User ${adminUser.name} (${user_id}) activated after accepting invite`);
+    }
+
+    // ALSO confirm the Supabase auth email, similar to other flows
+    try {
+      const nowIso = new Date().toISOString();
+      const { error: confirmError } = await supabase.auth.admin.updateUserById(user_id, {
+        email_confirmed_at: nowIso,
+      });
+
+      if (confirmError) {
+        console.error('❌ [Activate Invite] Failed to confirm email in Supabase auth:', confirmError.message || confirmError);
+        // Do not fail the whole request; account is already activated in adminUser
+      } else {
+        console.log(`✅ [Activate Invite] Email confirmed in Supabase auth for user ${user_id}`);
+      }
+    } catch (confirmEx) {
+      console.error('❌ [Activate Invite] Exception while confirming email in Supabase auth:', confirmEx);
+      // Non-fatal: keep activation success
     }
 
     res.json({ 
       success: true, 
       message: 'Account activated successfully',
       user: {
-        id: userId,
+        id: user_id,
         name: adminUser.name,
         role: adminUser.role
       }

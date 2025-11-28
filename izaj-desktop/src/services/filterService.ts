@@ -54,8 +54,6 @@ export class FilterService {
       throw new Error('Failed to fetch active products');
     }
 
-      console.log('Active products returned from API:', data.products);
-
     return data.products;
   }
 
@@ -75,7 +73,6 @@ export class FilterService {
     return data.products;
   }
 
-  // Fetch on_sale 
   static async fetchOnsale(session: Session | null): Promise<FetchedProduct[]> {
     const response = await fetch(`${API_URL}/api/sales/onsale/products`, {
       method: 'GET',
@@ -83,8 +80,6 @@ export class FilterService {
     });
 
     const data = await response.json();
-
-    console.log('Raw Onsale Response:', data);
 
     // If API directly returns array
     if (!Array.isArray(data)) {

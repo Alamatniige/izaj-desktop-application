@@ -23,6 +23,7 @@ import {
 import { useFilter } from '../hooks/useFilter';
 import { FetchedProduct, StockItem } from '../types/product';
 import { useEffect } from 'react';
+import { RefreshButton } from '../components/RefreshButton';
 
 interface ProductsProps {
   showAddProductModal: boolean;
@@ -121,15 +122,18 @@ const handleViewChange = (newView: ViewType) => {
     // The sync stock button will appear automatically if there are products needing sync
   }, [handleFetchProducts]);
 
-  // Ensure product cards reflect latest stock once initial data is loaded
+  const handleManualRefresh = useCallback(async () => {
+    await refreshProductsData();
+    toast.success('Products refreshed');
+  }, [refreshProductsData]);
+
   useEffect(() => {
     if (hasLoadedFromDB) {
       updatePublishedProducts();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasLoadedFromDB]); // Only run when hasLoadedFromDB changes, not when updatePublishedProducts changes
-
-  // Helper: get latest stock using normalized product_id from stock-status
+  }, [hasLoadedFromDB]); 
+  
   const getLatestDisplayQty = useCallback((p: FetchedProduct): number => {
     if (!stockStatus || !Array.isArray(stockStatus.products)) {
       return p.display_quantity ?? 0;
@@ -282,7 +286,7 @@ const handleViewChange = (newView: ViewType) => {
                     style={{ fontFamily: "'Jost', sans-serif" }}
                   >
                     <Icon icon="mdi:plus-circle" className="text-lg text-yellow-400" />
-                    <span className="text-sm">Add Product</span>
+                    <span className="text-sm">Add New Product</span>
                     {pendingCount > 0 && (
                       <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5 shadow-lg">
                         {pendingCount}
@@ -363,12 +367,19 @@ const handleViewChange = (newView: ViewType) => {
                       >
                         {categories.map(cat => (
                           <option key={cat} value={cat}>{cat}</option>
-                        ))}
+                        ))} 
                       </select>
                       <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
                         <Icon icon="mdi:chevron-down" className="w-5 h-5 text-gray-400" />
                       </div>
                     </div>
+
+                    {/* Refresh Button */}
+                    <RefreshButton 
+                      onClick={handleManualRefresh}
+                      tooltip="Refresh products"
+                      isLoading={isFetching}
+                    />
                   </div>
                 </div>
               </div>
@@ -503,7 +514,6 @@ const handleViewChange = (newView: ViewType) => {
                 onClose={handleManageStockModalClose}
               />
             )}
-
             {/* View Product Modal */}
             {selectedProductForView && (
             <ViewProductModal
@@ -665,7 +675,7 @@ const handleViewChange = (newView: ViewType) => {
               }}
               session={session}
             />
-          )}
+            )}
 
           </>
         )}

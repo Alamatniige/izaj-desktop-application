@@ -49,15 +49,6 @@ export function ManageStockModal({
     };
   };
 
-  const formatSyncDate = (date?: string | null) => {
-    if (!date) return 'Never synced';
-    const dt = new Date(date);
-    return dt.toLocaleString([], {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    });
-  };
-
   const formatProductQuantities = (product: StockItem) => {
     const displayQty = Number(product.display_quantity ?? 0);
     const reservedQty = Number(product.reserved_quantity ?? 0);
@@ -95,8 +86,17 @@ export function ManageStockModal({
       const normalized = data.products || [];
       const needSync = normalized.filter((p) => p.needs_sync);
 
-      setProducts(needSync);
-      setSelected(needSync.map((p) => p.product_id));
+      const sortedNeedSync = [...needSync].sort((a, b) => {
+        const codeA = (a.product_id ?? '').toString();
+        const codeB = (b.product_id ?? '').toString();
+        if (!codeA && !codeB) return 0;
+        if (!codeA) return 1;
+        if (!codeB) return -1;
+        return codeA.localeCompare(codeB, undefined, { numeric: true, sensitivity: 'base' });
+      });
+
+      setProducts(sortedNeedSync);
+      setSelected(sortedNeedSync.map((p) => p.product_id));
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Error loading stock status';
       setError(message);
@@ -160,7 +160,7 @@ export function ManageStockModal({
                 <Icon icon="mdi:sync" className="text-2xl" />
               </span>
               <div>
-                <h2 className="text-2xl font-semibold text-slate-900 dark:text-white">Inventory Sync Center</h2>
+                <h2 className="text-2xl font-semibold text-slate-900 dark:text-white">Inventory Stock Sync</h2>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                   Monitor differences between actual and displayed quantities in real time.
                 </p>
@@ -228,17 +228,16 @@ export function ManageStockModal({
                     <table className="min-w-full text-sm">
                       <thead className="sticky top-0 bg-slate-50/90 text-xs font-semibold uppercase tracking-wide text-slate-500 backdrop-blur dark:bg-slate-800/80 dark:text-slate-300">
                         <tr>
+                          <th className="px-4 py-3 text-left">Product Code</th>
                           <th className="px-4 py-3 text-left">Product</th>
-                          <th className="px-4 py-3 text-right">Current</th>
-                          <th className="px-4 py-3 text-right">Display</th>
-                          <th className="px-4 py-3 text-right">Reserved</th>
-                          <th className="px-4 py-3 text-center">Status</th>
-                          <th className="px-4 py-3 text-right">Last Sync</th>
+                          <th className="px-4 py-3 text-right">Inventory Stock</th>
+                          <th className="px-4 py-3 text-right">E-commerce Stock</th>
+                          <th className="px-4 py-3 text-center">Changes</th>
                         </tr>
                       </thead>
                       <tbody>
                         {products.map((product) => {
-                          const { displayQty, reservedQty, currentQty, difference } = formatProductQuantities(product);
+                          const { displayQty, currentQty, difference } = formatProductQuantities(product);
                           const badge = getDifferenceBadge(difference);
                           const isChecked = selected.includes(product.product_id);
 
@@ -249,6 +248,9 @@ export function ManageStockModal({
                                 isChecked ? 'bg-yellow-50/80 dark:bg-yellow-500/10' : 'bg-white/50 dark:bg-transparent'
                               }`}
                             >
+                              <td className="px-4 py-4 text-left font-mono text-xs text-slate-600 dark:text-slate-300">
+                                {product.product_id ? `PC-${product.product_id}` : '—'}
+                              </td>
                               <td className="px-4 py-4">
                                 <div className="flex items-start gap-3">
                                   <input
@@ -262,15 +264,17 @@ export function ManageStockModal({
                                   </div>
                                 </div>
                               </td>
-                              <td className="px-4 py-4 text-right font-medium text-slate-900 dark:text-slate-100">{currentQty}</td>
-                              <td className="px-4 py-4 text-right text-slate-500 dark:text-slate-400">{displayQty}</td>
-                              <td className="px-4 py-4 text-right text-slate-500 dark:text-slate-400">{reservedQty}</td>
+                              <td className="px-4 py-4 text-right font-medium text-slate-900 dark:text-slate-100">
+                                {currentQty}
+                              </td>
+                              <td className="px-4 py-4 text-right text-slate-500 dark:text-slate-400">
+                                {displayQty}
+                              </td>
                               <td className="px-4 py-4 text-center">
                                 <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${badge.className}`}>
                                   {badge.label}
                                 </span>
                               </td>
-                              <td className="px-4 py-4 text-right text-xs text-slate-400 dark:text-slate-500">{formatSyncDate(product.last_sync_at)}</td>
                             </tr>
                           );
                         })}

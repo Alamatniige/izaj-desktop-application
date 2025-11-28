@@ -9,7 +9,7 @@ export const mapProductToFormData = (product: FetchedProduct): ProductFormData =
       ? product.category
       : product.category?.category_name ?? '',
     price: product.price.toString(),
-    image: product.image_url ?? ''
+    image: Array.isArray(product.media_urls) ? product.media_urls[0] ?? '' : (typeof product.media_urls === 'string' ? product.media_urls : '')
   };
 };
 

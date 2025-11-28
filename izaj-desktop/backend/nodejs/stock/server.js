@@ -6,6 +6,35 @@ import authenticate from '../util/middlerware.js';
 
 const router = express.Router();
 
+const buildStockStatusEntry = (product, stock = {}) => {
+  const currentQty = Number(stock.current_quantity ?? 0);
+  const displayQty = Number(stock.display_quantity ?? 0);
+  const reservedQty = Number(stock.reserved_quantity ?? 0);
+  const effectiveDisplay = displayQty + reservedQty;
+  const inventoryUpdatedAt = stock.inventory_updated_at || null;
+  const displaySyncedAt = stock.display_synced_at || null;
+  const inventoryTime = inventoryUpdatedAt ? new Date(inventoryUpdatedAt).getTime() : null;
+  const displaySyncTime = displaySyncedAt ? new Date(displaySyncedAt).getTime() : null;
+  const hasInventoryUpdate = typeof inventoryTime === 'number' && (!displaySyncTime || inventoryTime > displaySyncTime);
+  const displayLagging = currentQty > effectiveDisplay;
+  const needsSync = Boolean(hasInventoryUpdate || (!inventoryTime && displayLagging));
+
+  return {
+    product_id: product.product_id,
+    product_name: product.product_name,
+    current_quantity: currentQty,
+    display_quantity: displayQty,
+    reserved_quantity: reservedQty,
+    effective_display: effectiveDisplay,
+    needs_sync: needsSync,
+    last_sync_at: stock.last_sync_at,
+    inventory_updated_at: inventoryUpdatedAt,
+    display_synced_at: displaySyncedAt,
+    difference: needsSync ? Math.max(currentQty - effectiveDisplay, 0) : 0,
+    has_stock_entry: !!(stock.product_id || stock.current_quantity !== undefined || stock.display_quantity !== undefined)
+  };
+};
+
 // GET /api/products/stock-summary - Get basic stock summary for admin dashboard
 router.get('/stock-summary', authenticate, async (req, res) => {
   try {
@@ -48,7 +77,9 @@ router.get('/stock-status', authenticate, async (req, res) => {
           current_quantity,
           display_quantity,
           reserved_quantity,
-          last_sync_at
+          last_sync_at,
+          inventory_updated_at,
+          display_synced_at
         )
       `)
       .eq('publish_status', true);
@@ -69,7 +100,7 @@ router.get('/stock-status', authenticate, async (req, res) => {
 
       const { data: stocks, error: stocksError } = await supabase
         .from('product_stock')
-        .select('product_id, current_quantity, display_quantity, reserved_quantity, last_sync_at');
+        .select('product_id, current_quantity, display_quantity, reserved_quantity, last_sync_at, inventory_updated_at, display_synced_at');
 
       if (stocksError) {
         return res.status(500).json({ error: stocksError.message });
@@ -87,25 +118,10 @@ router.get('/stock-status', authenticate, async (req, res) => {
       }));
 
       const stockStatus = combinedData.map(product => {
-        const stock = product.product_stock || {};
-        const currentQty = Number(stock.current_quantity) || 0;
-        const displayQty = Number(stock.display_quantity) || 0;
-        const reservedQty = Number(stock.reserved_quantity) || 0;
-        const syncedDisplay = displayQty + reservedQty;
-        const needsSync = currentQty !== syncedDisplay;
-
-        return {
-          product_id: product.product_id,
-          product_name: product.product_name,
-          current_quantity: currentQty,
-          display_quantity: displayQty,
-          reserved_quantity: reservedQty,
-          effective_display: syncedDisplay,
-          needs_sync: needsSync,
-          last_sync_at: stock.last_sync_at,
-          difference: needsSync ? currentQty - syncedDisplay : 0,
-          has_stock_entry: !!stock.product_id
-        };
+        const rawStock = Array.isArray(product.product_stock)
+          ? product.product_stock[0]
+          : product.product_stock;
+        return buildStockStatusEntry(product, rawStock || {});
       });
 
       await logAuditEvent(req.user.id, 'VIEW_STOCK_STATUS', {
@@ -126,25 +142,13 @@ router.get('/stock-status', authenticate, async (req, res) => {
     }
 
     const stockStatus = data.map(product => {
-      const stock = product.product_stock || {};
-      const currentQty = Number(stock.current_quantity) || 0;
-      const displayQty = Number(stock.display_quantity) || 0;
-      const reservedQty = Number(stock.reserved_quantity) || 0;
-      const syncedDisplay = displayQty + reservedQty;
-      const needsSync = currentQty !== syncedDisplay;
-
-      return {
-        product_id: product.product_id,
-        product_name: product.product_name,
-        current_quantity: currentQty,
-        display_quantity: displayQty,
-        reserved_quantity: reservedQty,
-        effective_display: syncedDisplay,
-        needs_sync: needsSync,
-        last_sync_at: stock.last_sync_at,
-        difference: needsSync ? currentQty - syncedDisplay : 0,
-        has_stock_entry: !!stock.current_quantity || !!stock.display_quantity
-      };
+      let stock = {};
+      if (Array.isArray(product.product_stock)) {
+        stock = product.product_stock[0] || {};
+      } else if (product.product_stock && typeof product.product_stock === 'object') {
+        stock = product.product_stock;
+      }
+      return buildStockStatusEntry(product, stock);
     });
 
 
@@ -256,7 +260,7 @@ router.post('/sync-stock', authenticate, async (req, res) => {
 
     const { data: stocks, error: fetchError } = await supabase
       .from('product_stock')
-      .select('product_id, current_quantity')
+      .select('product_id, current_quantity, reserved_quantity, inventory_updated_at')
       .in('product_id', productIds);
 
     if (fetchError) {
@@ -267,14 +271,19 @@ router.post('/sync-stock', authenticate, async (req, res) => {
     const timestamp = new Date().toISOString();
 
     for (const stock of stocks) {
+      const reservedQty = Number(stock.reserved_quantity ?? 0);
+      const currentQty = Number(stock.current_quantity ?? 0);
+      const calculatedDisplay = Math.max(currentQty - reservedQty, 0);
+      const displaySyncedAt = stock.inventory_updated_at || timestamp;
       const { data: updatedStock, error: upsertError } = await supabase
         .from('product_stock')
         .upsert({
           product_id: stock.product_id,
-          current_quantity: stock.current_quantity,
-          display_quantity: stock.current_quantity,
+          current_quantity: currentQty,
+          display_quantity: calculatedDisplay,
           last_sync_at: timestamp,
-          updated_at: timestamp
+          updated_at: timestamp,
+          display_synced_at: displaySyncedAt
         }, {
           onConflict: 'product_id'
         })

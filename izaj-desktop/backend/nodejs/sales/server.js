@@ -21,8 +21,6 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
   }
 });
 
-console.log('✅ Sales routes module loaded - Notification system ready');
-
 const router = express.Router();
 
 // Get all published products
@@ -43,8 +41,6 @@ router.get('/products', async (req, res, next) => {
 // Get all published products on sale with sale details
 router.get('/onsale/products', async (req, res, next) => {
   try {
-    console.log('📋 [OnSale Products] Fetching products with on_sale = true');
-    
     // Fetch all products marked as on_sale with their sale details
     const { data, error } = await supabase
       .from('products')
@@ -63,8 +59,6 @@ router.get('/onsale/products', async (req, res, next) => {
       });
     }
     
-    console.log(`📊 [OnSale Products] Found ${data?.length || 0} products with on_sale = true`);
-    
     // Filter for published products
     const publishedData = data?.filter(p => p.publish_status === true) || [];
     
@@ -76,9 +70,6 @@ router.get('/onsale/products', async (req, res, next) => {
       sale_count: p.sale?.length || 0,
       sale_ids: p.sale?.map(s => s.id) || []
     }));
-    
-    console.log(`📊 [OnSale Products] After filtering published: ${publishedData.length} products`);
-    console.log(`📋 [OnSale Products] Product details with sale counts:`, productSaleCounts);
     
     // Check for products with on_sale = true but no active sales
     const productsWithoutSales = publishedData.filter(p => (!p.sale || p.sale.length === 0));
@@ -135,9 +126,6 @@ router.get('/all', async (req, res, next) => {
 
 // Create a new sale
 router.post('/create', async (req, res, next) => {
-  console.log('\n🔵 [ENDPOINT HIT] POST /sales/create');
-  console.log('Request body:', req.body);
-  
   try {
     const { product_id, percentage, fixed_amount, start_date, end_date } = req.body;
 
@@ -321,13 +309,10 @@ router.post('/create', async (req, res, next) => {
         .select('email, is_active, id')
         .limit(10);
       
-      console.log('🔍 [Debug] Checking newsletter_subscribers table...');
       if (allError) {
         console.error('❌ [Debug] Error fetching all subscribers:', allError);
       } else {
-        console.log(`📊 [Debug] Total subscribers in table: ${allSubscribers?.length || 0}`);
         if (allSubscribers && allSubscribers.length > 0) {
-          console.log('📋 [Debug] Sample subscribers:');
           allSubscribers.forEach((sub, idx) => {
             console.log(`   ${idx + 1}. Email: ${sub.email}, is_active: ${sub.is_active}, id: ${sub.id}`);
           });
@@ -345,19 +330,11 @@ router.post('/create', async (req, res, next) => {
         console.error('❌ [Notification] ERROR fetching active subscribers:', subscribersError);
         console.error('Error details:', JSON.stringify(subscribersError, null, 2));
       } else if (!subscribers || subscribers.length === 0) {
-        console.log('⚠️ [Notification] WARNING: No active subscribers found in database');
-        console.log('   Make sure you have subscribers with is_active = true in newsletter_subscribers table');
-        console.log(`   Found ${allSubscribers?.length || 0} total subscriber(s) in table`);
         if (allSubscribers && allSubscribers.length > 0) {
           const activeCount = allSubscribers.filter(s => s.is_active === true).length;
           const inactiveCount = allSubscribers.filter(s => s.is_active === false || s.is_active === null).length;
-          console.log(`   Active: ${activeCount}, Inactive/Null: ${inactiveCount}`);
         }
-        console.log('');
       } else {
-        console.log(`✅ [Notification] Found ${subscribers.length} active subscriber(s)`);
-        console.log('Subscriber emails:', subscribers.map(s => s.email).join(', '));
-        console.log('');
         
         const webAppUrl = process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://izaj-lighting-centre.netlify.app';
         const productName = product.product_name || 'Product';
@@ -374,20 +351,14 @@ router.post('/create', async (req, res, next) => {
         // Get product image if available
         const { data: productData } = await supabase
           .from('products')
-          .select('image_url, media_urls')
+          .select('media_urls')
           .eq('id', product.id)
           .single();
         
-        const productImageUrl = productData?.image_url || productData?.media_urls?.[0] || null;
+        const productImageUrl = productData?.media_urls?.[0] || null;
         // Use product_id (Shopify ID) for the URL, not the database UUID
         // The website expects numeric product_id in the URL
         const productId = product.product_id || product.id;
-        console.log('📧 [Sale Notification] Product ID for email link:', {
-          product_id: product.product_id,
-          database_id: product.id,
-          using: productId,
-          type: typeof productId
-        });
         
         // Create beautiful sale notification template
         const notificationHtml = emailService.createSaleNotificationTemplate(
@@ -400,7 +371,6 @@ router.post('/create', async (req, res, next) => {
           productId
         );
         
-        console.log('📤 Starting to send email notifications...');
         let successCount = 0;
         let failCount = 0;
         
@@ -428,7 +398,7 @@ router.post('/create', async (req, res, next) => {
           console.log(`   Total: ${subscribers.length}`);
           console.log(`   Success: ${successCount}`);
           console.log(`   Failed: ${failCount}`);
-          console.log('========================================\n');
+          console.log('========================================\n');  
         }).catch(err => {
           console.error('❌ [Notification] CRITICAL ERROR in notification process:', err);
           console.error('Error stack:', err.stack);

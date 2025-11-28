@@ -1,6 +1,5 @@
 import { Icon } from '@iconify/react';
 import { useState, useEffect, useCallback } from 'react';
-import { FetchedProductSlide } from './FetchedProductSlide';
 import { MediaDropzone } from './MediaDropzone';
 import { useModal } from '../hooks/useModal';
 import { AddProductModalProps } from '../types/modal';
@@ -21,7 +20,6 @@ export function AddProductModal({
   const {
     showFullForm,
     selectedProduct,
-    currentIndex,
     isPublishing,
     uploading,
     previewUrls,
@@ -37,9 +35,8 @@ export function AddProductModal({
     // Actions
     handleAddProduct,
     handleFileChange,
-    handlePrev,
-    handleNext,
     handleConfirmSingleProduct,
+    resetState,
   } = useModal({
     session,
     onClose,
@@ -540,14 +537,140 @@ export function AddProductModal({
   const renderProductForm = () => {
     if (!showFullForm) {
       return fetchedProducts.length > 0 ? (
-        <FetchedProductSlide
-          session={session}
-          fetchedProducts={fetchedProducts}
-          currentIndex={currentIndex}
-          handlePrev={handlePrev}
-          handleNext={handleNext}
-          handleAdd={() => handleAddProduct(fetchedProducts[currentIndex])} // Fixed: was calling handleUploadMedia
-        />
+        <div className="space-y-6">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h3
+                className="text-xl font-bold text-gray-800 dark:text-slate-100"
+                style={{ fontFamily: "'Jost', sans-serif" }}
+              >
+                Inventory Products
+              </h3>
+              <p
+                className="text-sm text-gray-500 dark:text-slate-400"
+                style={{ fontFamily: "'Jost', sans-serif" }}
+              >
+                Select a product below to proceed to adding.
+              </p>
+            </div>
+            <div className="hidden sm:flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400">
+              <Icon icon="mdi:information-outline" className="text-base" />
+              <span style={{ fontFamily: "'Jost', sans-serif" }}>
+                Showing {fetchedProducts.length.toLocaleString()} product
+                {fetchedProducts.length !== 1 ? 's' : ''}.
+              </span>
+            </div>
+          </div>
+
+          {(() => {
+            const sortedFetchedProducts = [...fetchedProducts].sort((a, b) => {
+              const codeA = (a.product_id ?? '').toString();
+              const codeB = (b.product_id ?? '').toString();
+              if (!codeA && !codeB) return 0;
+              if (!codeA) return 1;
+              if (!codeB) return -1;
+              return codeA.localeCompare(codeB, undefined, { numeric: true, sensitivity: 'base' });
+            });
+
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
+                {sortedFetchedProducts.map((product) => (
+              <button
+                key={product.id}
+                type="button"
+                onClick={() => handleAddProduct(product)}
+                className="group relative bg-white dark:bg-slate-800 rounded-2xl shadow-md hover:shadow-xl border-2 border-gray-200 dark:border-slate-700 hover:border-green-500 dark:hover:border-green-500 transition-all duration-300 cursor-pointer overflow-hidden text-left transform hover:-translate-y-1"
+              >
+                <div className="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 px-4 py-3 border-b border-emerald-100/60 dark:border-emerald-800/70 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-9 h-9 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center shadow-sm">
+                      <Icon
+                        icon="mdi:package-variant-closed"
+                        className="text-lg text-emerald-600 dark:text-emerald-400"
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <p
+                        className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 uppercase tracking-wide"
+                        style={{ fontFamily: "'Jost', sans-serif" }}
+                      >
+                        PC-{product.product_id ?? 'N/A'}
+                      </p>
+                      <p
+                        className="text-xs text-emerald-700/80 dark:text-emerald-200/80 truncate"
+                        style={{ fontFamily: "'Jost', sans-serif" }}
+                      >
+                        Click to review & add
+                      </p>
+                    </div>
+                  </div>
+                  <Icon
+                    icon="mdi:chevron-right"
+                    className="text-xl text-emerald-500 dark:text-emerald-300 group-hover:translate-x-0.5 transition-transform"
+                  />
+                </div>
+
+                <div className="p-4 space-y-3">
+                  <h4
+                    className="font-bold text-base text-gray-900 dark:text-slate-100 line-clamp-2 min-h-[2.5rem]"
+                    style={{ fontFamily: "'Jost', sans-serif" }}
+                  >
+                    {product.product_name}
+                  </h4>
+
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-200 font-medium">
+                      <Icon
+                        icon="mdi:tag-outline"
+                        className="text-sm text-gray-500 dark:text-slate-300"
+                      />
+                      <span style={{ fontFamily: "'Jost', sans-serif" }}>
+                        {typeof product.category === 'string'
+                          ? product.category
+                          : product.category?.category_name ?? 'Uncategorized'}
+                      </span>
+                    </span>
+
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-semibold">
+                      <Icon
+                        icon="mdi:currency-php"
+                        className="text-sm text-emerald-500 dark:text-emerald-300"
+                      />
+                      <span style={{ fontFamily: "'Jost', sans-serif" }}>
+                        ₱{product.price?.toLocaleString() ?? '0'}
+                      </span>
+                    </span>
+                  </div>
+
+                  <div className="mt-2 flex items-center justify-between pt-3 border-t border-gray-100 dark:border-slate-700">
+                    <span
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-slate-400"
+                      style={{ fontFamily: "'Jost', sans-serif" }}
+                    >
+                      <Icon
+                        icon="mdi:cursor-default-click"
+                        className="text-sm"
+                      />
+                      Tap to continue
+                    </span>
+
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-300">
+                      <Icon
+                        icon="mdi:arrow-right-circle"
+                        className="text-base"
+                      />
+                      <span style={{ fontFamily: "'Jost', sans-serif" }}>
+                        Add
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              </button>
+            ))}
+              </div>
+            );
+          })()}
+        </div>
       ) : (
         <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-center px-4 sm:px-6">
           <Icon icon="mdi:package-variant-closed" className="text-4xl sm:text-6xl text-gray-300 dark:text-slate-600 mb-3 sm:mb-4" />
@@ -561,6 +684,17 @@ export function AddProductModal({
       <div className="space-y-6">
         {selectedProduct && (
           <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-lg border border-gray-100 dark:border-slate-700 overflow-hidden">
+            <div className="flex items-center justify-between px-6 pt-5 pb-1">
+              <button
+                type="button"
+                onClick={resetState}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-gray-200 dark:border-slate-600 bg-white/80 dark:bg-slate-900/80 text-xs font-medium text-gray-600 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 transition-all"
+                style={{ fontFamily: "'Jost', sans-serif" }}
+              >
+                <Icon icon="mdi:arrow-left" className="text-sm" />
+                <span>Back to products</span>
+              </button>
+            </div>
             <div className="flex flex-col lg:flex-row gap-8 items-start">
               {/* Preview Image */}
               <div className="w-full lg:w-2/5 flex-shrink-0 pt-4 pb-4 flex justify-end ml-8">
@@ -693,7 +827,7 @@ export function AddProductModal({
 
   {/* Buttons */}
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center backdrop-blur-sm z-50 p-4 sm:p-6 overflow-y-auto" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center overflow-y-auto backdrop-blur-sm z-50 p-4 sm:p-6" onClick={onClose}>
       <div
         className="bg-white dark:bg-slate-900 w-full max-w-6xl max-h-[85vh] rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden transform transition-all relative flex flex-col my-4 sm:my-6"
         style={{ boxShadow: '0 20px 60px 0 rgba(0, 0, 0, 0.15)' }}
@@ -728,7 +862,7 @@ export function AddProductModal({
         )}
 
         {/* Content */}
-        <div className={`p-5 space-y-5 overflow-y-auto flex-1 text-gray-900 dark:text-slate-100 ${mode === 'product' && !showFullForm ? 'flex flex-col justify-center' : ''}`}>
+        <div className="p-5 space-y-5 flex-1 text-gray-900 dark:text-slate-100 overflow-y-auto custom-scrollbar">
           {mode === 'sale' ? renderSaleForm() : renderProductForm()}
         </div>
 
@@ -739,30 +873,18 @@ export function AddProductModal({
               <button
                 onClick={onClose}
                 disabled={isPublishing}
-                className="flex items-center justify-center gap-2 px-6 py-3 bg-white dark:bg-slate-800 border-2 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 font-semibold rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 dark:hover:bg-slate-700 transition-all duration-200"
+                className="flex items-center justify-center gap-1.5 px-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-sm text-gray-700 dark:text-slate-200 font-semibold rounded-lg shadow-sm hover:shadow-md hover:bg-gray-50 dark:hover:bg-slate-700 transition-all duration-200"
                 style={{ fontFamily: "'Jost', sans-serif" }}
               >
-                <Icon icon="mdi:close-circle-outline" className="text-lg" />
+                <Icon icon="mdi:close-circle-outline" className="text-base" />
                 Cancel
               </button>
 
-              {mode === 'product' && !showFullForm && (
-                <button
-                  onClick={() => handleAddProduct(fetchedProducts[currentIndex])}
-                  disabled={isPublishing}
-                  className="flex items-center justify-center gap-2 px-6 py-3 bg-green-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:bg-green-600 transition-all duration-200"
-                  style={{ fontFamily: "'Jost', sans-serif" }}
-                >
-                  <Icon icon="mdi:plus-circle" className="text-lg" />
-                  Add Product
-                </button>
-              )}
-              
               {showFullForm && (
                 <button 
                   onClick={handleConfirmSingleProduct}
                   disabled={isPublishing || uploading}
-                  className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:bg-blue-600 transition-all duration-200"
+                  className="flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow-sm hover:shadow-md hover:bg-blue-600 transition-all duration-200"
                   style={{ fontFamily: "'Jost', sans-serif" }}
                 >
                   {(isPublishing || uploading) && <Icon icon="mdi:loading" className="animate-spin" />}

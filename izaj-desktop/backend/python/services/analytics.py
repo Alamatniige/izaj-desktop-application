@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import asyncio
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from config.database import get_supabase_client
@@ -25,26 +26,35 @@ class AnalyticsService:
         else:  # month
             start_date = now - timedelta(days=30)
         
-        # Get all admin user IDs to exclude from customer count
-        admin_users_response = self.supabase.table('adminUser').select('user_id').execute()
-        admin_user_ids = [admin['user_id'] for admin in (admin_users_response.data or [])]
+        # Run independent queries in parallel
+        admin_task = asyncio.to_thread(
+            lambda: self.supabase.table('adminUser').select('user_id').execute()
+        )
+        profiles_task = asyncio.to_thread(
+            lambda: self.supabase.table('profiles').select('id, created_at').execute()
+        )
+        orders_task = asyncio.to_thread(
+            lambda: self.supabase.table('orders').select('status, total_amount, created_at').execute()
+        )
         
-        # Get all customer profiles (excluding admin users)
-        customer_response = self.supabase.table('profiles').select('id').execute()
+        admin_users_response, customer_response, orders_response = await asyncio.gather(
+            admin_task, profiles_task, orders_task
+        )
+        
+        admin_user_ids = [admin['user_id'] for admin in (admin_users_response.data or [])]
         customer_profiles = customer_response.data or []
         
         # Filter out admin users
         total_customers = len([p for p in customer_profiles if p.get('id') not in admin_user_ids])
         
         # Get period customers count (in date range, excluding admin users)
-        period_customer_response = self.supabase.table('profiles').select('id').gte('created_at', start_date.isoformat()).execute()
-        period_customer_profiles = period_customer_response.data or []
-        
-        # Filter out admin users
+        period_customer_profiles = [
+            p for p in customer_profiles 
+            if p.get('created_at') and p.get('created_at') >= start_date.isoformat()
+        ]
         period_customers = len([p for p in period_customer_profiles if p.get('id') not in admin_user_ids])
         
         # Get order statistics
-        orders_response = self.supabase.table('orders').select('status, total_amount, created_at').execute()
         orders_data = orders_response.data or []
         
         # Process orders with pandas for efficiency
@@ -95,7 +105,7 @@ class AnalyticsService:
         )
     
     async def get_sales_report(self, year: int = None) -> SalesReport:
-        """Get monthly sales data keyed by completion date with MoM growth (None = N/A)"""
+        """Get monthly sales data keyed by completion date with YoY (annual) growth (None = N/A)"""
         if year is None:
             year = datetime.now().year
         
@@ -116,6 +126,24 @@ class AnalyticsService:
         )
         orders_data = orders_response.data or []
         monthly_totals = {i: {'sales': 0.0, 'orders': 0} for i in range(1, 13)}
+
+        # Also fetch previous year's completed orders for YoY comparison
+        prev_year = year - 1
+        prev_start_date = datetime(prev_year, 1, 1)
+        prev_end_date = datetime(prev_year, 12, 31, 23, 59, 59)
+        prev_start_iso = prev_start_date.isoformat()
+        prev_end_iso = prev_end_date.isoformat()
+
+        prev_orders_response = (
+            self.supabase.table('orders')
+            .select('total_amount, completed_at, created_at, status')
+            .gte('completed_at', prev_start_iso)
+            .lte('completed_at', prev_end_iso)
+            .eq('status', 'complete')
+            .execute()
+        )
+        prev_orders_data = prev_orders_response.data or []
+        prev_monthly_totals = {i: {'sales': 0.0, 'orders': 0} for i in range(1, 13)}
         
         # Process with pandas
         if orders_data:
@@ -137,20 +165,39 @@ class AnalyticsService:
                     'sales': float(data['total_amount']),
                     'orders': int(data['orders'])
                 }
+
+        # Process previous year data with pandas
+        if prev_orders_data:
+            df_prev_orders = pd.DataFrame(prev_orders_data)
+            df_prev_orders['total_amount'] = pd.to_numeric(df_prev_orders['total_amount'], errors='coerce').fillna(0)
+            df_prev_orders['completed_at'] = df_prev_orders['completed_at'].fillna(df_prev_orders['created_at'])
+            df_prev_orders['completed_at'] = pd.to_datetime(df_prev_orders['completed_at']).dt.tz_localize(None)
+            df_prev_orders['month'] = df_prev_orders['completed_at'].dt.month
+
+            prev_monthly_data = (
+                df_prev_orders.groupby('month')
+                .agg({'total_amount': 'sum', 'completed_at': 'count'})
+                .rename(columns={'completed_at': 'orders'})
+            )
+            for month, data in prev_monthly_data.iterrows():
+                prev_monthly_totals[int(month)] = {
+                    'sales': float(data['total_amount']),
+                    'orders': int(data['orders'])
+                }
         
         monthly_array = []
-        previous_sales = None
         for i in range(1, 13):
             month_name = datetime(year, i, 1).strftime('%B')
             sales = monthly_totals[i]['sales']
             orders = monthly_totals[i]['orders']
+            prev_sales = prev_monthly_totals[i]['sales']
             
-            # Preserve None when there is no prior baseline so UI can render N/A
+            # Year-over-year growth: compare to same month in previous year
             growth = None
-            if previous_sales is not None:
-                if previous_sales > 0:
-                    growth = f"{((sales - previous_sales) / previous_sales * 100):.1f}"
-                elif previous_sales == 0:
+            if prev_sales is not None:
+                if prev_sales > 0:
+                    growth = f"{((sales - prev_sales) / prev_sales * 100):.1f}"
+                elif prev_sales == 0:
                     growth = "0.0" if sales == 0 else None
             
             monthly_array.append(SalesReportMonth(
@@ -159,14 +206,17 @@ class AnalyticsService:
                 orders=int(orders),
                 growth=growth
             ))
-            previous_sales = sales
         
         # Calculate summary
         total_sales = sum(month.sales for month in monthly_array)
         total_orders = sum(month.orders for month in monthly_array)
-        # Average only across months with a real percentage (None represents N/A)
-        growth_values = [float(month.growth) for month in monthly_array if month.growth not in (None, "N/A")]
-        average_growth = f"{np.mean(growth_values):.1f}" if growth_values else "0.0"
+        # Annual (YoY) growth: compare total sales to previous year's total sales
+        total_prev_sales = sum(prev_monthly_totals[i]['sales'] for i in range(1, 13))
+        if total_prev_sales > 0:
+            average_growth = f"{((total_sales - total_prev_sales) / total_prev_sales * 100):.1f}"
+        else:
+            # If there is no baseline, treat growth as 0.0 (or N/A on the UI side if desired)
+            average_growth = "0.0"
         
         return SalesReport(
             monthly=monthly_array,
@@ -178,7 +228,7 @@ class AnalyticsService:
             year=year
         )
     
-    async def get_best_selling_products(self, limit: int = 10, category: str = None) -> List[BestSellingProduct]:
+    async def get_best_selling_products(self, limit: int = 3, category: str = None) -> List[BestSellingProduct]:
         """Get best selling products"""
         # First get completed order IDs
         orders_response = self.supabase.table('orders').select('id').eq('status', 'complete').execute()
@@ -215,29 +265,34 @@ class AnalyticsService:
         # Sort by quantity and limit
         product_stats = product_stats.sort_values('quantity', ascending=False).head(limit)
         
-        # Add review data
+        # Batch fetch all reviews for the products (single query instead of N queries)
+        product_ids = product_stats['product_id'].tolist()
+        reviews_by_product = {}
+        
+        try:
+            reviews_response = self.supabase.table('reviews').select('product_id, rating').in_('product_id', product_ids).execute()
+            reviews_data = reviews_response.data or []
+            
+            # Group reviews by product_id
+            for review in reviews_data:
+                pid = review['product_id']
+                if pid not in reviews_by_product:
+                    reviews_by_product[pid] = []
+                reviews_by_product[pid].append(review['rating'])
+        except Exception:
+            # Reviews table doesn't exist - skip reviews entirely
+            pass
+        
+        # Build response
         best_selling = []
         for _, row in product_stats.iterrows():
-            review_count = 0
-            average_rating = 0
-            
-            try:
-                # Get reviews for this product (if reviews table exists)
-                reviews_response = self.supabase.table('reviews').select('rating').eq('product_id', row['product_id']).execute()
-                reviews = reviews_response.data or []
-                
-                review_count = len(reviews)
-                if reviews:
-                    ratings = [r['rating'] for r in reviews]
-                    average_rating = round(sum(ratings) / len(ratings), 1)
-            except Exception as e:
-                # Reviews table doesn't exist or other error
-                print(f"Reviews not available: {e}")
-                review_count = 0
-                average_rating = 0
+            product_id = row['product_id']
+            ratings = reviews_by_product.get(product_id, [])
+            review_count = len(ratings)
+            average_rating = round(sum(ratings) / len(ratings), 1) if ratings else 0
             
             best_selling.append(BestSellingProduct(
-                product_id=row['product_id'],
+                product_id=product_id,
                 product_name=row['product_name'],
                 total_quantity=int(row['quantity']),
                 total_revenue=float(row['revenue']),
@@ -277,7 +332,7 @@ class AnalyticsService:
         
         return monthly_earnings
     
-    async def get_category_sales(self, limit: int = 10) -> List[CategorySales]:
+    async def get_category_sales(self, limit: int = 3) -> List[CategorySales]:
         """Get sales data grouped by category"""
         # First get completed order IDs
         orders_response = self.supabase.table('orders').select('id').eq('status', 'complete').execute()

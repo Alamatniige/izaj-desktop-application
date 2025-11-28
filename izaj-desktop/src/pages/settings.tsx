@@ -678,7 +678,7 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                           style={{ fontFamily: "'Jost', sans-serif" }}
                         >
                           <Icon icon="mdi:plus" className="w-5 h-5" />
-                          Add Admin
+                          Add Users
                         </button>
                       </div>
 
@@ -906,7 +906,7 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                                 ) : (
                                   <>
                                     <Icon icon="mdi:check" className="w-5 h-5" />
-                                    Add Admin
+                                    Add User
                                   </>
                                 )}
                               </button>
@@ -921,7 +921,6 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                             <tr>
                               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-slate-100 uppercase tracking-wider">Name</th>
                               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-slate-100 uppercase tracking-wider">Email</th>
-                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-slate-100 uppercase tracking-wider">Role</th>
                               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-slate-100 uppercase tracking-wider">Type</th>
                               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-slate-100 uppercase tracking-wider">Assignments</th>
                               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-slate-100 uppercase tracking-wider">Status</th>
@@ -947,18 +946,13 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                                   <div className="text-sm text-gray-900 dark:text-slate-100">{user.email}</div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                  <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 shadow-sm">
-                                    {user.role}
-                                  </span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
                                   {user.is_super_admin ? (
                                     <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-xl bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 shadow-sm">
-                                      Super Admin
+                                      Manager
                                     </span>
                                   ) : (
                                     <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-slate-200 shadow-sm">
-                                      Regular Admin
+                                      Product Manager
                                     </span>
                                   )}
                                 </td>

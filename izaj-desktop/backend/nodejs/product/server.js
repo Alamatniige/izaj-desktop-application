@@ -31,10 +31,39 @@ const router = express.Router();
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
+const buildStockStatusEntry = (product, stock = {}) => {
+  const currentQty = Number(stock.current_quantity ?? 0);
+  const displayQty = Number(stock.display_quantity ?? 0);
+  const reservedQty = Number(stock.reserved_quantity ?? 0);
+  const effectiveDisplay = displayQty + reservedQty;
+  const inventoryUpdatedAt = stock.inventory_updated_at || null;
+  const displaySyncedAt = stock.display_synced_at || null;
+  const inventoryTime = inventoryUpdatedAt ? new Date(inventoryUpdatedAt).getTime() : null;
+  const displaySyncTime = displaySyncedAt ? new Date(displaySyncedAt).getTime() : null;
+  const hasInventoryUpdate = typeof inventoryTime === 'number' && (!displaySyncTime || inventoryTime > displaySyncTime);
+  const displayLagging = currentQty > effectiveDisplay;
+  const needsSync = Boolean(hasInventoryUpdate || (!inventoryTime && displayLagging));
+
+  return {
+    product_id: product.product_id,
+    product_name: product.product_name,
+    current_quantity: currentQty,
+    display_quantity: displayQty,
+    reserved_quantity: reservedQty,
+    effective_display: effectiveDisplay,
+    last_sync_at: stock.last_sync_at,
+    inventory_updated_at: inventoryUpdatedAt,
+    display_synced_at: displaySyncedAt,
+    needs_sync: needsSync,
+    difference: needsSync ? Math.max(currentQty - effectiveDisplay, 0) : 0,
+    has_stock_entry: !!(stock.product_id || stock.current_quantity !== undefined || stock.display_quantity !== undefined)
+  };
+};
 // Helper function: Update or create product stock quantities in database
-const updateProductStock = async (productId, inventoryQuantity) => {
+const updateProductStock = async (productId, inventoryQuantity, inventoryUpdatedAt) => {
   try {
     const timestamp = new Date().toISOString();
+    const inventoryTimestamp = inventoryUpdatedAt || timestamp;
 
     const { data: existingStock, error: fetchError } = await supabase
       .from('product_stock')
@@ -52,6 +81,7 @@ const updateProductStock = async (productId, inventoryQuantity) => {
         .from('product_stock')
         .update({
           current_quantity: inventoryQuantity,
+          inventory_updated_at: inventoryTimestamp,
           // Leave display_quantity untouched so modal can confirm update
           updated_at: timestamp
         })
@@ -73,7 +103,9 @@ const updateProductStock = async (productId, inventoryQuantity) => {
           display_quantity: 0,
           reserved_quantity: 0,
           last_sync_at: timestamp,
-          updated_at: timestamp
+          updated_at: timestamp,
+          inventory_updated_at: inventoryTimestamp,
+          display_synced_at: null
         }]);
 
       if (insertError) {
@@ -92,7 +124,7 @@ const updateProductStock = async (productId, inventoryQuantity) => {
 // GET /api/products - Sync products from inventory database to client database
 router.get('/products', authenticate, async (req, res) => {
   try {
-    const { after, limit = 100, sync } = req.query;
+    const { after, limit = 1000, sync } = req.query;
     const isForceSync = false;
 
     if (!sync || sync === 'false') {
@@ -109,6 +141,7 @@ router.get('/products', authenticate, async (req, res) => {
         quantity,
         price,
         status,
+      updated_at,
         category:category ( category_name ),
         branch:branch ( location )
       `)
@@ -165,73 +198,123 @@ router.get('/products', authenticate, async (req, res) => {
     let existingProducts = [];
     let existingError = null;
     
+    console.log(`🔍 [Sync] Checking for ${productIds.length} existing products...`);
+    
     if (productIds.length > 0) {
+      // Normalize productIds to strings for the query
+      const productIdStrings = productIds.map(id => String(id).trim());
+      console.log(`🔍 [Sync] Querying for product_ids: ${productIdStrings.slice(0, 5).join(', ')}${productIdStrings.length > 5 ? '...' : ''}`);
+      
       const existingResult = await supabase
         .from('products')
         .select('product_id, is_published, publish_status, on_sale')
-        .in('product_id', productIds);
+        .in('product_id', productIdStrings);
       
       existingProducts = existingResult.data || [];
       existingError = existingResult.error;
       
+      if (existingError) {
+        console.error('❌ [Sync] Error fetching existing products:', existingError);
+      } else {
+        console.log(`✅ [Sync] Found ${existingProducts.length} existing products in database`);
+        if (existingProducts.length > 0) {
+          // Log sample of found products
+          const sample = existingProducts.slice(0, 3);
+          sample.forEach(p => {
+            console.log(`   - Product ${p.product_id}: is_published=${p.is_published}, publish_status=${p.publish_status}`);
+          });
+        }
+      }
     }
     
     // Create a map of existing products for quick lookup
     // Normalize product_id to string for consistent Map key matching
     const existingProductsMap = new Map();
-    if (existingProducts) {
+    if (existingProducts && existingProducts.length > 0) {
       existingProducts.forEach(p => {
         // Normalize to string to match with r.id (which is int4 from centralized_product)
         const key = String(p.product_id).trim();
         existingProductsMap.set(key, {
-          is_published: p.is_published,
-          publish_status: p.publish_status,
-          on_sale: p.on_sale // Also preserve on_sale status
+          is_published: p.is_published ?? false,
+          publish_status: p.publish_status ?? false,
+          on_sale: p.on_sale ?? false // Also preserve on_sale status
         });
       });
+      console.log(`📋 [Sync] Created map with ${existingProductsMap.size} products to preserve status for`);
+    } else {
+      console.warn(`⚠️ [Sync] No existing products found - all will be set to is_published=false, publish_status=false`);
     }
 
     // Insertion of Inventory DB to Client DB
     // For existing products, preserve their is_published, publish_status, and on_sale values
     // For new products, set is_published and publish_status to false, on_sale to false
+    let preservedCount = 0;
+    let newCount = 0;
+    
     const rowsForClient = filteredRows.map((r) => {
       // Normalize r.id to string to match Map key (product_id is text in DB)
       const lookupKey = String(r.id).trim();
       const existing = existingProductsMap.get(lookupKey);
+      
+      if (existing) {
+        preservedCount++;
+        if (preservedCount <= 5) { // Log first 5 to avoid spam
+          console.log(`✅ [Sync] Preserving status for product ${lookupKey}: is_published=${existing.is_published}, publish_status=${existing.publish_status}`);
+        }
+      } else {
+        newCount++;
+        if (newCount <= 5) { // Log first 5 to avoid spam
+          console.log(`🆕 [Sync] New product ${lookupKey}: setting is_published=false, publish_status=false`);
+        }
+      }
+      
       return {
-        product_id: r.id,
+        product_id: String(r.id).trim(), // Ensure product_id is always a string
         product_name: r.product_name,
         price: r.price,
         status: r.status ?? 'active',
         category: r.category?.category_name?.trim() || null,
         branch: r.branch?.location?.trim() || null,
         // Preserve existing values, or set to false for new products
-        is_published: existing ? existing.is_published : false,
-        publish_status: existing ? existing.publish_status : false,
-        on_sale: existing ? existing.on_sale : false, // Preserve on_sale for existing products
+        is_published: existing ? (existing.is_published ?? false) : false,
+        publish_status: existing ? (existing.publish_status ?? false) : false,
+        on_sale: existing ? (existing.on_sale ?? false) : false, // Preserve on_sale for existing products
         pickup_available: true, // Default to available for pickup
       };
     });
+    
+    console.log(`📊 [Sync] Summary: ${preservedCount} existing products (status preserved), ${newCount} new products (status=false)`);
 
     // Try to insert with service role, if RLS still blocks, use direct SQL
     let upserted, upsertErr;
     
     try {
+      // Use upsert but ensure we're updating the right fields
+      // Supabase upsert will update all provided fields on conflict, which is what we want
       const result = await supabase
         .from('products')
         .upsert(rowsForClient, {
           onConflict: 'product_id',
           ignoreDuplicates: false
         })
-        .select();
+        .select('id, product_id, is_published, publish_status, on_sale');
       
       upserted = result.data;
       upsertErr = result.error;
       
       if (upsertErr) {
+        console.error('Upsert error:', upsertErr);
+      } else if (upserted) {
+        // Verify that status was preserved
+        const statusPreserved = upserted.filter(p => {
+          const original = existingProductsMap.get(String(p.product_id).trim());
+          return !original || (p.is_published === original.is_published && p.publish_status === original.publish_status);
+        });
+        console.log(`✅ [Sync] Upserted ${upserted.length} products, ${statusPreserved.length} had status preserved`);
       }
     } catch (error) {
       upsertErr = error;
+      console.error('Upsert exception:', error);
     }
 
     // If RLS still blocks, try individual inserts
@@ -270,7 +353,11 @@ router.get('/products', authenticate, async (req, res) => {
     const stockResults = [];
 
     for (const product of invRows) {
-      const result = await updateProductStock(product.id, product.quantity || 0);
+      const result = await updateProductStock(
+        product.id,
+        product.quantity || 0,
+        product.updated_at
+      );
       stockResults.push({
         product_id: product.id,
         ...result,
@@ -342,7 +429,6 @@ router.get('/client-products', async (req, res) => {
         branch,
         inserted_at,
         description,
-        image_url,
         publish_status,
         is_published,
         pickup_available,
@@ -781,14 +867,14 @@ router.get('/active-client-products', async (req, res) => {
   }
 });
 
-// PUT /api/client-products/:id/configure - Update product description and image URL
+// PUT /api/client-products/:id/configure - Update product description
 router.put('/client-products/:id/configure', async (req, res) => {
   const { id } = req.params;
-  const { description, image_url } = req.body;
+  const { description } = req.body;
   try {
     const { data, error } = await supabase
       .from('products')
-      .update({ description, image_url })
+      .update({ description })
       .eq('id', id)
       .select()
       .single();
@@ -816,7 +902,7 @@ router.get('/products/admin-products', authenticate, async (req, res) => {
         category,
         branch,
         description,
-        image_url,
+        media_urls,
         is_published,
         publish_status,
         pickup_available
@@ -833,8 +919,7 @@ router.get('/products/admin-products', authenticate, async (req, res) => {
       }
       query = query.in('category', adminContext.assignedCategories);
     }
-
-    query = query.order('inserted_at', { ascending: false }).limit(100);
+    query = query.order('inserted_at', { ascending: false });
 
     const { data: products, error: prodError } = await query;
 
@@ -847,18 +932,14 @@ router.get('/products/admin-products', authenticate, async (req, res) => {
       });
     }
 
-    // Fetch stock
+    // Fetch stock - don't fail if stock fetch fails, just log and continue
     const { data: stocks, error: stockError } = await supabase
       .from('product_stock')
       .select('product_id, display_quantity, current_quantity, last_sync_at');
 
     if (stockError) {
-      console.error('Error fetching stock:', stockError);
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to fetch stock',
-        details: stockError.message
-      });
+      console.error('Error fetching stock (non-fatal):', stockError);
+      // Don't return error - continue without stock data
     }
 
     // Merge stock into products
@@ -870,11 +951,20 @@ router.get('/products/admin-products', authenticate, async (req, res) => {
       return {
         ...product,
         quantity: stock.display_quantity ?? 0,
-        display_quantity: stock.display_quantity,
-        current_quantity: stock.current_quantity,
+        display_quantity: stock.display_quantity ?? 0,
+        current_quantity: stock.current_quantity ?? 0,
         last_sync_at: stock.last_sync_at,
+        // Ensure is_published and publish_status are explicitly included
+        is_published: product.is_published ?? false,
+        publish_status: product.publish_status ?? false,
       };
     });
+
+    // Debug: Log status distribution
+    const activeCount = productsWithStock.filter(p => p.is_published === true && p.publish_status === true).length;
+    const isPublishedCount = productsWithStock.filter(p => p.is_published === true).length;
+    const publishStatusCount = productsWithStock.filter(p => p.publish_status === true).length;
+    console.log(`📊 [admin-products] Status breakdown: total=${productsWithStock.length}, is_published=true=${isPublishedCount}, publish_status=true=${publishStatusCount}, both=true=${activeCount}`);
 
     res.json({
       success: true,
@@ -914,7 +1004,7 @@ router.get('/products/existing', authenticate, async (req, res) => {
         category,
         branch,
         description,
-        image_url,
+        media_urls,
         is_published,
         publish_status,
         pickup_available
@@ -1182,7 +1272,7 @@ router.put('/products/:id/status', authenticate, async (req, res) => {
             console.log(`✅ [Notification] Found ${subscribers.length} active subscriber(s)`);
             const webAppUrl = process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://izaj-lighting-centre.netlify.app';
             const productName = data.product_name || 'New Product';
-            const productImageUrl = data.image_url || data.media_urls?.[0] || null;
+            const productImageUrl = data.media_urls?.[0] || null;
             // Use product_id (Shopify ID) for the URL, not the database UUID
             // The website expects numeric product_id in the URL
             const productId = data.product_id || data.id;
@@ -1356,7 +1446,7 @@ router.put('/products/:id/status', authenticate, async (req, res) => {
           
           const webAppUrl = process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://izaj-lighting-centre.netlify.app';
           const productName = data.product_name || 'New Product';
-          const productImageUrl = data.image_url || data.media_urls?.[0] || null;
+          const productImageUrl = data.media_urls?.[0] || null;
           // Use product_id (Shopify ID) for the URL, not the database UUID
           // The website expects numeric product_id in the URL
           const productId = data.product_id || data.id;
@@ -1642,7 +1732,7 @@ router.post('/products/publish-all', authenticate, async (req, res) => {
           const productName = updatedProducts.length === 1 
             ? firstProduct.product_name || 'New Product'
             : `${updatedProducts.length} New Products`;
-          const productImageUrl = firstProduct?.image_url || firstProduct?.media_urls?.[0] || null;
+          const productImageUrl = firstProduct?.media_urls?.[0] || null;
           // Use product_id (Shopify ID) for the URL, not the database UUID
           // The website expects numeric product_id in the URL
           const productId = firstProduct?.product_id || firstProduct?.id;
@@ -1815,7 +1905,7 @@ router.put('/products/:id', authenticate, async (req, res) => {
     // Prepare update object with only provided fields
     const allowedFields = [
       'product_name', 'price', 'status', 'category', 'branch', 
-      'description', 'image_url', 'is_published', 'publish_status', 
+      'description', 'is_published', 'publish_status', 
       'on_sale', 'media_urls'
     ];
     
@@ -1876,7 +1966,7 @@ router.patch('/products/:id', authenticate, async (req, res) => {
     // Validate field
     const allowedFields = [
       'product_name', 'price', 'status', 'category', 'branch', 
-      'description', 'image_url', 'is_published', 'publish_status', 
+      'description', 'is_published', 'publish_status', 
       'on_sale', 'media_urls'
     ];
     
@@ -1967,7 +2057,9 @@ router.get('/products/stock-status', authenticate, async (req, res) => {
           current_quantity,
           display_quantity,
           reserved_quantity,
-          last_sync_at
+          last_sync_at,
+          inventory_updated_at,
+          display_synced_at
         )
       `);
 
@@ -1989,26 +2081,8 @@ router.get('/products/stock-status', authenticate, async (req, res) => {
       } else if (product.product_stock && typeof product.product_stock === 'object') {
         stock = product.product_stock;
       }
-      
-      // Use ?? instead of || to preserve actual 0 values vs missing values
-      const currentQty = Number(stock.current_quantity ?? 0);
-      const displayQty = Number(stock.display_quantity ?? 0);
-      const reservedQty = Number(stock.reserved_quantity ?? 0);
-      const syncedDisplay = displayQty + reservedQty;
-      const needsSync = currentQty !== syncedDisplay;
 
-      return {
-        product_id: product.product_id,
-        product_name: product.product_name,
-        current_quantity: currentQty,
-        display_quantity: displayQty,
-        reserved_quantity: reservedQty,
-        effective_display: syncedDisplay,
-        last_sync_at: stock.last_sync_at,
-        needs_sync: needsSync,
-        difference: needsSync ? currentQty - syncedDisplay : 0,
-        has_stock_entry: !!(stock.current_quantity !== undefined || stock.display_quantity !== undefined)
-      };
+      return buildStockStatusEntry(product, stock);
     });
 
     // Removed verbose log to reduce terminal noise
@@ -2106,7 +2180,6 @@ router.get('/products/:id', authenticate, async (req, res) => {
         category,
         branch,
         description,
-        image_url,
         is_published,
         publish_status,
         on_sale,

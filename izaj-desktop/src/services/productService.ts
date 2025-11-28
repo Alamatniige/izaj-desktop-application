@@ -97,7 +97,10 @@ export class ProductService {
       const displayQty = Number(item.display_quantity ?? 0);
       const reservedQty = Number(item.reserved_quantity ?? 0);
       const effectiveDisplay = displayQty + reservedQty;
-      const difference = currentQty - effectiveDisplay;
+      const backendFlag = typeof item.needs_sync === 'boolean' ? item.needs_sync : undefined;
+      const calculatedDifference = currentQty - effectiveDisplay;
+      const needsSync = backendFlag ?? (currentQty !== effectiveDisplay);
+      const difference = item.difference ?? (needsSync ? Math.max(calculatedDifference, 0) : 0);
 
       return {
         ...item,
@@ -105,7 +108,7 @@ export class ProductService {
         display_quantity: displayQty,
         reserved_quantity: reservedQty,
         effective_display: effectiveDisplay,
-        needs_sync: currentQty !== effectiveDisplay,
+        needs_sync: needsSync,
         difference,
       };
     });
@@ -163,7 +166,7 @@ export class ProductService {
   static async syncProducts(
     session: Session | null,
     lastFetchTime: string | null,
-    limit: number = 100
+    limit: number = 1000
   ): Promise<ApiResponse> {
     const params = new URLSearchParams();
     if (lastFetchTime) {
@@ -173,16 +176,12 @@ export class ProductService {
     params.append('sync', 'true');
 
     const url = `${API_URL}/api/products?${params.toString()}`;
-    console.log('📡 [ProductService] Fetching sync endpoint:', url);
-    console.log('📡 [ProductService] Headers:', { hasAuth: !!this.getHeaders(session).Authorization, contentType: this.getHeaders(session)['Content-Type'] });
 
     try {
       const response = await fetch(url, {
         method: 'GET',
         headers: this.getHeaders(session)
       });
-
-      console.log('📡 [ProductService] Response status:', response.status, response.statusText);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -191,12 +190,6 @@ export class ProductService {
       }
 
       const data: ApiResponse = await response.json();
-      console.log('✅ [ProductService] Response data:', {
-        success: data.success,
-        productsCount: data.products?.length || 0,
-        synced: data.synced,
-        skipped: data.skipped
-      });
 
       if (!data.success) {
         throw new Error('API returned unsuccessful response');
@@ -224,16 +217,12 @@ export class ProductService {
   }
 
   static async updateProductStatus(session: Session | null, productId: string, publishStatus: boolean): Promise<void> {
-    console.log('🔄 Updating product publish status:', { productId, publishStatus });
-    console.log('🔄 API URL:', `${API_URL}/api/products/${productId}/status`);
     
     const response = await fetch(`${API_URL}/api/products/${productId}/status`, {
       method: 'PUT',
       headers: this.getHeaders(session),
       body: JSON.stringify({ publish_status: publishStatus })
     });
-    
-    console.log('🔄 Response status:', response.status);
     
     if (!response.ok) {
       const errorText = await response.text();
@@ -243,8 +232,6 @@ export class ProductService {
     }
     
     const data = await response.json();
-    console.log('✅ Publish status updated successfully:', data);
-    console.log('✅ Returned product publish_status:', data.product?.publish_status);
     return data;
   }
 
@@ -257,8 +244,6 @@ export class ProductService {
       throw new Error('Invalid product ID');
     }
 
-    console.log('🔄 Updating pickup availability:', { productId, pickupAvailable });
-    
     try {
       const response = await fetch(`${API_URL}/api/products/${productId}/pickup-status`, {
         method: 'PUT',
@@ -281,7 +266,6 @@ export class ProductService {
         throw new Error(`Failed to update pickup status: ${response.status} ${response.statusText}`);
       }
       
-      console.log('✅ Pickup status updated successfully');
     } catch (error) {
       console.error('❌ Error in updatePickupAvailability:', error);
       // Re-throw with more context

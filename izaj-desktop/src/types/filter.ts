@@ -22,7 +22,8 @@ export interface FetchedProduct {
   category: string | { category_name: string } | null;
   branch: string | { location: string } | null;
   description: string | null;
-  image_url: string | null;   
+  image_url: string | null;
+  media_urls?: string | string[] | null; // Raw media_urls field from database (can be JSON string or array)
   created_at?: string;
   is_published?: boolean;
   publish_status: boolean;
@@ -30,7 +31,6 @@ export interface FetchedProduct {
   on_sale: boolean;
   stock_quantity: number;
   mediaUrl?: string[]; // existing usage in products view
-  media_urls?: string[]; // usage in sale view
   pickup_available?: boolean; // usage in products view logs/updates
   sale?: Array<{
     id: number;

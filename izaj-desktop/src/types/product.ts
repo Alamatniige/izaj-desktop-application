@@ -23,7 +23,8 @@ export interface FetchedProduct {
   category: string | { category_name: string } | null;
   branch: string | { location: string } | null;
   description: string | null;
-  image_url: string | null;   
+  image_url: string | null;
+  media_urls?: string | string[] | null; // Raw media_urls field from database (can be JSON string or array)
   created_at?: string;
   is_published?: boolean;
   publish_status: boolean;
@@ -52,6 +53,8 @@ export interface StockItem {
   needs_sync?: boolean;
   effective_display?: number;
   difference?: number;
+  inventory_updated_at?: string | null;
+  display_synced_at?: string | null;
 }
 
 export interface StockStatus {

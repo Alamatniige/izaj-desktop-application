@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { useDashboard } from '../hooks/useDashboard';
 import ReactECharts from 'echarts-for-react';
+import { RefreshButton } from '../components/RefreshButton';
 
 interface DashboardProps {
   session: Session | null;
@@ -111,7 +112,7 @@ const Dashboard = ({ session, isActive = true, adminContext }: DashboardProps) =
     <div className="flex-1 overflow-y-auto">
       <main className="flex-1 px-8 py-6">
         {/* Header section */}
-        <div className="bg-gradient-to-r from-white via-gray-50 to-white dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 rounded-2xl p-6 mb-8 border border-gray-100 dark:border-gray-700 shadow-sm">
+        <div className="bg-gradient-to-r from-white via-gray-50 to-white dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 rounded-2xl p-6 mb-8 border border-gray-100 dark:border-gray-700 shadow-sm flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-xl shadow-lg">
               <Icon icon="mdi:view-dashboard" className="text-2xl text-white" />
@@ -125,6 +126,7 @@ const Dashboard = ({ session, isActive = true, adminContext }: DashboardProps) =
               </p>
             </div>
           </div>
+          <RefreshButton onClick={refreshDashboard} tooltip="Refresh Dashboard" />
         </div>
 
         <div className="max-w-7xl mx-auto space-y-8 pb-8">
@@ -482,7 +484,7 @@ const Dashboard = ({ session, isActive = true, adminContext }: DashboardProps) =
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   {/* Top Solds Container */}
                   <div>
-                    <div className="bg-gradient-to-br from-pink-50 to-rose-50 dark:from-slate-700 dark:to-slate-800 rounded-2xl shadow-lg border border-pink-100 dark:border-slate-600 p-6 transition-transform duration-200 hover:scale-[1.01] hover:shadow-2xl hover:border-pink-200 dark:hover:border-slate-500 h-[400px]">
+                    <div className="bg-gradient-to-br from-pink-50 to-rose-50 dark:from-slate-700 dark:to-slate-800 rounded-2xl shadow-lg border border-pink-100 dark:border-slate-600 p-6 transition-transform duration-200 hover:scale-[1.01] hover:shadow-2xl hover:border-pink-200 dark:hover:border-slate-500 h-[320px]">
                       <div className="flex items-center gap-2 mb-6">
                         <Icon icon="mdi:star" className="text-pink-400 dark:text-pink-300 w-6 h-6" />
                         <h3 className="text-lg font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Top Sold Products</h3>
@@ -517,7 +519,7 @@ const Dashboard = ({ session, isActive = true, adminContext }: DashboardProps) =
 
                   {/* Top Sold by Category Container */}
                   <div>
-                    <div className="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-slate-700 dark:to-slate-800 rounded-2xl shadow-lg border border-emerald-100 dark:border-slate-600 p-6 transition-transform duration-200 hover:scale-[1.01] hover:shadow-2xl hover:border-emerald-200 dark:hover:border-slate-500 h-[400px]">
+                    <div className="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-slate-700 dark:to-slate-800 rounded-2xl shadow-lg border border-emerald-100 dark:border-slate-600 p-6 transition-transform duration-200 hover:scale-[1.01] hover:shadow-2xl hover:border-emerald-200 dark:hover:border-slate-500 h-[320px]">
                       <div className="flex items-center gap-2 mb-6">
                         <Icon icon="mdi:chart-pie" className="text-emerald-400 dark:text-emerald-300 w-6 h-6" />
                         <h3 className="text-lg font-semibold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>Top Sold by Category</h3>

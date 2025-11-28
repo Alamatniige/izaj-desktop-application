@@ -133,17 +133,19 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
     }
   }, [session]);
 
-  // Helper function to fetch products without managing isFetching state
-  // This is used internally to avoid state conflicts when called from handleFetchProducts
   const fetchAllProductsFromDB = useCallback(async () => {
     if (!session?.access_token) return [];
     
     try {
-      // Use fetchAdminProducts to get ALL products (including unpublished ones)
       const products = await ProductService.fetchAdminProducts(session);
-      const merged = await mergeStockData(products);
-      console.log('📦 [useProducts] Fetched products from DB:', merged.length);
-      return merged;
+      const publishedOnly = products.filter(p => p.is_published === true);
+      const merged = await mergeStockData(publishedOnly);
+      
+      const sorted = merged.sort((a, b) => 
+        (a.product_name || '').localeCompare(b.product_name || '')
+      );
+      
+      return sorted;
     } catch (error) {
       console.error('Error fetching admin products:', error);
       return [];
@@ -156,20 +158,18 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
     setIsFetching(true);
     try {
       const products = await fetchAllProductsFromDB();
-      // Always set products and hasLoadedFromDB, even if empty
-      // This ensures the UI knows data has been loaded
-      // Deduplicate products before setting to prevent duplicates
       const deduplicated = deduplicateProducts(products);
-      setPublishedProducts(deduplicated);
+      if (deduplicated.length > 0 || !hasLoadedFromDB) {
+        setPublishedProducts(deduplicated);
+      }
       setHasLoadedFromDB(true);
     } catch (error) {
       console.error('Error loading admin products:', error);
-      // On error, still mark as loaded to prevent infinite loading state
       setHasLoadedFromDB(true);
     } finally {
       setIsFetching(false);
     }
-  }, [session, fetchAllProductsFromDB]);
+  }, [session, fetchAllProductsFromDB, hasLoadedFromDB]);
 
   const checkStockStatus = useCallback(async () => {
     if (!session?.access_token) return;
@@ -207,7 +207,7 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
   setFetchSuccess(false);
 
   try {
-    const data = await ProductService.syncProducts(session, syncTime, 100);
+    const data = await ProductService.syncProducts(session, syncTime, 1000);
     
     const newProducts = data.products || [];
     
@@ -217,15 +217,8 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
         setFetchSuccess(true);
         setSyncStats({ synced: data.synced || 0, skipped: data.skipped || 0 });
         
-        // Reload all products from client DB to ensure full product list is displayed
-        const reloadedProducts = await fetchAllProductsFromDB();
-        if (reloadedProducts.length > 0) {
-          // Deduplicate before setting to prevent duplicates
-          const deduplicated = deduplicateProducts(reloadedProducts);
-          setPublishedProducts(deduplicated);
-          setHasLoadedFromDB(true);
-          console.log('📦 [useProducts] Reloaded products after incremental sync (0 new):', deduplicated.length);
-        }
+        // Reload products from database to ensure state reflects latest is_published values
+        await loadExistingProducts();
         
         // Check stock status after sync to detect products needing sync
         await checkStockStatus();
@@ -243,15 +236,8 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
         
         await fetchPendingCount();
         
-        // Reload all products from client DB to ensure full product list is displayed
-        const reloadedProducts = await fetchAllProductsFromDB();
-        if (reloadedProducts.length > 0) {
-          // Deduplicate before setting to prevent duplicates
-          const deduplicated = deduplicateProducts(reloadedProducts);
-          setPublishedProducts(deduplicated);
-          setHasLoadedFromDB(true);
-          console.log('📦 [useProducts] Reloaded products after first sync (0 new):', deduplicated.length);
-        }
+        // Reload products from database to ensure state reflects latest is_published values
+        await loadExistingProducts();
         
         // Check stock status after sync to detect products needing sync
         await checkStockStatus();
@@ -263,27 +249,6 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
       }
     }
 
-    if (lastFetchTime) {
-      // When doing incremental syncs, make sure we also merge in the latest stock
-      // for any newly fetched products so display_quantity reflects product_stock.display_quantity
-      setPublishedProducts(prev => prev); // no-op to ensure React state is defined
-      const existingIds = new Set(publishedProducts.map(p => String(p.id || p.product_id || '').trim()));
-      const filteredNewProducts = newProducts.filter(p => {
-        const key = String(p.id || p.product_id || '').trim();
-        return key && !existingIds.has(key);
-      });
-      const combined = [...publishedProducts, ...filteredNewProducts];
-      const mergedWithStock = await mergeStockData(combined);
-      // Deduplicate before setting
-      const deduplicated = deduplicateProducts(mergedWithStock);
-      setPublishedProducts(deduplicated);
-    } else {
-      const merged = await mergeStockData(newProducts);
-      // Deduplicate before setting
-      const deduplicated = deduplicateProducts(merged);
-      setPublishedProducts(deduplicated);
-    }
-
     // Update lastFetchTime to the server timestamp for next incremental sync
     setLastFetchTime(data.timestamp);
     localStorage.setItem('lastFetchTime', data.timestamp);
@@ -292,19 +257,9 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
 
     await fetchPendingCount();
 
-    // Reload all products from client DB to ensure full product list is displayed
-    // This is critical for admin accounts to see all their products after sync
-    // Use fetchAllProductsFromDB instead of loadExistingProducts to avoid isFetching state conflict
-    const reloadedProducts = await fetchAllProductsFromDB();
-    if (reloadedProducts.length > 0) {
-      // Deduplicate before setting to prevent duplicates
-      const deduplicated = deduplicateProducts(reloadedProducts);
-      setPublishedProducts(deduplicated);
-      setHasLoadedFromDB(true);
-      console.log('📦 [useProducts] Reloaded products after sync:', deduplicated.length);
-    } else {
-      console.warn('⚠️ [useProducts] No products loaded from DB after sync');
-    }
+    // Reload products from database to ensure state reflects latest is_published values
+    // This ensures all products with is_published = true are included after sync
+    await loadExistingProducts();
 
     // Check stock status after sync to detect products needing sync
     await checkStockStatus();
@@ -326,7 +281,7 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
     setIsFetching(false);
     fetchingRef.current = false;
   }
-}, [session, lastFetchTime, fetchPendingCount, checkStockStatus, mergeStockData, fetchAllProductsFromDB]);
+  }, [session, lastFetchTime, fetchPendingCount, checkStockStatus, loadExistingProducts]);
 
   const refreshProductsData = useCallback(async () => {
     // Reset fetchSuccess when refreshing after adding products
@@ -348,9 +303,11 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
 
   const updatePublishedProducts = useCallback(async () => {
     const merged = await mergeStockData(publishedProducts);
-    // Deduplicate before setting to prevent duplicates
     const deduplicated = deduplicateProducts(merged);
-    setPublishedProducts(deduplicated);
+    const sorted = deduplicated.sort((a, b) => 
+      (a.product_name || '').localeCompare(b.product_name || '')
+    );
+    setPublishedProducts(sorted);
   }, [publishedProducts, mergeStockData]);
 
   const updatePublishStatus = useCallback(
@@ -442,34 +399,80 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
 
   useEffect(() => {
     if (!enabled) return;
-    const fetchAllMedia = async () => {
-      if (!session || filteredProducts.length === 0) return;
-
+    
+    const fetchMediaForPublishedProducts = async () => {
+      if (!session || publishedProducts.length === 0) return;
+      
+      // Only include media for products where is_published = true
+      const productsWithPublished = publishedProducts.filter(p => p.is_published === true);
+      
+      if (productsWithPublished.length === 0) return;
+      
       const map: Record<string, string[]> = {};
-
-      await Promise.all(
-        filteredProducts.map(async (product) => {
+      
+      // First, try to use media_urls from database
+      const productsNeedingApiFetch: typeof productsWithPublished = [];
+      
+      productsWithPublished.forEach((product) => {
+        let mediaUrls: string[] = [];
+        
+        if (product.media_urls) {
           try {
-            const urls = await ProductService.fetchMediaUrl(session, product.id);
-            // Index by both id and product_id for compatibility
-            map[product.id] = urls;
-            if (product.product_id) {
-              map[product.product_id] = urls;
+            // Handle different formats of media_urls
+            if (Array.isArray(product.media_urls)) {
+              // media_urls is already an array of strings
+              mediaUrls = product.media_urls.filter((entry): entry is string => typeof entry === 'string');
+            } else if (typeof product.media_urls === 'string') {
+              // media_urls is a JSON string, parse it
+              const parsed = JSON.parse(product.media_urls);
+              mediaUrls = Array.isArray(parsed) ? parsed : [parsed];
             }
           } catch (err) {
-            console.error(`❌ Failed to fetch media for product ${product.id}`, err);
+            console.error(`Failed to parse media_urls for product ${product.id}:`, err);
           }
-        })
-      );
-
+        }
+        
+        if (mediaUrls.length > 0) {
+          // Has media_urls in database
+          map[product.id] = mediaUrls;
+          if (product.product_id) {
+            map[product.product_id] = mediaUrls;
+          }
+        } else {
+          // No media_urls in database, need to fetch via API
+          productsNeedingApiFetch.push(product);
+        }
+      });
+      
+      // Fallback: Fetch media via API for products without media_urls in database
+      if (productsNeedingApiFetch.length > 0) {
+        await Promise.all(
+          productsNeedingApiFetch.map(async (product) => {
+            try {
+              const urls = await ProductService.fetchMediaUrl(session, product.id);
+              map[product.id] = urls;
+              if (product.product_id) {
+                map[product.product_id] = urls;
+              }
+            } catch (err) {
+              console.error(`❌ Failed to fetch media for product ${product.id}`, err);
+              map[product.id] = [];
+              if (product.product_id) {
+                map[product.product_id] = [];
+              }
+            }
+          })
+        );
+      }
+      
       setMediaUrlsMap(map);
     };
-
-    fetchAllMedia();
-  }, [filteredProducts, session, enabled]);
+    
+    fetchMediaForPublishedProducts();
+  }, [publishedProducts, session, enabled]);
 
   useEffect(() => {
-}, [mediaUrlsMap]);
+  }, [mediaUrlsMap]);
 
   // Real-time stock updates via Supabase subscriptions
   useEffect(() => {
