@@ -3,6 +3,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, useNavigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import App from './App.tsx';
 import { NotificationsProvider } from './utils/notificationsProvider.tsx';
 import { DarkModeProvider } from './utils/darkModeProvider.tsx';
@@ -140,6 +141,23 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <NotificationsProvider>
           <DeepLinkHandler />
           <App />
+          <Toaster 
+            position="top-center"
+            toastOptions={{
+              duration: 3000,
+              style: {
+                background: '#363636',
+                color: '#fff',
+              },
+              success: {
+                duration: 3000,
+                iconTheme: {
+                  primary: '#4ade80',
+                  secondary: '#fff',
+                },
+              },
+            }}
+          />
         </NotificationsProvider>
       </SessionProvider>
     </DarkModeProvider>

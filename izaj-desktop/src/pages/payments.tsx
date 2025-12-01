@@ -1,6 +1,7 @@
 import { Icon } from '@iconify/react';
 import { useState, useMemo } from 'react';
 import { Session } from '@supabase/supabase-js';
+import { toast } from 'react-hot-toast';
 import { useOrders, useOrderActions } from '../services/orderServices';
 import { Order } from '../services/orderService';
 import { formatOrderDate, formatPrice } from '../services/orderServices';
@@ -162,8 +163,12 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
 
     const csvRows: string[][] = [];
     
+    // Calculate overall total
+    let overallTotal = 0;
+    
     paymentsToExport.forEach((payment) => {
       const dateTime = formatOrderDate(payment.created_at);
+      overallTotal += payment.total_amount;
       
       csvRows.push([
         escapeCsvValue(payment.order_number),
@@ -175,6 +180,26 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
         escapeCsvValue(payment.payment_status)
       ]);
     });
+
+    // Add overall total row
+    const dateRangeLabel = startDate && endDate 
+      ? `${startDate} to ${endDate}`
+      : startDate 
+      ? `${startDate} to latest`
+      : endDate 
+      ? `earliest to ${endDate}`
+      : 'All payments';
+    
+    csvRows.push([]); // Empty row for spacing
+    csvRows.push([
+      '',
+      '',
+      '',
+      `Overall Total (${dateRangeLabel})`,
+      escapeCsvValue(overallTotal.toFixed(2)),
+      '',
+      ''
+    ]);
 
     const csvContent = [
       csvHeaders.join(','),
@@ -208,6 +233,12 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    
+    // Show success notification
+    toast.success('CSV file downloaded successfully!', {
+      position: 'top-center',
+      duration: 3000,
+    });
     
     // Close modal
     setShowDateRangeModal(false);

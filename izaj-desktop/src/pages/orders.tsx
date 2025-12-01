@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Icon } from '@iconify/react';
 import { Session } from '@supabase/supabase-js';
+import { toast } from 'react-hot-toast';
 import { useOrders, useOrderActions, formatOrderDate, formatPrice } from '../services/orderServices';
 import { Order, OrderService } from '../services/orderService';
 
@@ -289,9 +290,19 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
 
     const csvRows: string[][] = [];
     
+    // Calculate overall total
+    let overallTotal = 0;
+    const processedOrderIds = new Set<string>(); // Track unique orders to avoid double counting
+    
     ordersToExport.forEach((order) => {
       const items = order.order_items || order.items || [];
       const grandTotal = order.total_amount + (order.shipping_fee || 0);
+      
+      // Add to overall total only once per order (not per item)
+      if (!processedOrderIds.has(order.id)) {
+        overallTotal += grandTotal;
+        processedOrderIds.add(order.id);
+      }
       
       // Build full address
       const addressParts = [
@@ -344,13 +355,16 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
           const discountPerUnit = hasDiscount ? (originalPrice - unitPrice) : 0;
           const totalDiscount = discountPerUnit * (item.quantity || 0);
           
+          // Use original price (tunay na price) if available, otherwise use unit price
+          const actualPrice = originalPrice !== null ? originalPrice : unitPrice;
+          
           csvRows.push([
             escapeCsvValue(item.product_id || item.id || ''), // Product ID at the beginning
             escapeCsvValue(order.order_number),
             escapeCsvValue(item.product_name || ''),
             escapeCsvValue(categoryStr),
             escapeCsvValue((item.quantity || 0).toString()),
-            escapeCsvValue(unitPrice.toFixed(2)),
+            escapeCsvValue(actualPrice.toFixed(2)),
             escapeCsvValue(totalDiscount > 0 ? totalDiscount.toFixed(2) : ''),
             escapeCsvValue(shippingFee.toFixed(2)),
             escapeCsvValue(grandTotal.toFixed(2)),
@@ -362,6 +376,32 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
         });
       }
     });
+
+    // Add overall total row
+    const dateRangeLabel = startDate && endDate 
+      ? `${startDate} to ${endDate}`
+      : startDate 
+      ? `${startDate} to latest`
+      : endDate 
+      ? `earliest to ${endDate}`
+      : 'All orders';
+    
+    csvRows.push([]); // Empty row for spacing
+    csvRows.push([
+      '',
+      `Overall Total (${dateRangeLabel})`,
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      escapeCsvValue(overallTotal.toFixed(2)),
+      '',
+      '',
+      '',
+      ''
+    ]);
 
     const csvContent = [
       csvHeaders.join(','),
@@ -396,6 +436,12 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    
+    // Show success notification
+    toast.success('CSV file downloaded successfully!', {
+      position: 'top-center',
+      duration: 3000,
+    });
 
     // Close modal and reset
     setShowDateRangeModal(false);

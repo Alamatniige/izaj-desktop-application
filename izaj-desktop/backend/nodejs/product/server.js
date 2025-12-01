@@ -566,7 +566,35 @@ router.post('/products/:productId/media', authenticate, upload.array('media', 10
         return res.status(400).json({ error: 'No files uploaded' });
       }
 
-    const mediaUrls = [];
+    // First, fetch existing media URLs to append new ones
+    const { data: existingProduct, error: fetchError } = await supabase
+      .from('products')
+      .select('media_urls')
+      .eq('id', productId)
+      .single();
+
+    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "not found", which is okay for new products
+      return res.status(500).json({ error: 'Failed to fetch existing media', details: fetchError.message });
+    }
+
+    // Get existing media URLs, handle both array and string formats
+    let existingMediaUrls = [];
+    if (existingProduct && existingProduct.media_urls) {
+      if (Array.isArray(existingProduct.media_urls)) {
+        existingMediaUrls = existingProduct.media_urls;
+      } else if (typeof existingProduct.media_urls === 'string') {
+        try {
+          existingMediaUrls = JSON.parse(existingProduct.media_urls);
+          if (!Array.isArray(existingMediaUrls)) {
+            existingMediaUrls = [existingProduct.media_urls];
+          }
+        } catch {
+          existingMediaUrls = [existingProduct.media_urls];
+        }
+      }
+    }
+
+    const newMediaUrls = [];
 
     for (const file of files) {
       const filePath = `products/${productId}/${Date.now()}_${file.originalname}`;
@@ -585,19 +613,22 @@ router.post('/products/:productId/media', authenticate, upload.array('media', 10
       .from('product-image')
       .getPublicUrl(data.path);
 
-    mediaUrls.push(usrlData.publicUrl);
+    newMediaUrls.push(usrlData.publicUrl);
     }
+    
+    // Combine existing and new media URLs
+    const updatedMediaUrls = [...existingMediaUrls, ...newMediaUrls];
     
     const { error: dbError } = await supabase
       .from('products')
-      .update({ media_urls: mediaUrls })
+      .update({ media_urls: updatedMediaUrls })
       .eq('id', productId);
       
       if (dbError) {
       return res.status(500).json({ error: 'Failed to update product media URLs', details: dbError.message });
       }
 
-        res.json({ success: true, mediaUrls });
+        res.json({ success: true, mediaUrls: updatedMediaUrls, newUrls: newMediaUrls });
       } catch (err) {
 
       res.status(500).json({

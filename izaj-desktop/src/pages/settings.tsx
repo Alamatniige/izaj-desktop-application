@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Icon } from "@iconify/react";
 import { Session } from "@supabase/supabase-js";
+import { toast } from "react-hot-toast";
 import API_URL from "../../config/api";
 import { AdminUser,  SettingsState, Users } from "../types/index";
 
@@ -376,6 +377,12 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    
+    // Show success notification
+    toast.success('CSV file downloaded successfully!', {
+      position: 'top-center',
+      duration: 3000,
+    });
   };
 
   // Wrap fetchAuditLogs in useCallback

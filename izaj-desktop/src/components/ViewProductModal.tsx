@@ -5,13 +5,14 @@ import { Session } from '@supabase/supabase-js';
 import { FetchedProduct } from '../types/product';
 import toast from 'react-hot-toast';
 import { ProductService } from '../services/productService';
+import { MediaDropzone } from './MediaDropzone';
+import { validateFiles } from '../utils/fileUtils';
 
 interface ViewProductModalProps {
   session: Session | null;
   product: FetchedProduct;
   onClose: () => void;
   onDelete?: (productId: string | number) => void;
-  onEdit?: (product: FetchedProduct) => void;
   onProductUpdate?: (productId: string, updates: Partial<FetchedProduct>) => void | Promise<void>;
 }
 
@@ -20,7 +21,6 @@ export function ViewProductModal({
   product, 
   onClose, 
   onDelete,
-  onEdit,
   onProductUpdate
 }: ViewProductModalProps) {
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
@@ -28,10 +28,16 @@ export function ViewProductModal({
   const [currentProduct, setCurrentProduct] = useState(product);
   const [isUpdatingPickup, setIsUpdatingPickup] = useState(false);
   const [isUpdatingPublish, setIsUpdatingPublish] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editedDescription, setEditedDescription] = useState(product.description || '');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
   const isMountedRef = useRef(true);
 
-  const mediaUrls = currentProduct.mediaUrl || [];
+  const mediaUrls = (currentProduct.mediaUrl || []).filter(url => !imagesToDelete.includes(url));
   const hasMultipleMedia = mediaUrls.length > 1;
+  const allMediaUrls = currentProduct.mediaUrl || []; // Keep all URLs including deleted ones for display
 
   const { updatePublishStatus, updatePickupAvailability, setDeleteProduct } = useProducts(session);
 
@@ -58,8 +64,16 @@ export function ViewProductModal({
     if (product.id && currentProduct.id && product.id !== currentProduct.id) {
       console.log('✅ ViewProductModal: Product ID changed, updating currentProduct');
       setCurrentProduct(product);
+      setEditedDescription(product.description || '');
     }
   }, [product, currentProduct]);
+
+  // Update edited description when product changes
+  useEffect(() => {
+    if (product?.description !== undefined) {
+      setEditedDescription(product.description || '');
+    }
+  }, [product?.description]);
 
   // Ensure display_quantity is up-to-date from stock-status
   useEffect(() => {
@@ -326,7 +340,124 @@ export function ViewProductModal({
 
   // Simple close handler - no need to save here since we save immediately
   const handleClose = () => {
+    if (isEditMode) {
+      setIsEditMode(false);
+      setSelectedFiles([]);
+      setImagesToDelete([]);
+      setEditedDescription(currentProduct.description || '');
+    }
     onClose();
+  };
+
+  const handleFileSelected = (files: File[]) => {
+    setSelectedFiles(files);
+  };
+
+  const handleSave = async () => {
+    if (!session?.access_token) {
+      toast.error('Authentication required');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const productId = String(currentProduct.id || currentProduct.product_id);
+      
+      // Update description if changed
+      if (editedDescription !== (currentProduct.description || '')) {
+        await ProductService.updateProductDescription(session, productId, editedDescription);
+      }
+
+      // Handle image deletions and uploads together
+      // First, remove deleted images from the current media_urls
+      const originalMediaUrls = currentProduct.mediaUrl || [];
+      let updatedMediaUrls = originalMediaUrls.filter(url => !imagesToDelete.includes(url));
+      
+      // If there are deletions, update the database first (so new uploads append to the cleaned list)
+      if (imagesToDelete.length > 0) {
+        await ProductService.updateProductMediaUrls(session, productId, updatedMediaUrls);
+      }
+
+      // Upload new media if files are selected (this will append to existing media_urls in backend)
+      if (selectedFiles.length > 0) {
+        const validation = validateFiles(selectedFiles);
+        if (!validation.valid) {
+          toast.error(validation.message || 'Invalid files');
+          setIsSaving(false);
+          return;
+        }
+
+        const uploadResult = await ProductService.updateProductMedia(session, productId, selectedFiles);
+        if (!uploadResult.success) {
+          toast.error(uploadResult.message || 'Failed to upload media');
+          setIsSaving(false);
+          return;
+        }
+      }
+
+      // Refresh media URLs from database to get the final state (existing - deleted + new)
+      if (selectedFiles.length > 0 || imagesToDelete.length > 0) {
+        try {
+          const finalMediaUrls = await ProductService.fetchMediaUrl(session, productId);
+          updatedMediaUrls = finalMediaUrls;
+        } catch (error) {
+          console.error('Failed to fetch updated media URLs:', error);
+          // Fallback: manually combine if fetch fails
+          if (selectedFiles.length > 0) {
+            // If we uploaded but can't fetch, at least keep the local state updated
+            // The backend should have the correct data
+          }
+        }
+      }
+
+      const updatedProduct: FetchedProduct = {
+        ...currentProduct,
+        description: editedDescription,
+        mediaUrl: updatedMediaUrls,
+      };
+      setCurrentProduct(updatedProduct);
+
+      // Update parent component
+      if (onProductUpdate) {
+        await onProductUpdate(productId, {
+          description: editedDescription,
+          mediaUrl: updatedMediaUrls,
+        });
+      }
+
+      toast.success('Product updated successfully!');
+      setIsEditMode(false);
+      setSelectedFiles([]);
+      setImagesToDelete([]);
+    } catch (error) {
+      console.error('Error saving product:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to update product');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditMode(false);
+    setSelectedFiles([]);
+    setImagesToDelete([]);
+    setEditedDescription(currentProduct.description || '');
+  };
+
+  const handleDeleteImage = (imageUrl: string) => {
+    setImagesToDelete(prev => [...prev, imageUrl]);
+    // If we're viewing the deleted image, move to the next one
+    if (mediaUrls[currentMediaIndex] === imageUrl) {
+      const remainingImages = mediaUrls.filter(url => url !== imageUrl && !imagesToDelete.includes(url));
+      if (remainingImages.length > 0) {
+        const newIndex = Math.min(currentMediaIndex, remainingImages.length - 1);
+        setCurrentMediaIndex(newIndex);
+      }
+    }
+  };
+
+  const handleUndoDeleteImage = (imageUrl: string) => {
+    setImagesToDelete(prev => prev.filter(url => url !== imageUrl));
   };
 
   const formatDate = (dateString: string) => {
@@ -447,14 +578,14 @@ export function ViewProductModal({
         <div className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-800 dark:to-slate-900 border-b border-gray-100 dark:border-slate-800 p-6">
           <div className="flex items-center gap-4">
             <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg">
-              <Icon icon="mdi:eye-outline" className="text-2xl text-white" />
+              <Icon icon={isEditMode ? "mdi:pencil-outline" : "mdi:eye-outline"} className="text-2xl text-white" />
             </div>
             <div>
               <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
-                Product Details
+                {isEditMode ? 'Edit Product' : 'Product Details'}
               </h2>
               <p className="text-gray-600 dark:text-slate-400 text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>
-                View and manage product information
+                {isEditMode ? 'Edit images and description' : 'View and manage product information'}
               </p>
             </div>
           </div>
@@ -468,60 +599,146 @@ export function ViewProductModal({
             <div className="flex flex-col lg:flex-row gap-8 items-start">
               {/* Media Section */}
               <div className="w-full lg:w-2/5 flex-shrink-0 pt-4 pb-4 flex justify-end ml-8">
-                {mediaUrls.length > 0 ? (
-                  <div className="relative w-full max-w-lg mx-auto">
-                    {/* Navigation arrows for multiple media */}
-                    {hasMultipleMedia && (
-                      <button
-                        onClick={handlePrevMedia}
-                        className="absolute top-1/2 left-2 -translate-y-1/2 bg-white/90 dark:bg-slate-800/90 hover:bg-white dark:hover:bg-slate-700 p-2.5 rounded-full shadow-lg z-10 transition-all hover:scale-105"
-                      >
-                        <Icon icon="mdi:chevron-left" className="text-xl text-gray-700 dark:text-slate-200" />
-                      </button>
-                    )}
-
-                    {/* Media Display */}
-                    {mediaUrls[currentMediaIndex]?.includes('video') || mediaUrls[currentMediaIndex]?.includes('.mp4') ? (
-                      <video
-                        src={mediaUrls[currentMediaIndex]}
-                        controls
-                        className="w-full h-[500px] object-cover rounded-2xl"
-                        preload="metadata"
-                      />
-                    ) : (
-                      <img
-                        src={mediaUrls[currentMediaIndex]}
-                        alt={currentProduct.product_name}
-                        className="w-full h-[500px] object-cover rounded-2xl"
-                        onError={(e) => {
-                          e.currentTarget.src = '/api/placeholder/400/320';
-                        }}
-                      />
-                    )}
-
-                    {hasMultipleMedia && (
-                      <button
-                        onClick={handleNextMedia}
-                        className="absolute top-1/2 right-2 -translate-y-1/2 bg-white/90 dark:bg-slate-800/90 hover:bg-white dark:hover:bg-slate-700 p-2.5 rounded-full shadow-lg z-10 transition-all hover:scale-105"
-                      >
-                        <Icon icon="mdi:chevron-right" className="text-xl text-gray-700 dark:text-slate-200" />
-                      </button>
-                    )}
-
-                    {/* Media counter */}
-                    {hasMultipleMedia && (
-                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white px-3 py-1.5 rounded-full text-sm font-medium backdrop-blur-sm">
-                        {currentMediaIndex + 1} / {mediaUrls.length}
+                {isEditMode ? (
+                  <div className="w-full max-w-lg mx-auto">
+                    <div className="mb-4">
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                        Update Images/Media
+                      </label>
+                      <MediaDropzone onFilesSelected={handleFileSelected} />
+                      {selectedFiles.length > 0 && (
+                        <p className="mt-2 text-sm text-gray-600 dark:text-slate-400">
+                          {selectedFiles.length} file(s) selected
+                        </p>
+                      )}
+                    </div>
+                    {/* Show current media preview with delete buttons */}
+                    {allMediaUrls.length > 0 && (
+                      <div className="space-y-4">
+                        {/* Display all images in a grid for easy deletion */}
+                        <div className="grid grid-cols-2 gap-4">
+                          {allMediaUrls.map((url, index) => {
+                            const isDeleted = imagesToDelete.includes(url);
+                            return (
+                              <div key={index} className="relative group">
+                                {isDeleted ? (
+                                  <div className="w-full h-[200px] bg-gray-200 dark:bg-slate-700 rounded-xl flex items-center justify-center border-2 border-red-500 border-dashed opacity-50">
+                                    <div className="text-center">
+                                      <Icon icon="mdi:delete" className="text-4xl text-red-500 mb-2" />
+                                      <p className="text-sm text-red-500 font-medium">Deleted</p>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    {url?.includes('video') || url?.includes('.mp4') ? (
+                                      <video
+                                        src={url}
+                                        controls
+                                        className="w-full h-[200px] object-cover rounded-xl"
+                                        preload="metadata"
+                                      />
+                                    ) : (
+                                      <img
+                                        src={url}
+                                        alt={`${currentProduct.product_name} - Image ${index + 1}`}
+                                        className="w-full h-[200px] object-cover rounded-xl"
+                                        onError={(e) => {
+                                          e.currentTarget.src = '/api/placeholder/400/320';
+                                        }}
+                                      />
+                                    )}
+                                    {/* Delete button overlay */}
+                                    <button
+                                      onClick={() => handleDeleteImage(url)}
+                                      className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition-all opacity-0 group-hover:opacity-100 z-10"
+                                      title="Delete image"
+                                    >
+                                      <Icon icon="mdi:delete" className="text-lg" />
+                                    </button>
+                                  </>
+                                )}
+                                {/* Undo button for deleted images */}
+                                {isDeleted && (
+                                  <button
+                                    onClick={() => handleUndoDeleteImage(url)}
+                                    className="absolute top-2 right-2 p-2 bg-green-500 text-white rounded-full shadow-lg hover:bg-green-600 transition-all z-10"
+                                    title="Undo delete"
+                                  >
+                                    <Icon icon="mdi:undo" className="text-lg" />
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {/* Info about deletions */}
+                        {imagesToDelete.length > 0 && (
+                          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-3">
+                            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                              <Icon icon="mdi:information" className="inline mr-2" />
+                              {imagesToDelete.length} image(s) will be deleted when you save
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className="w-full max-w-lg mx-auto bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-800 dark:to-slate-900 rounded-2xl flex items-center justify-center h-[450px] border border-gray-200 dark:border-slate-800">
-                    <div className="text-center">
-                      <Icon icon="mdi:image-outline" className="text-6xl text-gray-400 dark:text-slate-500 mb-3" />
-                      <p className="text-gray-500 dark:text-slate-400 font-medium">No image available</p>
+                  mediaUrls.length > 0 ? (
+                    <div className="relative w-full max-w-lg mx-auto">
+                      {/* Navigation arrows for multiple media */}
+                      {hasMultipleMedia && (
+                        <button
+                          onClick={handlePrevMedia}
+                          className="absolute top-1/2 left-2 -translate-y-1/2 bg-white/90 dark:bg-slate-800/90 hover:bg-white dark:hover:bg-slate-700 p-2.5 rounded-full shadow-lg z-10 transition-all hover:scale-105"
+                        >
+                          <Icon icon="mdi:chevron-left" className="text-xl text-gray-700 dark:text-slate-200" />
+                        </button>
+                      )}
+
+                      {/* Media Display */}
+                      {mediaUrls[currentMediaIndex]?.includes('video') || mediaUrls[currentMediaIndex]?.includes('.mp4') ? (
+                        <video
+                          src={mediaUrls[currentMediaIndex]}
+                          controls
+                          className="w-full h-[500px] object-cover rounded-2xl"
+                          preload="metadata"
+                        />
+                      ) : (
+                        <img
+                          src={mediaUrls[currentMediaIndex]}
+                          alt={currentProduct.product_name}
+                          className="w-full h-[500px] object-cover rounded-2xl"
+                          onError={(e) => {
+                            e.currentTarget.src = '/api/placeholder/400/320';
+                          }}
+                        />
+                      )}
+
+                      {hasMultipleMedia && (
+                        <button
+                          onClick={handleNextMedia}
+                          className="absolute top-1/2 right-2 -translate-y-1/2 bg-white/90 dark:bg-slate-800/90 hover:bg-white dark:hover:bg-slate-700 p-2.5 rounded-full shadow-lg z-10 transition-all hover:scale-105"
+                        >
+                          <Icon icon="mdi:chevron-right" className="text-xl text-gray-700 dark:text-slate-200" />
+                        </button>
+                      )}
+
+                      {/* Media counter */}
+                      {hasMultipleMedia && (
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white px-3 py-1.5 rounded-full text-sm font-medium backdrop-blur-sm">
+                          {currentMediaIndex + 1} / {mediaUrls.length}
+                        </div>
+                      )}
                     </div>
-                  </div>
+                  ) : (
+                    <div className="w-full max-w-lg mx-auto bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-800 dark:to-slate-900 rounded-2xl flex items-center justify-center h-[450px] border border-gray-200 dark:border-slate-800">
+                      <div className="text-center">
+                        <Icon icon="mdi:image-outline" className="text-6xl text-gray-400 dark:text-slate-500 mb-3" />
+                        <p className="text-gray-500 dark:text-slate-400 font-medium">No image available</p>
+                      </div>
+                    </div>
+                  )
                 )}
               </div>
               
@@ -642,9 +859,19 @@ export function ViewProductModal({
                     <Icon icon="mdi:text-box-outline" className="text-lg text-gray-600 dark:text-slate-400" />
                     <span className="text-sm text-gray-600 dark:text-slate-400 font-semibold uppercase tracking-wide">Description</span>
                   </div>
-                  <div className="text-base text-gray-700 dark:text-slate-200 whitespace-pre-wrap max-h-40 overflow-y-auto leading-relaxed" style={{ fontFamily: "'Jost', sans-serif" }}>
-                    {currentProduct.description || 'No description available'}
-                  </div>
+                  {isEditMode ? (
+                    <textarea
+                      value={editedDescription}
+                      onChange={(e) => setEditedDescription(e.target.value)}
+                      className="w-full min-h-[150px] p-4 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-xl text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y"
+                      style={{ fontFamily: "'Jost', sans-serif" }}
+                      placeholder="Enter product description..."
+                    />
+                  ) : (
+                    <div className="text-base text-gray-700 dark:text-slate-200 whitespace-pre-wrap max-h-40 overflow-y-auto leading-relaxed" style={{ fontFamily: "'Jost', sans-serif" }}>
+                      {currentProduct.description || 'No description available'}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -654,16 +881,50 @@ export function ViewProductModal({
         {/* Footer Actions */}
         <div className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-800 dark:to-slate-900 border-t border-gray-100 dark:border-slate-800 p-6">
           <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-3">
-            {/* Edit Button */}
-            {onEdit && (
-              <button
-                onClick={() => onEdit(currentProduct)}
-                className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:bg-blue-600 transition-all duration-200"
-                style={{ fontFamily: "'Jost', sans-serif" }}
-              >
-                <Icon icon="mdi:pencil-outline" className="text-lg" />
-                Edit
-              </button>
+            {isEditMode ? (
+              <>
+                {/* Save Button */}
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="flex items-center justify-center gap-2 px-6 py-3 bg-green-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:bg-green-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ fontFamily: "'Jost', sans-serif" }}
+                >
+                  {isSaving ? (
+                    <>
+                      <Icon icon="mdi:loading" className="text-lg animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Icon icon="mdi:content-save" className="text-lg" />
+                      Save Changes
+                    </>
+                  )}
+                </button>
+                {/* Cancel Button */}
+                <button
+                  onClick={handleCancelEdit}
+                  disabled={isSaving}
+                  className="flex items-center justify-center gap-2 px-6 py-3 bg-gray-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:bg-gray-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ fontFamily: "'Jost', sans-serif" }}
+                >
+                  <Icon icon="mdi:close" className="text-lg" />
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                {/* Edit Button */}
+                <button
+                  onClick={() => setIsEditMode(true)}
+                  className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:bg-blue-600 transition-all duration-200"
+                  style={{ fontFamily: "'Jost', sans-serif" }}
+                >
+                  <Icon icon="mdi:pencil-outline" className="text-lg" />
+                  Edit
+                </button>
+              </>
             )}
 
             {/* Delete Button */}
