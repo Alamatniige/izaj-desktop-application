@@ -403,42 +403,17 @@ const Dashboard = ({ session, isActive = true, adminContext }: DashboardProps) =
                         },
                         series: [{
                           data: monthlyEarnings,
-                          type: 'line',
-                          smooth: true,
-                          symbol: 'circle',
-                          symbolSize: 6,
-                          lineStyle: {
-                            color: '#3B82F6',
-                            width: 3
-                          },
+                          type: 'bar',
+                          barMaxWidth: '40%',
                           itemStyle: {
                             color: '#3B82F6',
-                            borderColor: '#FFFFFF',
-                            borderWidth: 2
-                          },
-                          areaStyle: {
-                            color: {
-                              type: 'linear',
-                              x: 0,
-                              y: 0,
-                              x2: 0,
-                              y2: 1,
-                              colorStops: [{
-                                offset: 0,
-                                color: 'rgba(59, 130, 246, 0.3)'
-                              }, {
-                                offset: 1,
-                                color: 'rgba(59, 130, 246, 0)'
-                              }]
-                            }
+                            borderRadius: [6, 6, 0, 0]
                           },
                           emphasis: {
                             itemStyle: {
-                              color: '#3B82F6',
-                              borderColor: '#FFFFFF',
-                              borderWidth: 3,
+                              color: '#2563EB',
                               shadowBlur: 10,
-                              shadowColor: 'rgba(59, 130, 246, 0.5)'
+                              shadowColor: 'rgba(37, 99, 235, 0.4)'
                             }
                           }
                         }],

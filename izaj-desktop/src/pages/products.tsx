@@ -1,5 +1,5 @@
 import { Icon } from '@iconify/react';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { AddProductModal } from '../components/AddProductModal';
 import { ViewProductModal } from '../components/ViewProductModal';
 import { ManageStockModal } from '../components/ManageStockModal';
@@ -70,6 +70,63 @@ export function Products({ showAddProductModal, setShowAddProductModal, session,
     statusFilter,
     setStatusFilter,
   } = useFilter(session, { enabled: true, initialProducts: publishedProducts });
+
+  // Pagination
+  const PAGE_SIZE = 12;
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalProducts = filteredProducts?.length ?? 0;
+
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(totalProducts / PAGE_SIZE)),
+    [totalProducts]
+  );
+
+  const paginatedProducts = useMemo(() => {
+    if (!filteredProducts || !Array.isArray(filteredProducts)) return [];
+    const safePage = Math.min(Math.max(currentPage, 1), totalPages);
+    const start = (safePage - 1) * PAGE_SIZE;
+    return filteredProducts.slice(start, start + PAGE_SIZE);
+  }, [filteredProducts, currentPage, totalPages]);
+
+  const pageNumbers = useMemo(() => {
+    const pages: number[] = [];
+    const maxVisible = 5;
+
+    if (!totalPages || totalPages < 1) return pages;
+
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+      return pages;
+    }
+
+    let start = Math.max(1, currentPage - 2);
+    let end = Math.min(totalPages, currentPage + 2);
+
+    if (start === 1) {
+      end = Math.min(totalPages, start + maxVisible - 1);
+    } else if (end === totalPages) {
+      start = Math.max(1, end - maxVisible + 1);
+    }
+
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+
+    return pages;
+  }, [currentPage, totalPages]);
+
+  // Reset page when filters change to avoid empty pages
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedCategory, statusFilter]);
+
+  // Ensure current page is not out of range when totalPages changes
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   // Don't sync automatically - only sync when explicitly opening the modal
   // This prevents overwriting the user's updates
@@ -235,7 +292,7 @@ const handleViewChange = (newView: ViewType) => {
                   {/* Sync stats display */}
                   {fetchSuccess && syncStats.synced > 0 && (
                     <p className="text-xs text-green-600" style={{ fontFamily: "'Jost', sans-serif" }}>
-                      Last sync: {syncStats.synced} synced, {syncStats.skipped} skipped
+                      Last sync: {syncStats.synced} synced
                     </p>
                   )}
                 </div>
@@ -405,95 +462,174 @@ const handleViewChange = (newView: ViewType) => {
 
               {/* Products grid */}
               {filteredProducts && Array.isArray(filteredProducts) && filteredProducts.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-                  {filteredProducts.map((product) => (
-                    <div 
-                      key={product.id} 
-                      className="bg-gradient-to-br from-white to-gray-50 dark:from-slate-800 dark:to-slate-700 rounded-2xl shadow-lg hover:shadow-2xl border border-gray-100 dark:border-slate-700 transition-all duration-300 flex flex-col overflow-hidden group cursor-pointer relative"
-                      onClick={() => {
-                        // Always get the latest product data from publishedProducts
-                        const upToDateProduct = publishedProducts.find(p => p.id === product.id) || product;
-                          
-                        // Set selected product for view
-                        setSelectedProductForView({
-                          ...upToDateProduct,
-                          mediaUrl: mediaUrlsMap[upToDateProduct.id] || [],
-                          status: String(upToDateProduct.publish_status),
-                        });
-                      }}
-                    >
-                      {/* Status Badge */}
-                      <div className="absolute top-3 right-3 z-10">
-                        <span className={`px-3 py-1 text-xs rounded-xl ${getStatusColor(product.publish_status)} font-semibold shadow-md`}>
-                          {getStatusText(product.publish_status)}
-                        </span>
-                      </div>
-
-                      {/* Image Container */}
-                      <div className="relative w-full aspect-[4/3] overflow-hidden bg-gray-100 dark:bg-slate-700">
-                        <img
-                          src={mediaUrlsMap[product.id]?.[0] || '/placeholder.png'}
-                          alt={product.product_name}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                        />
-                        {/* View Details Overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
-                          <span className="text-white font-semibold text-sm flex items-center gap-2" style={{ fontFamily: "'Jost', sans-serif" }}>
-                            <Icon icon="mdi:eye-outline" className="w-5 h-5" />
-                            View Details
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+                    {paginatedProducts.map((product) => (
+                      <div 
+                        key={product.id} 
+                        className="bg-gradient-to-br from-white to-gray-50 dark:from-slate-800 dark:to-slate-700 rounded-2xl shadow-lg hover:shadow-2xl border border-gray-100 dark:border-slate-700 transition-all duration-300 flex flex-col overflow-hidden group cursor-pointer relative"
+                        onClick={() => {
+                          // Always get the latest product data from publishedProducts
+                          const upToDateProduct = publishedProducts.find(p => p.id === product.id) || product;
+                            
+                          // Set selected product for view
+                          setSelectedProductForView({
+                            ...upToDateProduct,
+                            mediaUrl: mediaUrlsMap[upToDateProduct.id] || [],
+                            status: String(upToDateProduct.publish_status),
+                          });
+                        }}
+                      >
+                        {/* Status Badge */}
+                        <div className="absolute top-3 right-3 z-10">
+                          <span className={`px-3 py-1 text-xs rounded-xl ${getStatusColor(product.publish_status)} font-semibold shadow-md`}>
+                            {getStatusText(product.publish_status)}
                           </span>
                         </div>
-                      </div>
 
-                      {/* Product Info */}
-                      <div className="p-5 flex flex-col flex-1">
-                        <h3 className="font-bold text-lg text-gray-900 dark:text-slate-100 mb-2 line-clamp-2" style={{ fontFamily: "'Jost', sans-serif" }}>
-                          {product.product_name}
-                        </h3>
-                        
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className="px-2 py-1 bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 text-xs rounded-lg font-medium border border-yellow-200 dark:border-yellow-700" style={{ fontFamily: "'Jost', sans-serif" }}>
-                            {getCategoryName(product.category)}
-                          </span>
-                          {product.branch && (
-                            <span className="px-2 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs rounded-lg font-medium border border-blue-200 dark:border-blue-700" style={{ fontFamily: "'Jost', sans-serif" }}>
-                              {getBranchName(product.branch)}
+                        {/* Image Container */}
+                        <div className="relative w-full aspect-[4/3] overflow-hidden bg-gray-100 dark:bg-slate-700">
+                          <img
+                            src={mediaUrlsMap[product.id]?.[0] || '/placeholder.png'}
+                            alt={product.product_name}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                          />
+                          {/* View Details Overlay */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
+                            <span className="text-white font-semibold text-sm flex items-center gap-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                              <Icon icon="mdi:eye-outline" className="w-5 h-5" />
+                              View Details
                             </span>
-                          )}
-                        </div>
-
-                        <div className="flex justify-between items-center mt-auto pt-4 border-t border-gray-100 dark:border-slate-700">
-                          <div>
-                            <p className="text-xs text-gray-500 dark:text-slate-400 mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Price</p>
-                            <p className="text-2xl font-bold text-gray-900 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
-                              {formatPrice(product.price)}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-xs text-gray-500 dark:text-slate-400 mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Stock</p>
-                            <p className={`text-lg font-bold ${getStockColor(getStableDisplayQty(product))}`} style={{ fontFamily: "'Jost', sans-serif" }}>
-                              {getStableDisplayQty(product)}
-                            </p>
                           </div>
                         </div>
 
-                        {/* Stock Progress Bar */}
-                        <div className="mt-3 space-y-1">
-                          <div className="w-full h-2 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full transition-all duration-300 ${getStockProgressColor(getStableDisplayQty(product))}`}
-                              style={{ width: getStockProgressWidth(getStableDisplayQty(product)) }}
-                            ></div>
+                        {/* Product Info */}
+                        <div className="p-5 flex flex-col flex-1">
+                          <h3 className="font-bold text-lg text-gray-900 dark:text-slate-100 mb-2 line-clamp-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                            {product.product_name}
+                          </h3>
+                          
+                          <div className="flex items-center gap-2 mb-3">
+                            <span className="px-2 py-1 bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 text-xs rounded-lg font-medium border border-yellow-200 dark:border-yellow-700" style={{ fontFamily: "'Jost', sans-serif" }}>
+                              {getCategoryName(product.category)}
+                            </span>
+                            {product.branch && (
+                              <span className="px-2 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs rounded-lg font-medium border border-blue-200 dark:border-blue-700" style={{ fontFamily: "'Jost', sans-serif" }}>
+                                {getBranchName(product.branch)}
+                              </span>
+                            )}
                           </div>
-                          <div className="flex justify-between text-xs text-gray-500 dark:text-slate-400">
-                            <span style={{ fontFamily: "'Jost', sans-serif" }}>Stock level</span>
-                            <span style={{ fontFamily: "'Jost', sans-serif" }}>{getStockLevel(getStableDisplayQty(product))}</span>
+
+                          <div className="flex justify-between items-center mt-auto pt-4 border-t border-gray-100 dark:border-slate-700">
+                            <div>
+                              <p className="text-xs text-gray-500 dark:text-slate-400 mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Price</p>
+                              <p className="text-2xl font-bold text-gray-900 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>
+                                {formatPrice(product.price)}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs text-gray-500 dark:text-slate-400 mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>Stock</p>
+                              <p className={`text-lg font-bold ${getStockColor(getStableDisplayQty(product))}`} style={{ fontFamily: "'Jost', sans-serif" }}>
+                                {getStableDisplayQty(product)}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Stock Progress Bar */}
+                          <div className="mt-3 space-y-1">
+                            <div className="w-full h-2 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full transition-all duration-300 ${getStockProgressColor(getStableDisplayQty(product))}`}
+                                style={{ width: getStockProgressWidth(getStableDisplayQty(product)) }}
+                              ></div>
+                            </div>
+                            <div className="flex justify-between text-xs text-gray-500 dark:text-slate-400">
+                              <span style={{ fontFamily: "'Jost', sans-serif" }}>Stock level</span>
+                              <span style={{ fontFamily: "'Jost', sans-serif" }}>{getStockLevel(getStableDisplayQty(product))}</span>
+                            </div>
                           </div>
                         </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Pagination controls */}
+                  {totalPages > 1 && (
+                    <div className="mt-6 w-full bg-gradient-to-r from-gray-50 to-white dark:from-slate-800 dark:to-slate-900 border border-gray-100 dark:border-slate-700 rounded-2xl px-4 py-3 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+                      <div className="text-sm text-gray-600 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>
+                        {totalProducts > 0 && (
+                          <>
+                            Showing{' '}
+                            <span className="font-semibold text-gray-800 dark:text-slate-100">
+                              {Math.min((currentPage - 1) * PAGE_SIZE + 1, totalProducts)}
+                            </span>
+                            {' – '}
+                            <span className="font-semibold text-gray-800 dark:text-slate-100">
+                              {Math.min(currentPage * PAGE_SIZE, totalProducts)}
+                            </span>
+                            {' of '}
+                            <span className="font-semibold text-gray-800 dark:text-slate-100">
+                              {totalProducts}
+                            </span>
+                            {' products'}
+                          </>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                          disabled={currentPage === 1}
+                          aria-label="Go to previous page"
+                          className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium border transition-all duration-200 ${
+                            currentPage === 1
+                              ? 'border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 cursor-not-allowed bg-gray-50 dark:bg-slate-800'
+                              : 'border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700 shadow-sm'
+                          }`}
+                          style={{ fontFamily: "'Jost', sans-serif" }}
+                        >
+                          <Icon icon="mdi:chevron-left" className="w-4 h-4" />
+                          <span className="hidden sm:inline">Previous</span>
+                        </button>
+
+                        {pageNumbers.map((page) => (
+                          <button
+                            key={page}
+                            type="button"
+                            onClick={() => setCurrentPage(page)}
+                            aria-label={`Go to page ${page}`}
+                            aria-current={page === currentPage ? 'page' : undefined}
+                            className={`min-w-[2.25rem] px-2.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 ${
+                              page === currentPage
+                                ? 'bg-yellow-500 text-white shadow-lg'
+                                : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 border border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 shadow-sm'
+                            }`}
+                            style={{ fontFamily: "'Jost', sans-serif" }}
+                          >
+                            {page}
+                          </button>
+                        ))}
+
+                        <button
+                          type="button"
+                          onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                          disabled={currentPage === totalPages}
+                          aria-label="Go to next page"
+                          className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium border transition-all duration-200 ${
+                            currentPage === totalPages
+                              ? 'border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 cursor-not-allowed bg-gray-50 dark:bg-slate-800'
+                              : 'border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700 shadow-sm'
+                          }`}
+                          style={{ fontFamily: "'Jost', sans-serif" }}
+                        >
+                          <span className="hidden sm:inline">Next</span>
+                          <Icon icon="mdi:chevron-right" className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               )}
             </div>
 
