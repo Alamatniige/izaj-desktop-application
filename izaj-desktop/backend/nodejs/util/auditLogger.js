@@ -21,16 +21,31 @@ export const AuditActions = {
   APPROVE_ORDER: 'APPROVE_ORDER',
   CANCEL_ORDER: 'CANCEL_ORDER',
   MARK_ORDER_IN_TRANSIT: 'MARK_ORDER_IN_TRANSIT',
-  MARK_ORDER_COMPLETE: 'MARK_ORDER_COMPLETE'
+  MARK_ORDER_COMPLETE: 'MARK_ORDER_COMPLETE',
+  BACKUP: 'BACKUP',
+  RESTORE: 'RESTORE',
+  SYSTEM_UPDATE: 'SYSTEM_UPDATE'
 };
 
 export async function logAuditEvent(userId, action, details, req) {
   try {
-    const { data: user } = await supabase
-      .from('adminUser')
-      .select('name')
-      .eq('user_id', userId)
-      .single();
+    let userName = 'unknown';
+
+    // Check if it is the hidden IT Maintenance user (via req.user if available)
+    if (req?.user?.user_metadata?.is_it_maintenance === true) {
+        userName = 'IT Maintenance System';
+    } else if (userId) {
+        // Only query DB if not IT Maintenance
+        const { data: user } = await supabase
+        .from('adminUser')
+        .select('name')
+        .eq('user_id', userId)
+        .single();
+        
+        if (user?.name) {
+            userName = user.name;
+        }
+    }
 
     const ip =
       req.headers['x-forwarded-for']?.split(',').shift() ||
@@ -41,7 +56,7 @@ export async function logAuditEvent(userId, action, details, req) {
       .from('audit_logs') 
       .insert([{
         user_id: userId,
-        user_name: user?.name || 'unknown',
+        user_name: userName,
         action,
         details: details || null,
         ip_address: ip,

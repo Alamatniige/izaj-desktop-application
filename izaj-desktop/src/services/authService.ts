@@ -18,6 +18,15 @@ export const authService = {
     const data = await response.json();
 
     if (!response.ok) {
+      // Check for specific error messages about account status
+      if (data.error && (
+        data.error.toLowerCase().includes('inactive') ||
+        data.error.toLowerCase().includes('deactivated') ||
+        data.error.toLowerCase().includes('disabled') ||
+        data.error.toLowerCase().includes('unavailable')
+      )) {
+        throw new Error('Your account is currently inactive. Please contact the administrator to activate your account.');
+      }
       throw new Error(data.error || 'Login failed');
     }
 

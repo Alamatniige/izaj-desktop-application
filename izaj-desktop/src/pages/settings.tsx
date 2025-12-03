@@ -30,7 +30,6 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
   const [newAdmin, setNewAdmin] = useState({
     email: '',
     name: '',
-    is_super_admin: false,
     assigned_categories: [] as string[],
     assigned_branches: [] as string[]
   });
@@ -85,16 +84,17 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
       });
       const result = await response.json();
       if (result.success) {
+        console.log('Fetched admin users:', result.users); // Debug log
         setSettings(prev => ({
           ...prev,
           userManagement: {
             ...prev.userManagement,
-            adminUsers: result.users.map((user: AdminUser) => ({
-              id: user.id,
+            adminUsers: result.users.map((user: any) => ({
+              id: user.user_id, // Backend returns user_id, not id
               name: user.name,
               email: user.email,
               role: user.role || 'Admin',
-              status: user.status === true ? 'active' : 'inactive',
+              status: user.status === true || user.status === 'active',
               is_super_admin: user.is_super_admin || false,
               assigned_categories: user.assigned_categories || [] as string[],
               assigned_branches: user.assigned_branches || [] as string[],
@@ -229,7 +229,7 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
           email: newAdmin.email,
           name: newAdmin.name,
           role: 'Admin', // Default role since field was removed from UI
-          is_super_admin: newAdmin.is_super_admin,
+          is_super_admin: false,
           assigned_categories: newAdmin.assigned_categories,
           assigned_branches: newAdmin.assigned_branches,
         }),
@@ -242,7 +242,7 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
       }
 
       const newAdminUser: AdminUser = {
-        id: result.user.id,
+        id: result.user.id || result.user.user_id,
         name: result.user.name,
         email: result.user.email,
         role: result.user.role,
@@ -257,7 +257,7 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
         }
       }));
 
-      setNewAdmin({ email: '', name: '', is_super_admin: false, assigned_categories: [], assigned_branches: [] });
+      setNewAdmin({ email: '', name: '', assigned_categories: [], assigned_branches: [] });
       setIsAddAdminModalOpen(false);
     } catch (error) {
       alert('Error adding admin: ' + (error as Error).message);
@@ -280,16 +280,29 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
       const result = await response.json();
       if (result.success) {
         await fetchAdminUsers();
+        toast.success(
+          `Account ${newStatus ? 'activated' : 'deactivated'} successfully!`,
+          {
+            position: 'top-center',
+            duration: 3000,
+          }
+        );
       } else {
-        alert(result.error || 'Failed to update status');
+        toast.error(result.error || 'Failed to update status', {
+          position: 'top-center',
+          duration: 3000,
+        });
       }
     } catch (error) {
-      alert(error);
+      console.error('Error updating status:', error);
+      toast.error('Failed to update account status. Please try again.', {
+        position: 'top-center',
+        duration: 3000,
+      });
     }
   };
 
   const handleDeleteUser = async (userId: string) => {
-    if (!window.confirm('Are you sure you want to delete this user?')) return;
     try {
       const response = await fetch(`${API_URL}/api/admin/users/${userId}`, {
         method: 'DELETE',
@@ -306,11 +319,22 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
             adminUsers: prev.userManagement.adminUsers.filter(user => user.id !== userId),
           }
         }));
+        toast.success('User deleted successfully!', {
+          position: 'top-center',
+          duration: 3000,
+        });
       } else {
-        alert(result.error || 'Failed to delete user');
+        toast.error(result.error || 'Failed to delete user', {
+          position: 'top-center',
+          duration: 3000,
+        });
       }
     } catch (error) {
-      alert(error);
+      console.error('Error deleting user:', error);
+      toast.error('Failed to delete user. Please try again.', {
+        position: 'top-center',
+        duration: 3000,
+      });
     }
   };
 
@@ -673,21 +697,20 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                     ) : (
                     <>
                     {/* Admin Users Section */}
-                    <div className="bg-white dark:bg-slate-800 rounded-3xl border border-gray-100 dark:border-slate-700 p-4 sm:p-6 shadow-lg">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-0 mb-4 sm:mb-6">
-                        <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-slate-100 flex items-center gap-2">
-                          <Icon icon="mdi:account-tie" className="text-yellow-400" />
-                          Admin Users
-                        </h3>
-                        <button 
-                          onClick={() => setIsAddAdminModalOpen(true)}
-                          className="px-4 py-2 bg-yellow-500 text-white rounded-xl hover:bg-yellow-600 transition shadow-lg hover:shadow-xl flex items-center justify-center gap-2 font-semibold"
-                          style={{ fontFamily: "'Jost', sans-serif" }}
-                        >
-                          <Icon icon="mdi:plus" className="w-5 h-5" />
-                          Add Users
-                        </button>
-                      </div>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-0 mb-4 sm:mb-6">
+                      <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-slate-100 flex items-center gap-2">
+                        <Icon icon="mdi:account-tie" className="text-yellow-400" />
+                        Admin Users
+                      </h3>
+                      <button 
+                        onClick={() => setIsAddAdminModalOpen(true)}
+                        className="px-4 py-2 bg-yellow-500 text-white rounded-xl hover:bg-yellow-600 transition shadow-lg hover:shadow-xl flex items-center justify-center gap-2 font-semibold"
+                        style={{ fontFamily: "'Jost', sans-serif" }}
+                      >
+                        <Icon icon="mdi:plus" className="w-5 h-5" />
+                        Add Users
+                      </button>
+                    </div>
 
                       {/* Add Admin Modal */}
                       {isAddAdminModalOpen && (
@@ -756,28 +779,6 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                                   </div>
                                 </div>
                                 <div className="space-y-2">
-                                  <label className="flex items-center gap-2">
-                                    <input
-                                      type="checkbox"
-                                      checked={newAdmin.is_super_admin}
-                                      onChange={(e) => {
-                                        const isSuper = e.target.checked;
-                                        setNewAdmin({ 
-                                          ...newAdmin, 
-                                          is_super_admin: isSuper,
-                                          // Clear categories/branches if SuperAdmin
-                                          assigned_categories: isSuper ? [] : newAdmin.assigned_categories,
-                                          assigned_branches: isSuper ? [] : newAdmin.assigned_branches
-                                        });
-                                      }}
-                                      className="w-4 h-4 text-yellow-600 border-gray-300 dark:border-slate-600 rounded focus:ring-yellow-500 dark:bg-slate-700"
-                                    />
-                                    <span className="text-sm font-semibold text-gray-700 dark:text-slate-300">Super Admin (can see everything)</span>
-                                  </label>
-                                </div>
-                                {!newAdmin.is_super_admin && (
-                                  <>
-                                    <div className="space-y-2">
                                       <div className="flex items-center justify-between">
                                         <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300">
                                           Assigned Categories
@@ -881,8 +882,6 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                                       </div>
                                       <p className="text-xs text-gray-500 dark:text-slate-400">Select multiple branches by clicking the checkboxes</p>
                                     </div>
-                                  </>
-                                )}
                               </form>
                             </div>
                             
@@ -987,46 +986,57 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-xl shadow-sm ${
-                                    user.status === true ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
+                                    user.status ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
                                   }`}>
-                                    {user.status}
+                                    {user.status ? 'Active' : 'Inactive'}
                                   </span>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                  <button
-                                    onClick={() =>
-                                      setConfirmModal({
-                                        open: true,
-                                        action: 'edit',
-                                        user,
-                                        newStatus: user.status === true ? false : true,
-                                      })
-                                    }
-                                    className="text-yellow-600 dark:text-yellow-400 hover:text-yellow-900 dark:hover:text-yellow-300 mr-3"
-                                    title={user.status === true ? 'Deactivate' : 'Activate'}
-                                  >
-                                    <Icon icon="mdi:pencil" />
-                                  </button>
-                                  <button
-                                    onClick={() =>
-                                      setConfirmModal({
-                                        open: true,
-                                        action: 'delete',
-                                        user,
-                                      })
-                                    }
-                                    className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
-                                    title="Delete"
-                                  >
-                                    <Icon icon="mdi:delete" />
-                                  </button>
+                                  {user.is_super_admin ? (
+                                    <span className="text-xs text-gray-500 dark:text-slate-400 italic">
+                                      Cannot modify manager account
+                                    </span>
+                                  ) : (
+                                    <div className="flex gap-2">
+                                      <button
+                                        onClick={() =>
+                                          setConfirmModal({
+                                            open: true,
+                                            action: 'edit',
+                                            user,
+                                            newStatus: !user.status,
+                                          })
+                                        }
+                                        className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                                          user.status
+                                            ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/50'
+                                            : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/50'
+                                        }`}
+                                        title={user.status ? 'Deactivate' : 'Activate'}
+                                      >
+                                        {user.status ? 'Deactivate' : 'Activate'}
+                                      </button>
+                                      <button
+                                        onClick={() =>
+                                          setConfirmModal({
+                                            open: true,
+                                            action: 'delete',
+                                            user,
+                                          })
+                                        }
+                                        className="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/50 rounded-lg text-xs font-semibold transition-colors"
+                                        title="Delete"
+                                      >
+                                        Delete
+                                      </button>
+                                    </div>
+                                  )}
                                 </td>
                               </tr>
                             ))}
                           </tbody>
                         </table>
                       </div>
-                    </div>
                     </>
                     )}
                   </div>

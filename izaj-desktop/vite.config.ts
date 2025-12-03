@@ -43,8 +43,8 @@ export default defineConfig(async () => ({
 
   // 5. Optimize bundle size with manual chunking
   build: {
-    // Increase chunk size warning limit to 1000 KB (1 MB)
-    chunkSizeWarningLimit: 1000,
+    // Increase chunk size warning limit to 1500 KB for large vendor libraries like echarts
+    chunkSizeWarningLimit: 1500,
     rollupOptions: {
       output: {
         manualChunks: {

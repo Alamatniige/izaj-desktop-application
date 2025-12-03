@@ -16,7 +16,9 @@ import { useNotifications } from './utils/notificationsProvider';
 import { useSessionContext } from './utils/sessionContext';
 import UpdatePassword from './pages/update-password';
 import AcceptInvite from './pages/accept-invite';
+import ITMaintenance from './pages/ITMaintenance';
 import API_URL from '../config/api';
+import { Icon } from '@iconify/react';
 
 function App() {
   const location = useLocation();
@@ -54,8 +56,15 @@ function App() {
     role: null,
   });
 
+  const [isLoadingContext, setIsLoadingContext] = useState(true);
+  const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
+  const [isCheckingMaintenance, setIsCheckingMaintenance] = useState(true);
+
   useEffect(() => {
     if (session?.user?.id) {
+      setIsLoadingContext(true);
+      setIsCheckingMaintenance(true);
+      
       fetch(`${API_URL}/api/profile/${session.user.id}`, {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -66,7 +75,8 @@ function App() {
           if (data.success && data.profile) {
             setProfile(data.profile);
           }
-        });
+        })
+        .catch(err => console.error('Failed to fetch profile:', err));
 
       // Fetch admin context
       fetch(`${API_URL}/api/admin/me`, {
@@ -86,9 +96,48 @@ function App() {
         .catch(error => {
           console.error('Failed to fetch admin context:', error);
           setAdminContext({ is_super_admin: false, role: null });
+        })
+        .finally(() => {
+          setIsLoadingContext(false);
         });
+
+      // Fetch maintenance status
+      const checkMaintenanceStatus = () => {
+        fetch(`${API_URL}/api/maintenance/status`, {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              setIsMaintenanceMode(data.maintenance || false);
+            }
+          })
+          .catch(error => {
+            console.error('Failed to fetch maintenance status:', error);
+          })
+          .finally(() => {
+            setIsCheckingMaintenance(false);
+          });
+      };
+
+      checkMaintenanceStatus();
+
+      // Poll maintenance status every 30 seconds for regular admins
+      let intervalId: NodeJS.Timeout | null = null;
+      if (adminContext.role !== 'IT_MAINTENANCE') {
+        intervalId = setInterval(checkMaintenanceStatus, 30000);
+      }
+
+      return () => {
+        if (intervalId) clearInterval(intervalId);
+      };
+    } else {
+      setIsLoadingContext(false);
+      setIsCheckingMaintenance(false);
     }
-  }, [session]);
+  }, [session, adminContext.role]);
 
   const handleLoginSuccess = (sessionData: Session) => {
     setSession(sessionData);
@@ -171,46 +220,165 @@ function App() {
 
   return (
     <PrivateRoute isLoggedIn={isLoggedIn} onLogin={handleLoginSuccess}>
-      <div className="flex h-screen w-screen overflow-hidden bg-white dark:bg-gray-900">
-        <Sidebar
-          avatar={profile.avatar}
-          session={session}
-          sidebarCollapsed={sidebarCollapsed}
-          mobileMenuOpen={mobileMenuOpen}
-          setMobileMenuOpen={setMobileMenuOpen}
-          currentPage={currentPage}
+      {isLoadingContext || isCheckingMaintenance ? (
+        // Loading screen while fetching user context
+        <div className="flex h-screen w-screen items-center justify-center bg-white dark:bg-gray-900">
+          <div className="text-center">
+            <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-yellow-500 border-r-transparent"></div>
+            <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
+          </div>
+        </div>
+      ) : adminContext.role === 'IT_MAINTENANCE' ? (
+        <ITMaintenance 
+          session={session} 
           handleNavigation={handleNavigation}
-          setIsLoggedIn={setIsLoggedIn}
-          adminContext={adminContext}
+          onMaintenanceToggle={(newStatus: boolean) => setIsMaintenanceMode(newStatus)}
         />
+      ) : (
+        <div className="flex h-screen w-screen overflow-hidden bg-white dark:bg-gray-900 relative">
+          <Sidebar
+            avatar={profile.avatar}
+            session={session}
+            sidebarCollapsed={sidebarCollapsed}
+            mobileMenuOpen={mobileMenuOpen}
+            setMobileMenuOpen={setMobileMenuOpen}
+            currentPage={currentPage}
+            handleNavigation={handleNavigation}
+            setIsLoggedIn={setIsLoggedIn}
+            adminContext={adminContext}
+          />
 
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Header attached to sidebar */}
-          {currentPage !== 'MESSAGES' && currentPage !== 'PROFILE' && currentPage !== 'SETTINGS' && !isOverlayOpen && !showAddProductModal && !isFeedbackModalOpen && (
-            <Header
-              session={session}
-              sidebarCollapsed={sidebarCollapsed}
-              setMobileMenuOpen={setMobileMenuOpen}
-              setSidebarCollapsed={setSidebarCollapsed}
-              notifications={notifications}
-              notificationsOpen={notificationsOpen}
-              toggleNotifications={toggleNotifications}
-              handleNotificationClick={handleNotificationClick}
-              markAllAsRead={markAllAsRead}
-            />
-          )}
-          
-          {/* Main Content */}
-          <div className="flex-1 overflow-hidden bg-white dark:bg-gray-900">
-            <div className="h-full overflow-y-auto scrollbar-none px-2 sm:px-4 md:px-6">
-              <div className="w-full max-w-[2000px] mx-auto">
-                {renderContent()}
+          {/* Main Content Area */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Header attached to sidebar */}
+            {currentPage !== 'MESSAGES' && currentPage !== 'PROFILE' && currentPage !== 'SETTINGS' && !isOverlayOpen && !showAddProductModal && !isFeedbackModalOpen && (
+              <Header
+                session={session}
+                sidebarCollapsed={sidebarCollapsed}
+                setMobileMenuOpen={setMobileMenuOpen}
+                setSidebarCollapsed={setSidebarCollapsed}
+                notifications={notifications}
+                notificationsOpen={notificationsOpen}
+                toggleNotifications={toggleNotifications}
+                handleNotificationClick={handleNotificationClick}
+                markAllAsRead={markAllAsRead}
+              />
+            )}
+            
+            {/* Main Content */}
+            <div className="flex-1 overflow-hidden bg-white dark:bg-gray-900">
+              <div className="h-full overflow-y-auto scrollbar-none px-2 sm:px-4 md:px-6">
+                <div className="w-full max-w-[2000px] mx-auto">
+                  {renderContent()}
+                </div>
               </div>
             </div>
           </div>
+
+          {/* Maintenance Mode Blocking Modal */}
+          {isMaintenanceMode && (
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+              {/* Reduced Blur Background */}
+              <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+              
+              {/* Modal Content */}
+              <div className="relative z-10 bg-gradient-to-br from-white to-gray-50 dark:from-slate-800 dark:to-slate-900 rounded-3xl shadow-2xl w-full max-w-lg mx-4 p-8 border-2 border-orange-200 dark:border-orange-900/50 animate-slideUp">
+                {/* Icon */}
+                <div className="flex justify-center mb-6">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-orange-500 rounded-full blur-xl opacity-50 animate-pulse"></div>
+                    <div className="relative p-6 bg-gradient-to-br from-orange-500 to-red-600 rounded-full shadow-2xl">
+                      <Icon icon="mdi:tools" className="w-16 h-16 text-white" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Title */}
+                <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-3" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  System Under Maintenance
+                </h2>
+
+                {/* Subtitle */}
+                <p className="text-center text-gray-600 dark:text-gray-400 mb-6" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  We're currently performing system maintenance
+                </p>
+
+                {/* Info Box */}
+                <div className="bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 rounded-2xl p-6 mb-6 border-2 border-orange-200 dark:border-orange-800">
+                  <div className="flex items-start gap-4">
+                    <div className="p-2 bg-orange-500 rounded-lg shadow-lg flex-shrink-0">
+                      <Icon icon="mdi:alert-circle" className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 dark:text-white mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                        What does this mean?
+                      </h3>
+                      <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed" style={{ fontFamily: "'Jost', sans-serif" }}>
+                        The system is currently unavailable for regular use. Our IT team is working to ensure everything runs smoothly. 
+                        Please try again later.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contact Box */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-2xl p-6 mb-6 border-2 border-blue-200 dark:border-blue-800">
+                  <div className="flex items-start gap-4">
+                    <div className="p-2 bg-blue-500 rounded-lg shadow-lg flex-shrink-0">
+                      <Icon icon="mdi:headset" className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 dark:text-white mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                        Need Assistance?
+                      </h3>
+                      <p className="text-sm text-gray-700 dark:text-gray-300" style={{ fontFamily: "'Jost', sans-serif" }}>
+                        If you need urgent access, please contact the IT support team for assistance.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Logout Button */}
+                <button
+                  onClick={async () => {
+                    try {
+                      // Call logout API
+                      await fetch(`${API_URL}/api/admin/logout`, {
+                        method: 'POST',
+                        headers: {
+                          'Authorization': `Bearer ${session?.access_token || ''}`,
+                          'Content-Type': 'application/json',
+                        },
+                      });
+                      
+                      // Clear session and redirect
+                      setSession(null);
+                      setIsLoggedIn(false);
+                      window.location.href = '/';
+                    } catch (error) {
+                      console.error('Logout error:', error);
+                      // Force reload even if API call fails
+                      window.location.href = '/';
+                    }
+                  }}
+                  className="w-full py-3 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                  style={{ fontFamily: "'Jost', sans-serif" }}
+                >
+                  <Icon icon="mdi:logout" className="w-5 h-5" />
+                  Log Out
+                </button>
+
+                {/* Footer */}
+                <div className="mt-4 text-center">
+                  <p className="text-xs text-gray-500 dark:text-gray-400" style={{ fontFamily: "'Jost', sans-serif" }}>
+                    Thank you for your patience and understanding
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      )}
     </PrivateRoute>
   );
 }

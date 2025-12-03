@@ -10,9 +10,11 @@ const router = express.Router();
 
 router.post('/addUsers', authenticate, async (req, res) => {
   try {
-    // Check if requester is SuperAdmin
+    // Check if requester is IT Maintenance or SuperAdmin
+    const isITMaintenance = req.user.user_metadata?.is_it_maintenance === true;
     const requesterIsSuperAdmin = await isSuperAdmin(req.user.id);
-    if (!requesterIsSuperAdmin) {
+    
+    if (!isITMaintenance && !requesterIsSuperAdmin) {
       return res.status(403).json({ error: 'Access denied. Only SuperAdmin can add users.' });
     }
 
@@ -256,9 +258,11 @@ IZAJ Trading`;
 // GET - Get list of all admin desktop side users (SuperAdmin only)
 router.get('/users', authenticate, async (req, res) => {
   try {
-    // Check if requester is SuperAdmin
+    // Check if requester is IT Maintenance or SuperAdmin
+    const isITMaintenance = req.user.user_metadata?.is_it_maintenance === true;
     const requesterIsSuperAdmin = await isSuperAdmin(req.user.id);
-    if (!requesterIsSuperAdmin) {
+    
+    if (!isITMaintenance && !requesterIsSuperAdmin) {
       return res.status(403).json({ 
         error: 'Access denied. Only SuperAdmin can view all users.' 
       });
@@ -278,7 +282,13 @@ router.get('/users', authenticate, async (req, res) => {
       try {
         const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(user.user_id);
         
+        // Skip IT MAINTENANCE account from the user list
         if (!authError && authUser?.user?.email) {
+          if (authUser.user.user_metadata?.is_it_maintenance === true) {
+            console.log(`Skipping IT MAINTENANCE account from user list`);
+            continue; // Skip this user
+          }
+          
           usersWithEmail.push({
             ...user,
             email: authUser.user.email,
@@ -318,9 +328,11 @@ router.get('/users', authenticate, async (req, res) => {
 // PUT - Enable/disable user account (SuperAdmin only)
 router.put('/users/:id/status', authenticate, async (req, res) => {
   try {
-    // Check if requester is SuperAdmin
+    // Check if requester is IT Maintenance or SuperAdmin
+    const isITMaintenance = req.user.user_metadata?.is_it_maintenance === true;
     const requesterIsSuperAdmin = await isSuperAdmin(req.user.id);
-    if (!requesterIsSuperAdmin) {
+    
+    if (!isITMaintenance && !requesterIsSuperAdmin) {
       return res.status(403).json({ error: 'Access denied. Only SuperAdmin can edit users.' });
     }
 
@@ -329,6 +341,12 @@ router.put('/users/:id/status', authenticate, async (req, res) => {
 
     if (typeof status !== 'boolean') {
       return res.status(400).json({ error: 'Status must be a boolean.' });
+    }
+
+    // Check if target user is IT MAINTENANCE - cannot be modified
+    const { data: targetAuthUser } = await supabase.auth.admin.getUserById(id);
+    if (targetAuthUser?.user?.user_metadata?.is_it_maintenance === true) {
+      return res.status(403).json({ error: 'Cannot modify IT MAINTENANCE account.' });
     }
 
     const { data: targetUser } = await supabase
@@ -376,13 +394,21 @@ router.put('/users/:id/status', authenticate, async (req, res) => {
 // DELETE - Delete user account (SuperAdmin only)
 router.delete('/users/:id', authenticate, async (req, res) => {
   try {
-    // Check if requester is SuperAdmin
+    // Check if requester is IT Maintenance or SuperAdmin
+    const isITMaintenance = req.user.user_metadata?.is_it_maintenance === true;
     const requesterIsSuperAdmin = await isSuperAdmin(req.user.id);
-    if (!requesterIsSuperAdmin) {
+    
+    if (!isITMaintenance && !requesterIsSuperAdmin) {
       return res.status(403).json({ error: 'Access denied. Only SuperAdmin can delete users.' });
     }
 
     const { id } = req.params;
+
+    // Check if target user is IT MAINTENANCE - cannot be deleted
+    const { data: targetAuthUser } = await supabase.auth.admin.getUserById(id);
+    if (targetAuthUser?.user?.user_metadata?.is_it_maintenance === true) {
+      return res.status(403).json({ error: 'Cannot delete IT MAINTENANCE account.' });
+    }
 
     const { data: targetUser } = await supabase
       .from('adminUser')
@@ -390,6 +416,18 @@ router.delete('/users/:id', authenticate, async (req, res) => {
       .eq('user_id', id)
       .single();
 
+    // First, delete any invite records for this user to avoid foreign key constraint
+    const { error: inviteDeleteError } = await supabase
+      .from('admin_invites')
+      .delete()
+      .eq('user_id', id);
+
+    if (inviteDeleteError) {
+      console.warn('Warning: Failed to delete invite records:', inviteDeleteError.message);
+      // Continue with user deletion even if invite deletion fails
+    }
+
+    // Now delete from adminUser table
     const { error: deleteError } = await supabase
       .from('adminUser')
       .delete()
@@ -407,6 +445,16 @@ router.delete('/users/:id', authenticate, async (req, res) => {
       }, req);
       
       return res.status(500).json({ error: deleteError.message });
+    }
+
+    // Finally, delete from Supabase Auth (optional, but recommended for complete cleanup)
+    try {
+      const { error: authDeleteError } = await supabase.auth.admin.deleteUser(id);
+      if (authDeleteError) {
+        console.warn('Warning: Failed to delete user from auth:', authDeleteError.message);
+      }
+    } catch (authError) {
+      console.warn('Warning: Exception deleting user from auth:', authError);
     }
 
     await logAuditEvent(req.user.id, AuditActions.DELETE_USER, {
@@ -508,9 +556,11 @@ router.post('/accept-invite', async (req, res) => {
 // GET - Get admin assignments (categories and branches)
 router.get('/users/:id/assignments', authenticate, async (req, res) => {
   try {
-    // Check if requester is SuperAdmin
+    // Check if requester is IT Maintenance or SuperAdmin
+    const isITMaintenance = req.user.user_metadata?.is_it_maintenance === true;
     const requesterIsSuperAdmin = await isSuperAdmin(req.user.id);
-    if (!requesterIsSuperAdmin) {
+    
+    if (!isITMaintenance && !requesterIsSuperAdmin) {
       return res.status(403).json({ error: 'Access denied. Only SuperAdmin can view assignments.' });
     }
 
@@ -547,9 +597,11 @@ router.get('/users/:id/assignments', authenticate, async (req, res) => {
 // PUT - Update admin assignments (categories and branches)
 router.put('/users/:id/assignments', authenticate, async (req, res) => {
   try {
-    // Check if requester is SuperAdmin
+    // Check if requester is IT Maintenance or SuperAdmin
+    const isITMaintenance = req.user.user_metadata?.is_it_maintenance === true;
     const requesterIsSuperAdmin = await isSuperAdmin(req.user.id);
-    if (!requesterIsSuperAdmin) {
+    
+    if (!isITMaintenance && !requesterIsSuperAdmin) {
       return res.status(403).json({ error: 'Access denied. Only SuperAdmin can update assignments.' });
     }
 
@@ -689,6 +741,17 @@ router.post('/activate-invite', async (req, res) => {
 // GET - Get current user's admin context (for frontend)
 router.get('/me', authenticate, async (req, res) => {
   try {
+    // Check for IT Maintenance account
+    if (req.user.user_metadata?.is_it_maintenance === true) {
+      return res.json({
+        success: true,
+        is_super_admin: true,
+        role: 'IT_MAINTENANCE',
+        assigned_categories: [],
+        assigned_branches: []
+      });
+    }
+
     // Removed verbose log to reduce terminal noise
     
     const { data: adminUser, error } = await supabase
@@ -731,9 +794,11 @@ router.get('/me', authenticate, async (req, res) => {
 // POST - Cleanup: Remove admin users from profiles table (SuperAdmin only)
 router.post('/cleanup-profiles', authenticate, async (req, res) => {
   try {
-    // Check if requester is SuperAdmin
+    // Check if requester is IT Maintenance or SuperAdmin
+    const isITMaintenance = req.user.user_metadata?.is_it_maintenance === true;
     const requesterIsSuperAdmin = await isSuperAdmin(req.user.id);
-    if (!requesterIsSuperAdmin) {
+    
+    if (!isITMaintenance && !requesterIsSuperAdmin) {
       return res.status(403).json({ error: 'Access denied. Only SuperAdmin can cleanup profiles.' });
     }
 

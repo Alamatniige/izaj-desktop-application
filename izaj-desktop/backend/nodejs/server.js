@@ -37,6 +37,8 @@ import customers from './customers/server.js'
 import orders from './orders/server.js'
 import payments from './payments/server.js'
 import settings from './settings/server.js'
+import maintenance from './maintenance/server.js'
+import backup from './backup/server.js'
 
 const app = express();
 
@@ -107,6 +109,8 @@ app.use('/api/products', stock);
 app.use('/api/sales', sale);
 app.use('/api', reviews);
 app.use('/api/admin', settings);
+app.use('/api/maintenance', maintenance);
+app.use('/api/backup', backup);
 // Dashboard proxy middleware - forward to Python service
 app.use('/api/dashboard', async (req, res) => {
   try {

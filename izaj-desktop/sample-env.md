@@ -32,3 +32,9 @@ SENDGRID_FROM_EMAIL=izajlightingcentre.ph@gmail.com
 
 #Forgot-Password Production URL
 PASSWORD_RESET_REDIRECT_URL=https://localhost:3000 #https://izaj-desktop-application-production.up.railway.app/update-password
+
+# IT Maintenance Configuration
+# Email address for the hidden IT Maintenance account
+IT_MAINTENANCE_EMAIL=vernon10112002@gmail.com
+# Password for IT Maintenance account (optional, defaults to 'izaj-maintenance')
+IT_MAINTENANCE_PASSWORD=your-secure-password-here

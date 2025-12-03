@@ -38,6 +38,40 @@ router.post('/login', async (req, res) => {
       return res.status(403).json({ error: 'Please confirm your email before logging in.' });
     }
 
+    // Skip status check for IT MAINTENANCE account (check user_metadata)
+    const isITMaintenance = data.user.user_metadata?.is_it_maintenance === true;
+    
+    if (!isITMaintenance) {
+      // Check if the user is in adminUser table and if their status is active
+      const { data: adminUser, error: adminError } = await supabase
+        .from('adminUser')
+        .select('status, is_super_admin, name')
+        .eq('user_id', data.user.id)
+        .single();
+
+      if (adminError) {
+        console.error('Error fetching admin user status:', adminError);
+        await logAuditEvent(data.user.id, AuditActions.LOGIN, {
+          email,
+          success: false,
+          error: 'Admin user not found'
+        }, req);
+        
+        return res.status(403).json({ error: 'Admin user not found. Please contact administrator.' });
+      }
+
+      // Check if account is active (status must be true)
+      if (adminUser.status !== true) {
+        await logAuditEvent(data.user.id, AuditActions.LOGIN, {
+          email,
+          success: false,
+          error: 'Account inactive'
+        }, req);
+        
+        return res.status(403).json({ error: 'Your account is currently inactive. Please contact the administrator to activate your account.' });
+      }
+    }
+
     await logAuditEvent(data.user.id, AuditActions.LOGIN, {
       email,
       success: true
