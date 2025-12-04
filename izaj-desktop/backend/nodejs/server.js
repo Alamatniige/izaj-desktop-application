@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import axios from 'axios';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import version from './version/server.js';
 
 // Get the directory of the current file
 const __filename = fileURLToPath(import.meta.url);
@@ -111,6 +112,7 @@ app.use('/api', reviews);
 app.use('/api/admin', settings);
 app.use('/api/maintenance', maintenance);
 app.use('/api/backup', backup);
+app.use('/api/version', version);
 // Dashboard proxy middleware - forward to Python service
 app.use('/api/dashboard', async (req, res) => {
   try {

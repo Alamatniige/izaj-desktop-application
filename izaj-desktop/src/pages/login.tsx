@@ -2,6 +2,7 @@ import { Icon } from '@iconify/react';
 import { useState, useEffect } from 'react';
 import { useLogin } from '../hooks/useLogin';
 import { Session } from '@supabase/supabase-js';
+import { useVersionCheck } from '../hooks/useVersionCheck';
 
 interface LoginProps {
   onLogin: (session: Session) => void;
@@ -11,6 +12,8 @@ interface LoginProps {
 export default function Login({ onLogin, handleNavigation }: LoginProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [inviteAccepted, setInviteAccepted] = useState(false);
+  const [showUpdateBanner, setShowUpdateBanner] = useState(false);
+  const [showVersionMessage, setShowVersionMessage] = useState(false);
   
   const {
     email,
@@ -24,6 +27,24 @@ export default function Login({ onLogin, handleNavigation }: LoginProps) {
     isLoading,
     handleSubmit,
   } = useLogin({ onLogin });
+
+  const { versionInfo, isChecking, error: versionError, checkForUpdates } = useVersionCheck();
+
+  // Show appropriate message based on version check result
+  useEffect(() => {
+    if (versionInfo !== null) {
+      setShowVersionMessage(true);
+      if (versionInfo.updateAvailable) {
+        setShowUpdateBanner(true);
+      }
+    }
+  }, [versionInfo]);
+
+  const handleCheckVersion = async () => {
+    setShowUpdateBanner(false);
+    setShowVersionMessage(false);
+    await checkForUpdates();
+  };
 
   useEffect(() => {
     // Check if user just accepted an invite (has tokens in URL)
@@ -69,6 +90,12 @@ export default function Login({ onLogin, handleNavigation }: LoginProps) {
     }
   }, []);
 
+  const handleDownloadUpdate = () => {
+    if (versionInfo?.downloadUrl) {
+      window.open(versionInfo.downloadUrl, '_blank');
+    }
+  };
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 via-slate-50 to-gray-100 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 relative overflow-hidden">
       {/* Background decorative elements */}
@@ -76,6 +103,118 @@ export default function Login({ onLogin, handleNavigation }: LoginProps) {
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-100/20 to-indigo-100/20 dark:from-blue-900/10 dark:to-indigo-900/10 rounded-full blur-3xl"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-slate-100/20 to-gray-100/20 dark:from-slate-800/10 dark:to-gray-800/10 rounded-full blur-3xl"></div>
       </div>
+
+      {/* Version Check Messages */}
+      {showVersionMessage && (
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-lg px-4">
+          {/* Update Available Banner */}
+          {versionInfo?.updateAvailable && showUpdateBanner && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 shadow-lg mb-3">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start space-x-3 flex-1">
+                  <Icon 
+                    icon="mdi:update" 
+                    className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" 
+                  />
+                  <div className="flex-1">
+                    <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-1" style={{ fontFamily: "'Jost', sans-serif" }}>
+                      Update Available
+                    </h3>
+                    <p className="text-xs text-blue-700 dark:text-blue-300 mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+                      A new version ({versionInfo.latestVersion}) is available. You're currently on {versionInfo.currentVersion}.
+                    </p>
+                    {versionInfo.downloadUrl && (
+                      <button
+                        onClick={handleDownloadUpdate}
+                        className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-medium transition-colors"
+                        style={{ fontFamily: "'Jost', sans-serif" }}
+                      >
+                        Download Update
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowUpdateBanner(false);
+                    setShowVersionMessage(false);
+                  }}
+                  className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 transition-colors ml-2"
+                >
+                  <Icon icon="mdi:close" className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Up to Date Message */}
+          {versionInfo && !versionInfo.updateAvailable && (
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4 shadow-lg">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start space-x-3 flex-1">
+                  <Icon 
+                    icon="mdi:check-circle" 
+                    className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" 
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm text-green-900 dark:text-green-100" style={{ fontFamily: "'Jost', sans-serif" }}>
+                      Your application is on the latest version ({versionInfo.currentVersion})
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowVersionMessage(false)}
+                  className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 transition-colors ml-2"
+                >
+                  <Icon icon="mdi:close" className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Error Message */}
+          {versionError && (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 shadow-lg">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start space-x-3 flex-1">
+                  <Icon 
+                    icon="mdi:alert-circle" 
+                    className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" 
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm text-red-900 dark:text-red-100" style={{ fontFamily: "'Jost', sans-serif" }}>
+                      {versionError}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowVersionMessage(false)}
+                  className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 transition-colors ml-2"
+                >
+                  <Icon icon="mdi:close" className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Loading State */}
+      {isChecking && (
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-lg px-4">
+          <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-lg">
+            <div className="flex items-center space-x-3">
+              <Icon 
+                icon="mdi:loading" 
+                className="w-5 h-5 text-gray-600 dark:text-gray-400 animate-spin" 
+              />
+              <p className="text-sm text-gray-700 dark:text-gray-300" style={{ fontFamily: "'Jost', sans-serif" }}>
+                Checking for updates...
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       
       <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-gray-200/50 dark:border-slate-700/50 px-12 pt-4 pb-8 w-full max-w-lg flex flex-col items-center relative z-10">
         <div className="mt-1 mb-3 flex flex-col items-center">
@@ -216,7 +355,27 @@ export default function Login({ onLogin, handleNavigation }: LoginProps) {
               <span className="font-medium" style={{ fontFamily: "'Jost', sans-serif" }}>Secure Admin Access</span>
               <div className="w-2 h-2 bg-gray-400 dark:bg-slate-500 rounded-full"></div>
             </div>
-            <div style={{ fontFamily: "'Jost', sans-serif" }}>© {new Date().getFullYear()} IZAJ Lighting Centre. All rights reserved.</div>
+            <div className="mb-2" style={{ fontFamily: "'Jost', sans-serif" }}>
+              © {new Date().getFullYear()} IZAJ Lighting Centre. All rights reserved.
+            </div>
+            <button
+              onClick={handleCheckVersion}
+              disabled={isChecking}
+              className="text-xs text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 font-medium hover:underline transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 rounded px-1 py-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:no-underline flex items-center gap-1 mx-auto"
+              style={{ fontFamily: "'Jost', sans-serif" }}
+            >
+              {isChecking ? (
+                <>
+                  <Icon icon="mdi:loading" className="w-3 h-3 animate-spin" />
+                  Checking...
+                </>
+              ) : (
+                <>
+                  <Icon icon="mdi:update" className="w-3 h-3" />
+                  Check for latest versions
+                </>
+              )}
+            </button>
           </div>
         </div>
       </div>

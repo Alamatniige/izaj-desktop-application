@@ -93,7 +93,7 @@ const ITMaintenance: React.FC<ITMaintenanceProps> = ({ session, onMaintenanceTog
         toast.error(result.error || 'Failed to toggle maintenance mode');
       }
     } catch (error) {
-      toast.error('Error connecting to server');
+      toast.error('Error connecting to server: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setIsLoadingMaintenance(false);
       setMaintenanceModal({ open: false, newStatus: false });
@@ -130,7 +130,7 @@ const ITMaintenance: React.FC<ITMaintenanceProps> = ({ session, onMaintenanceTog
         toast.error(result.error || 'Backup failed');
       }
     } catch (error) {
-      toast.error('Backup failed');
+      toast.error('Backup failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setIsBackingUp(false);
     }
@@ -161,7 +161,7 @@ const ITMaintenance: React.FC<ITMaintenanceProps> = ({ session, onMaintenanceTog
         })));
       }
     } catch (error) {
-      console.error('Failed to fetch admin users:', error);
+      console.error('Failed to fetch admin users: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   }, [session?.access_token]);
 
@@ -176,10 +176,10 @@ const ITMaintenance: React.FC<ITMaintenanceProps> = ({ session, onMaintenanceTog
       });
       const result = await response.json();
       if (result.success) {
-       (result.categories || []);
+        (result.categories || []);
       }
-    } catch (error) {
-      console.error('Failed to fetch categories:', error);
+    } catch {
+      console.error('Failed to fetch categories');
     }
   }, [session?.access_token]);
 
@@ -229,7 +229,7 @@ const ITMaintenance: React.FC<ITMaintenanceProps> = ({ session, onMaintenanceTog
       } else {
         toast.error(result.error || 'Failed to add user');
       }
-    } catch (error) {
+    } catch {
       toast.error('Error adding user');
     } finally {
       setIsAddingAdmin(false);
@@ -253,7 +253,7 @@ const ITMaintenance: React.FC<ITMaintenanceProps> = ({ session, onMaintenanceTog
       } else {
         toast.error(result.error || 'Failed to update status');
       }
-    } catch (error) {
+    } catch {
       toast.error('Error updating status');
     }
   };
@@ -271,7 +271,7 @@ const ITMaintenance: React.FC<ITMaintenanceProps> = ({ session, onMaintenanceTog
       } else {
         toast.error(result.error || 'Failed to delete user');
       }
-    } catch (error) {
+    } catch {
       toast.error('Error deleting user');
     }
   };
