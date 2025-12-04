@@ -3,11 +3,12 @@ import express from 'express';
 const router = express.Router();
 
 const LATEST_VERSION = '1.0.7';
-const PRODUCT_NAME = 'Izaj Lighting Centre';
+const PRODUCT_NAME = 'Izaj_Lighting_Centre';
 const GITHUB_USERNAME = 'Alamatniige';
 const GITHUB_REPO = 'izaj-desktop-application';
-const DOWNLOAD_BASE_URL = 
-`https://github.com/${GITHUB_USERNAME}/${GITHUB_REPO}/releases/tag/`;
+
+const DOWNLOAD_BASE_URL =
+  `https://github.com/${GITHUB_USERNAME}/${GITHUB_REPO}/releases/download/`;
 
 
 const compareVersions = (v1, v2) => {
@@ -26,11 +27,9 @@ const compareVersions = (v1, v2) => {
 
 router.get('/check', async (req, res) => {
   try {
-    // Get current version from query parameter (sent by frontend)
     const currentVersion = req.query.version || '1.0.0';
-    
     const updateAvailable = compareVersions(currentVersion, LATEST_VERSION) < 0;
-    
+
     const filename = `${PRODUCT_NAME}_${LATEST_VERSION}_x64-setup.exe`;
     const downloadUrl = updateAvailable
       ? `${DOWNLOAD_BASE_URL}v${LATEST_VERSION}/${encodeURIComponent(filename)}`
@@ -41,7 +40,7 @@ router.get('/check', async (req, res) => {
       latestVersion: LATEST_VERSION,
       updateAvailable,
       downloadUrl,
-      releaseNotes: updateAvailable 
+      releaseNotes: updateAvailable
         ? 'Bug fixes and performance improvements. Please download the latest version for the best experience.'
         : null,
     });

@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Izaj Lighting Centre",
+  "productName": "Izaj_Lighting_Centre",
   "version": "1.0.7",
   "identifier": "com.izaj.lightingcentre",
   "build": {
