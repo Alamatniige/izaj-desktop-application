@@ -29,8 +29,9 @@ router.get('/check', async (req, res) => {
     const updateAvailable = compareVersions(currentVersion, LATEST_VERSION) < 0;
     
     // GitHub Releases URL format: /releases/download/v{VERSION}/{FILENAME}
+    const filename = `Izaj Lighting Centre_${LATEST_VERSION}_x64-setup.exe`;
     const downloadUrl = updateAvailable 
-      ? `${DOWNLOAD_BASE_URL}v${LATEST_VERSION}/Izaj Lighting Centre_${LATEST_VERSION}_x64-setup.exe`
+      ? `${DOWNLOAD_BASE_URL}v${LATEST_VERSION}/${encodeURIComponent(filename)}`
       : null;
     
     res.json({
