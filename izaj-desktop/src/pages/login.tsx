@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useLogin } from '../hooks/useLogin';
 import { Session } from '@supabase/supabase-js';
 import { useVersionCheck } from '../hooks/useVersionCheck';
+import { open } from '@tauri-apps/plugin-shell';
 
 interface LoginProps {
   onLogin: (session: Session) => void;
@@ -90,9 +91,9 @@ export default function Login({ onLogin, handleNavigation }: LoginProps) {
     }
   }, []);
 
-  const handleDownloadUpdate = () => {
+  const handleDownloadUpdate = async () => {
     if (versionInfo?.downloadUrl) {
-      window.open(versionInfo.downloadUrl, '_blank');
+      await open(versionInfo.downloadUrl); // opens in default browser (Chrome, Edge, etc.)
     }
   };
 
