@@ -62,8 +62,38 @@ router.get('/onsale/products', async (req, res, next) => {
     // Filter for published products
     const publishedData = data?.filter(p => p.publish_status === true) || [];
     
+    // Filter out products with expired sales
+    const now = new Date();
+    const activeSaleProducts = publishedData.filter(product => {
+      // If product has no sales, exclude it
+      if (!product.sale || product.sale.length === 0) {
+        return false;
+      }
+      
+      // Check if at least one sale is currently active
+      const hasActiveSale = product.sale.some(sale => {
+        if (!sale.start_date || !sale.end_date) {
+          return false; // Invalid sale data
+        }
+        
+        const startDate = new Date(sale.start_date);
+        const endDate = new Date(sale.end_date);
+        
+        // Sale is active if current date is between start and end date (inclusive)
+        return now >= startDate && now <= endDate;
+      });
+      
+      return hasActiveSale;
+    });
+    
+    // Log filtered products for debugging
+    const expiredCount = publishedData.length - activeSaleProducts.length;
+    if (expiredCount > 0) {
+      console.log(`✅ [OnSale Products] Filtered out ${expiredCount} product(s) with expired sales`);
+    }
+    
     // Log sale counts for each product to help debug
-    const productSaleCounts = publishedData.map(p => ({
+    const productSaleCounts = activeSaleProducts.map(p => ({
       product_id: p.product_id,
       product_name: p.product_name,
       on_sale: p.on_sale,
@@ -72,14 +102,14 @@ router.get('/onsale/products', async (req, res, next) => {
     }));
     
     // Check for products with on_sale = true but no active sales
-    const productsWithoutSales = publishedData.filter(p => (!p.sale || p.sale.length === 0));
+    const productsWithoutSales = activeSaleProducts.filter(p => (!p.sale || p.sale.length === 0));
     if (productsWithoutSales.length > 0) {
       console.warn(`⚠️ [OnSale Products] Found ${productsWithoutSales.length} products with on_sale = true but no active sales:`, 
         productsWithoutSales.map(p => ({ product_id: p.product_id, product_name: p.product_name }))
       );
     }
     
-    res.json(publishedData);
+    res.json(activeSaleProducts);
   } catch (error) {
     console.error('❌ [OnSale Products] Unexpected error:', error);
     next(error);

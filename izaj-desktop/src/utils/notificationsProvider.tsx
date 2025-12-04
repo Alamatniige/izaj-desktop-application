@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { OrderService, Order } from '../services/orderService';
 import { useSessionContext } from './sessionContext';
 import API_URL from '../../config/api';
+import { sendNotification } from '@tauri-apps/plugin-notification';
 
 interface NotificationItem {
   id: number;
@@ -140,16 +141,13 @@ export const NotificationsProvider = ({ children, isAuthenticated = true }: Noti
   };
 
   // Helper function to add notification
-  const addNotification = (notif: NotificationItem) => {
+  const addNotification = async (notif: NotificationItem) => {
     // Filter: Regular admins should only see product and stock notifications
     if (isRegularAdmin && notif.type !== 'product' && notif.type !== 'stock') {
-      console.log('🔔 [Notifications] Skipping notification for regular admin:', notif.type);
       return;
     }
 
-    console.log('🔔 [Notifications] Adding notification:', notif);
     setNotifications((prev) => {
-      // Check if notification already exists (prevent duplicates)
       const exists = prev.some(n => 
         n.message === notif.message && 
         n.title === notif.title &&
@@ -162,19 +160,30 @@ export const NotificationsProvider = ({ children, isAuthenticated = true }: Noti
       }
       
       const updated = [notif, ...prev];
-      // Keep only last 100 notifications to prevent storage bloat
       const limited = updated.slice(0, 100);
       console.log('🔔 [Notifications] Total notifications:', limited.length);
       saveNotificationsToStorage(limited);
       return limited;
     });
+
     toast.success(notif.message, { duration: 3000 });
+
+    if (notif.type === 'order' || notif.type === 'payment' || notif.type === 'product' || notif.type === 'stock') {
+      try {
+        await sendNotification({
+          title: notif.title,
+          body: notif.message,
+          icon: '/izaj.png',
+          sound: 'default',
+        });
+      } catch (error) {
+        console.error('🔔 [Notifications] Error sending notification:', error);
+      }
+    }
   };
 
-  // Track if we've initialized orders (to avoid notifying for all existing orders on first load)
   const ordersInitializedRef = useRef(false);
 
-  // Polling function to check for order and payment changes
   const checkOrdersAndPayments = async () => {
     if (!session || !isAuthenticated) {
       console.log('🔔 [Notifications] Skipping check - no session or not authenticated', { session: !!session, isAuthenticated });
@@ -189,7 +198,7 @@ export const NotificationsProvider = ({ children, isAuthenticated = true }: Noti
 
     try {
       console.log('🔔 [Notifications] Checking orders and payments...');
-      const result = await OrderService.getAllOrders(session);
+      const result = await OrderService.getAllOrders(session, { skipAudit: true });
       if (!result.success || !result.data) {
         console.log('🔔 [Notifications] No orders data returned', result);
         return;

@@ -28,10 +28,10 @@ export const useOrders = (session: Session | null) => {
     cancelled: 0
   });
 
-  const fetchOrders = useCallback(async () => {
+  const fetchOrders = useCallback(async (skipAudit = true) => {
     setIsLoading(true);
     try {
-      const result = await OrderService.getAllOrders(session);
+      const result = await OrderService.getAllOrders(session, { skipAudit });
 
       if (result.success && result.data) {
         setOrders(result.data);
@@ -56,6 +56,35 @@ export const useOrders = (session: Session | null) => {
     }
   }, [session]);
 
+  const refreshOrders = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      // Pass action=refresh to trigger REFRESH_ORDERS audit log
+      const result = await OrderService.getAllOrders(session, { action: 'refresh' });
+
+      if (result.success && result.data) {
+        setOrders(result.data);
+        
+        // Calculate stats
+        const newStats = {
+          pending: result.data.filter((o: { status: string; }) => o.status === 'pending').length,
+          approved: result.data.filter((o: { status: string; }) => o.status === 'approved').length,
+          in_transit: result.data.filter((o: { status: string; }) => o.status === 'in_transit').length,
+          complete: result.data.filter((o: { status: string; }) => o.status === 'complete').length,
+          cancelled: result.data.filter((o: { status: string; }) => o.status === 'cancelled').length,
+          pending_cancellation: result.data.filter((o: { status: string; }) => o.status === 'pending_cancellation').length,
+        };
+        setStats(newStats);
+      } else {
+        console.error('Failed to refresh orders:', result.error);
+      }
+    } catch (error) {
+      console.error('Error refreshing orders:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [session]);
+
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
@@ -64,7 +93,8 @@ export const useOrders = (session: Session | null) => {
     orders,
     isLoading,
     stats,
-    refetchOrders: fetchOrders
+    refetchOrders: fetchOrders,
+    refreshOrders
   };
 };
 

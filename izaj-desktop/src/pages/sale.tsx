@@ -65,11 +65,34 @@ export default function Sale({
     [refreshProductsData, fetchOnSaleProducts, setShowAddSaleModal]
   );
 
+  // Helper function to check if a sale is currently active
+  const isSaleActive = (sale: typeof onSaleProducts[0]): boolean => {
+    if (!sale.sale || sale.sale.length === 0) {
+      return false; // No sales data
+    }
+    
+    const now = new Date();
+    
+    // Check if at least one sale is currently active
+    return sale.sale.some(s => {
+      if (!s.start_date || !s.end_date) {
+        return false; // Invalid sale data
+      }
+      
+      const startDate = new Date(s.start_date);
+      const endDate = new Date(s.end_date);
+      
+      // Sale is active if current date is between start and end date (inclusive)
+      return now >= startDate && now <= endDate;
+    });
+  };
+
   const saleCategories: string[] = [
     'All',
     ...Array.from(
       new Set(
         onSaleProducts
+          .filter(isSaleActive) // Only include active sales in category list
           .map((p) => {
             const categoryName = typeof p.category === 'string' 
               ? p.category 
@@ -83,6 +106,12 @@ export default function Sale({
 
   const filteredSales = onSaleProducts.filter(
     sale => {
+      // First filter: Only show active sales (not expired)
+      if (!isSaleActive(sale)) {
+        return false;
+      }
+      
+      // Second filter: Category and search term
       const categoryName = typeof sale.category === 'string' 
         ? sale.category 
         : sale.category?.category_name ?? '';

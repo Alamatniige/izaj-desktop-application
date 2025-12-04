@@ -105,36 +105,68 @@ router.post('/addUsers', authenticate, async (req, res) => {
       return res.status(500).json({ error: 'Failed to create invite token' });
     }
 
+    // Cleanup profile entries - Supabase Auth may automatically create profiles via triggers
+    // We need to ensure admin users don't appear in the profiles table
     try {
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Wait a bit longer to allow any async triggers to complete
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      const { error: profileDeleteError, data: deletedProfiles } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', userId)
-        .select();
+      // Retry logic: Try multiple times with increasing delays to catch async profile creation
+      let profileDeleted = false;
+      const maxRetries = 5;
+      
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        // Check if profile exists first
+        const { data: existingProfile, error: checkError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', userId)
+          .maybeSingle();
 
-      if (profileDeleteError) {
-        console.error(`❌ [Admin User] Failed to delete profile for admin user ${userId}:`, profileDeleteError.message);
-        // Try one more time after a short delay
-        await new Promise(resolve => setTimeout(resolve, 200));
-        const { error: retryError } = await supabase
+        if (checkError && !checkError.message.includes('does not exist')) {
+          console.warn(`⚠️ [Admin User] Error checking profile existence (attempt ${attempt}):`, checkError.message);
+        }
+
+        if (!existingProfile) {
+          // Profile doesn't exist, we're good
+          if (attempt === 1) {
+            console.log(`✅ [Admin User] No profile entry found for admin user ${userId} (already clean)`);
+          } else {
+            console.log(`✅ [Admin User] Profile successfully removed for admin user ${userId} after ${attempt} attempts`);
+          }
+          profileDeleted = true;
+          break;
+        }
+
+        // Profile exists, try to delete it
+        const { error: profileDeleteError, data: deletedProfiles } = await supabase
           .from('profiles')
           .delete()
-          .eq('id', userId);
-        
-        if (retryError) {
-          console.error(`❌ [Admin User] Retry also failed for ${userId}:`, retryError.message);
+          .eq('id', userId)
+          .select();
+
+        if (profileDeleteError) {
+          console.warn(`⚠️ [Admin User] Failed to delete profile (attempt ${attempt}/${maxRetries}):`, profileDeleteError.message);
         } else {
-          console.log(`✅ [Admin User] Successfully deleted profile on retry for admin user ${userId}`);
+          const deletedCount = deletedProfiles ? deletedProfiles.length : 0;
+          if (deletedCount > 0) {
+            console.log(`✅ [Admin User] Cleaned up profile entry for admin user ${userId} (attempt ${attempt})`);
+            profileDeleted = true;
+            // Wait a bit and verify it's gone
+            await new Promise(resolve => setTimeout(resolve, 200));
+            continue; // Check again in next iteration
+          }
         }
-      } else {
-        const deletedCount = deletedProfiles ? deletedProfiles.length : 0;
-        if (deletedCount > 0) {
-          console.log(`✅ [Admin User] Cleaned up ${deletedCount} profile entry/entries for admin user ${userId}`);
-        } else {
-          console.log(`ℹ️ [Admin User] No profile entry found for admin user ${userId} (already clean)`);
+
+        // Wait before next retry (exponential backoff)
+        if (attempt < maxRetries) {
+          const delay = Math.min(200 * Math.pow(2, attempt - 1), 2000); // Max 2 seconds
+          await new Promise(resolve => setTimeout(resolve, delay));
         }
+      }
+
+      if (!profileDeleted) {
+        console.error(`❌ [Admin User] WARNING: Could not remove profile for admin user ${userId} after ${maxRetries} attempts`);
       }
 
       // Also try to delete from user_profiles table if it exists (might be a view/alias)
@@ -146,26 +178,24 @@ router.post('/addUsers', authenticate, async (req, res) => {
 
         if (userProfilesDeleteError && !userProfilesDeleteError.message.includes('does not exist')) {
           console.warn(`⚠️ [Admin User] Could not delete from user_profiles for ${userId}:`, userProfilesDeleteError.message);
+        } else {
+          console.log(`✅ [Admin User] Cleaned up user_profiles entry for admin user ${userId}`);
         }
       } catch (userProfilesErr) {
         // Non-fatal: user_profiles might not exist or might be a view
         console.log(`ℹ️ [Admin User] user_profiles cleanup skipped for ${userId}`);
       }
 
-      // Final verification: Check if profile still exists
-      const { data: remainingProfile, error: checkError } = await supabase
+      // Final verification: Check if profile still exists after all retries
+      const { data: remainingProfile, error: finalCheckError } = await supabase
         .from('profiles')
         .select('id')
         .eq('id', userId)
         .maybeSingle();
 
-      if (!checkError && remainingProfile) {
-        console.error(`❌ [Admin User] WARNING: Profile still exists for admin user ${userId} after cleanup attempt!`);
-        // Try one final deletion
-        await supabase
-          .from('profiles')
-          .delete()
-          .eq('id', userId);
+      if (!finalCheckError && remainingProfile) {
+        console.error(`❌ [Admin User] CRITICAL: Profile still exists for admin user ${userId} after all cleanup attempts!`);
+        console.error(`   This admin user may appear in e-commerce customer counts. Manual cleanup may be required.`);
       } else {
         console.log(`✅ [Admin User] Verified: No profile entry exists for admin user ${userId}`);
       }

@@ -12,7 +12,7 @@ interface OrdersProps {
 
 function Orders({ setIsOverlayOpen, session }: OrdersProps) {
   // Use hooks
-  const { orders, isLoading, stats, refetchOrders } = useOrders(session);
+  const { orders, isLoading, stats, refetchOrders, refreshOrders } = useOrders(session);
   const { updateStatus, approveCancellation, declineCancellation } = useOrderActions(session, refetchOrders);
   
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'in_transit' | 'complete' | 'cancelled'>('all');
@@ -613,7 +613,7 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
                   style={{ fontFamily: "'Jost', sans-serif" }}
                   onClick={async () => {
                     setIsRefreshing(true);
-                    await refetchOrders();
+                    await refreshOrders();
                     setTimeout(() => setIsRefreshing(false), 1000);
                   }}
                   disabled={isRefreshing}

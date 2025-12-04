@@ -33,7 +33,7 @@ router.get('/dashboard/stats', authenticate, async (req, res) => {
 
     const adminUserIds = adminUsers ? adminUsers.map(admin => admin.user_id) : [];
     
-    // Build query to exclude admin users
+    // Build query to get customer profiles (e-commerce users only)
     let customerQuery = supabaseAdmin
       .from('user_profiles')
       .select('id', { count: 'exact', head: false })
@@ -42,7 +42,8 @@ router.get('/dashboard/stats', authenticate, async (req, res) => {
     // Execute query to get all customer profiles
     const { data: customerProfiles, error: customerError } = await customerQuery;
 
-    // Filter out admin users and get count
+    // Filter out admin users (admin users should NOT be in profiles table, but filter just in case)
+    // This ensures admin users created via admin panel don't count as e-commerce customers
     const totalCustomers = customerProfiles 
       ? customerProfiles.filter(profile => !adminUserIds.includes(profile.id)).length 
       : 0;
@@ -101,7 +102,8 @@ router.get('/dashboard/stats', authenticate, async (req, res) => {
       .gte('created_at', startDate.toISOString())
       .or('user_type.eq.customer,user_type.is.null');
 
-    // Filter out admin users and get count
+    // Filter out admin users (admin users should NOT be in profiles table, but filter just in case)
+    // This ensures admin users created via admin panel don't count as e-commerce customers
     const periodCustomers = periodCustomerProfiles 
       ? periodCustomerProfiles.filter(profile => !adminUserIds.includes(profile.id)).length 
       : 0;

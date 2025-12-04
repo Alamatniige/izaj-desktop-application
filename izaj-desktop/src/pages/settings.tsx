@@ -3,7 +3,8 @@ import { Icon } from "@iconify/react";
 import { Session } from "@supabase/supabase-js";
 import { toast } from "react-hot-toast";
 import API_URL from "../../config/api";
-import { AdminUser,  SettingsState, Users } from "../types/index";
+import { AdminUser,  SettingsState, Users, AuditLog } from "../types/index";
+import { AuditLogDetailsModal } from "../components/AuditLogDetailsModal";
 
 interface SettingsProps {
   handleNavigation?: (page: string) => void;
@@ -13,6 +14,13 @@ interface SettingsProps {
 const Settings: React.FC<SettingsProps> = ({ session }) => {
   const [activeTab, setActiveTab] = useState('subscriptionMessage');
   const [isAddAdminModalOpen, setIsAddAdminModalOpen] = useState(false);
+  const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+  const [editUserAssignments, setEditUserAssignments] = useState({
+    assigned_categories: [] as string[],
+    assigned_branches: [] as string[]
+  });
+  const [isUpdatingUser, setIsUpdatingUser] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterAction, setFilterAction] = useState('');
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
@@ -26,6 +34,7 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
   const [isSendingToAll, setIsSendingToAll] = useState(false);
   const [sendToAllStatus, setSendToAllStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [subscriberCount, setSubscriberCount] = useState<number | null>(null);
+  const [selectedAuditLog, setSelectedAuditLog] = useState<AuditLog | null>(null);
 
   const [newAdmin, setNewAdmin] = useState({
     email: '',
@@ -89,12 +98,12 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
           ...prev,
           userManagement: {
             ...prev.userManagement,
-            adminUsers: result.users.map((user: any) => ({
+            adminUsers: result.users.map((user: { user_id: string; name: string; email: string; role?: string; status?: boolean | string; is_super_admin?: boolean; assigned_categories?: string[]; assigned_branches?: string[] }) => ({
               id: user.user_id, // Backend returns user_id, not id
               name: user.name,
               email: user.email,
               role: user.role || 'Admin',
-              status: user.status === true || user.status === 'active',
+              status: user.status === true || user.status === 'active' || user.status === 'true',
               is_super_admin: user.is_super_admin || false,
               assigned_categories: user.assigned_categories || [] as string[],
               assigned_branches: user.assigned_branches || [] as string[],
@@ -338,6 +347,63 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
     }
   };
 
+  const handleUpdateUserAssignments = async () => {
+    if (!editingUser) return;
+    
+    setIsUpdatingUser(true);
+    try {
+      const response = await fetch(`${API_URL}/api/admin/users/${editingUser.id}/assignments`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          assigned_categories: editUserAssignments.assigned_categories,
+          assigned_branches: editUserAssignments.assigned_branches,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update assignments');
+      }
+
+      // Update local state
+      setSettings(prev => ({
+        ...prev,
+        userManagement: {
+          ...prev.userManagement,
+          adminUsers: prev.userManagement.adminUsers.map(u =>
+            u.id === editingUser.id
+              ? {
+                  ...u,
+                  assigned_categories: editUserAssignments.assigned_categories,
+                  assigned_branches: editUserAssignments.assigned_branches,
+                }
+              : u
+          ),
+        },
+      }));
+
+      setIsEditUserModalOpen(false);
+      setEditingUser(null);
+      toast.success('User assignments updated successfully!', {
+        position: 'top-center',
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Error updating assignments:', error);
+      toast.error('Failed to update assignments. Please try again.', {
+        position: 'top-center',
+        duration: 3000,
+      });
+    } finally {
+      setIsUpdatingUser(false);
+    }
+  };
+
   const handleDownloadAuditLogs = async (from: string, to: string) => {
     const params = new URLSearchParams();
     if (from) params.append("from", from);
@@ -368,15 +434,60 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
     };
 
     // Convert logs to CSV format
-    const csvHeaders = ['Time', 'User', 'User ID', 'Action', 'IP Address'];
+    const csvHeaders = ['Time', 'User', 'User ID', 'Action', 'IP Address', 'Details'];
 
-    const csvRows = result.logs.map((log: Users) => [
-      escapeCsvValue(new Date(log.created_at).toLocaleString()),
-      escapeCsvValue(log.user_name),
-      escapeCsvValue(log.user_id),
-      escapeCsvValue(log.action),
-      escapeCsvValue(log.ip_address || ""),
-    ]);
+    const csvRows = result.logs.map((log: Users) => {
+      // Parse and format details
+      let detailsFormatted = '';
+      if (log.details) {
+        try {
+          const detailsObj = typeof log.details === 'string' ? JSON.parse(log.details) : log.details;
+          
+          // Extract key information, especially product_id
+          const detailsParts: string[] = [];
+          
+          if (detailsObj.product_id) {
+            detailsParts.push(`Product ID: ${detailsObj.product_id}`);
+          }
+          
+          if (detailsObj.product_name) {
+            detailsParts.push(`Product Name: ${detailsObj.product_name}`);
+          }
+          
+          if (detailsObj.changed_fields && typeof detailsObj.changed_fields === 'object') {
+            const changedFields = Object.keys(detailsObj.changed_fields)
+              .map(key => `${key}: ${detailsObj.changed_fields[key]}`)
+              .join('; ');
+            if (changedFields) {
+              detailsParts.push(`Changed Fields: ${changedFields}`);
+            }
+          }
+          
+          if (detailsObj.field && detailsObj.value !== undefined) {
+            detailsParts.push(`${detailsObj.field}: ${detailsObj.value}`);
+          }
+          
+          // If no specific formatting, stringify the whole object
+          if (detailsParts.length === 0) {
+            detailsFormatted = JSON.stringify(detailsObj);
+          } else {
+            detailsFormatted = detailsParts.join(' | ');
+          }
+        } catch {
+          // If parsing fails, use as string
+          detailsFormatted = String(log.details);
+        }
+      }
+      
+      return [
+        escapeCsvValue(new Date(log.created_at).toLocaleString()),
+        escapeCsvValue(log.user_name),
+        escapeCsvValue(log.user_id),
+        escapeCsvValue(log.action),
+        escapeCsvValue(log.ip_address || ""),
+        escapeCsvValue(detailsFormatted),
+      ];
+    });
 
     const csvContent = [
       csvHeaders.join(','),
@@ -589,22 +700,60 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
   }, [session, activeTab, isSuperAdmin, fetchAdminUsers, fetchAuditLogs, fetchSubscriptionMessage, fetchSubscriberCount]);
 
   const getActionColor = (action: string) => {
-  switch (action) {
-    case 'LOGIN':
-      return 'bg-green-100 text-green-800';
-    case 'LOGOUT':
-      return 'bg-red-100 text-red-800';
-    case 'CREATE_USER':
-      return 'bg-blue-100 text-blue-800';
-    case 'UPDATE_USER':
-    case 'UPDATE_PROFILE':
-    case 'UPDATE_STATUS':
-      return 'bg-yellow-100 text-yellow-800';
-    case 'DELETE_USER':
-      return 'bg-red-100 text-red-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
+    switch (action) {
+      // Authentication actions - Green for login, Red for logout
+      case 'LOGIN':
+        return 'bg-green-100 text-green-800';
+      case 'LOGOUT':
+        return 'bg-red-100 text-red-800';
+      
+      // User management actions - Blue for create, Yellow for update, Red for delete
+      case 'CREATE_USER':
+        return 'bg-blue-100 text-blue-800';
+      case 'UPDATE_USER':
+      case 'UPDATE_PROFILE':
+      case 'UPDATE_STATUS':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'DELETE_USER':
+        return 'bg-red-100 text-red-800';
+      
+      // Product actions - Blue for add, Yellow for update, Red for delete
+      case 'ADD_PRODUCT':
+        return 'bg-blue-100 text-blue-800';
+      case 'UPDATE_PRODUCT':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'DELETE_PRODUCT':
+        return 'bg-red-100 text-red-800';
+      
+      // Order actions - Purple/Indigo for view, Yellow for update, Green for approve/complete
+      case 'VIEW_ORDERS':
+      case 'VIEW_ORDER_DETAILS':
+        return 'bg-indigo-100 text-indigo-800';
+      case 'UPDATE_ORDER_STATUS':
+      case 'UPDATE_PAYMENT_STATUS':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'APPROVE_ORDER':
+      case 'MARK_ORDER_COMPLETE':
+        return 'bg-green-100 text-green-800';
+      case 'CANCEL_ORDER':
+      case 'MARK_ORDER_IN_TRANSIT':
+        return 'bg-orange-100 text-orange-800';
+      
+      // View actions - Light blue/Cyan
+      case 'VIEW_USERS':
+      case 'VIEW_PROFILE':
+      case 'VIEW_AUDIT_LOGS':
+      case 'VIEW_STOCK_SUMMARY':
+        return 'bg-cyan-100 text-cyan-800';
+      
+      // Password reset actions - Purple
+      case 'PASSWORD_RESET_REQUEST':
+      case 'PASSWORD_RESET_COMPLETE':
+        return 'bg-purple-100 text-purple-800';
+      
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
   };
   
   const getFilteredLogs = () => {
@@ -625,6 +774,17 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
       return matchesSearch && matchesAction && matchesDate;
     });
   };
+
+  // Sort admin users to show Managers (SuperAdmin) first
+  const sortedAdminUsers = useMemo(() => {
+    return [...settings.userManagement.adminUsers].sort((a, b) => {
+      // Managers (is_super_admin: true) come first
+      if (a.is_super_admin && !b.is_super_admin) return -1;
+      if (!a.is_super_admin && b.is_super_admin) return 1;
+      // If both are same type, sort alphabetically by name
+      return a.name.localeCompare(b.name);
+    });
+  }, [settings.userManagement.adminUsers]);
   
   const clearFilters = () => {
     setSearchTerm('');
@@ -692,7 +852,7 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                       <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-6 text-center">
                         <Icon icon="mdi:alert" className="w-12 h-12 text-yellow-600 dark:text-yellow-400 mx-auto mb-4" />
                         <h3 className="text-lg font-semibold text-yellow-800 dark:text-yellow-300 mb-2">Access Denied</h3>
-                        <p className="text-yellow-700 dark:text-yellow-400">Only SuperAdmin users can access User Management.</p>
+                        <p className="text-yellow-700 dark:text-yellow-400">Only Manager users can access User Management.</p>
                       </div>
                     ) : (
                     <>
@@ -921,6 +1081,177 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                         </div>
                       )}
 
+                      {/* Edit User Assignments Modal */}
+                      {isEditUserModalOpen && editingUser && (
+                        <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-50 p-4">
+                          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col overflow-hidden">
+                            {/* Fixed Header */}
+                            <div className="flex justify-between items-center p-8 border-b border-gray-200 dark:border-slate-700 flex-shrink-0">
+                              <div className="flex items-center gap-3">
+                                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                                  <Icon icon="mdi:pencil" className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                                </div>
+                                <div>
+                                  <h3 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Edit User Assignments</h3>
+                                  <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{editingUser.name}</p>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setIsEditUserModalOpen(false);
+                                  setEditingUser(null);
+                                }}
+                                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors duration-200"
+                              >
+                                <Icon icon="mdi:close" className="w-6 h-6 text-gray-500 dark:text-slate-400" />
+                              </button>
+                            </div>
+                            
+                            {/* Scrollable Form Content */}
+                            <div className="flex-1 overflow-y-auto p-8">
+                              <div className="space-y-6">
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300">
+                                      Assigned Categories
+                                    </label>
+                                    {editUserAssignments.assigned_categories.length > 0 && (
+                                      <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                                        {editUserAssignments.assigned_categories.length} selected
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="relative border border-gray-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 min-h-[120px] max-h-[200px] overflow-y-auto">
+                                    <div className="absolute left-3 top-3 flex items-center pointer-events-none z-10">
+                                      <Icon icon="mdi:tag-multiple" className="w-5 h-5 text-gray-400 dark:text-slate-400" />
+                                    </div>
+                                    {availableCategories.length > 0 ? (
+                                      <div className="pl-10 pr-4 py-3 space-y-2">
+                                        {availableCategories.map(category => (
+                                          <label
+                                            key={category}
+                                            className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-600 cursor-pointer transition-colors"
+                                          >
+                                            <input
+                                              type="checkbox"
+                                              checked={editUserAssignments.assigned_categories.includes(category)}
+                                              onChange={(e) => {
+                                                if (e.target.checked) {
+                                                  setEditUserAssignments({
+                                                    ...editUserAssignments,
+                                                    assigned_categories: [...editUserAssignments.assigned_categories, category]
+                                                  });
+                                                } else {
+                                                  setEditUserAssignments({
+                                                    ...editUserAssignments,
+                                                    assigned_categories: editUserAssignments.assigned_categories.filter(c => c !== category)
+                                                  });
+                                                }
+                                              }}
+                                              className="w-4 h-4 text-blue-600 border-gray-300 dark:border-slate-600 rounded focus:ring-blue-500 cursor-pointer dark:bg-slate-700"
+                                            />
+                                            <span className="text-sm text-gray-700 dark:text-slate-300">{category}</span>
+                                          </label>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <div className="pl-10 pr-4 py-3">
+                                        <p className="text-sm text-gray-500 dark:text-slate-400">No categories available. Please add categories to products first.</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-gray-500 dark:text-slate-400">Select multiple categories by clicking the checkboxes</p>
+                                </div>
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300">
+                                      Assigned Branches
+                                    </label>
+                                    {editUserAssignments.assigned_branches.length > 0 && (
+                                      <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                                        {editUserAssignments.assigned_branches.length} selected
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="relative border border-gray-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 min-h-[120px] max-h-[200px] overflow-y-auto">
+                                    <div className="absolute left-3 top-3 flex items-center pointer-events-none z-10">
+                                      <Icon icon="mdi:store" className="w-5 h-5 text-gray-400 dark:text-slate-400" />
+                                    </div>
+                                    {availableBranches.length > 0 ? (
+                                      <div className="pl-10 pr-4 py-3 space-y-2">
+                                        {availableBranches.map(branch => (
+                                          <label
+                                            key={branch}
+                                            className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-600 cursor-pointer transition-colors"
+                                          >
+                                            <input
+                                              type="checkbox"
+                                              checked={editUserAssignments.assigned_branches.includes(branch)}
+                                              onChange={(e) => {
+                                                if (e.target.checked) {
+                                                  setEditUserAssignments({
+                                                    ...editUserAssignments,
+                                                    assigned_branches: [...editUserAssignments.assigned_branches, branch]
+                                                  });
+                                                } else {
+                                                  setEditUserAssignments({
+                                                    ...editUserAssignments,
+                                                    assigned_branches: editUserAssignments.assigned_branches.filter(b => b !== branch)
+                                                  });
+                                                }
+                                              }}
+                                              className="w-4 h-4 text-blue-600 border-gray-300 dark:border-slate-600 rounded focus:ring-blue-500 cursor-pointer dark:bg-slate-700"
+                                            />
+                                            <span className="text-sm text-gray-700 dark:text-slate-300">{branch}</span>
+                                          </label>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <div className="pl-10 pr-4 py-3">
+                                        <p className="text-sm text-gray-500 dark:text-slate-400">No branches available. Please add branches to products first.</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-gray-500 dark:text-slate-400">Select multiple branches by clicking the checkboxes</p>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* Fixed Footer with Buttons */}
+                            <div className="flex justify-end gap-4 p-8 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 flex-shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsEditUserModalOpen(false);
+                                  setEditingUser(null);
+                                }}
+                                className="px-6 py-3 text-sm font-medium text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-xl transition-colors duration-200"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleUpdateUserAssignments}
+                                disabled={isUpdatingUser}
+                                className="px-6 py-3 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-xl transition-colors duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {isUpdatingUser ? (
+                                  <>
+                                    <Icon icon="mdi:loading" className="w-5 h-5 animate-spin" />
+                                    Updating...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Icon icon="mdi:check" className="w-5 h-5" />
+                                    Update Assignments
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="overflow-x-auto">
                         <table className="min-w-full divide-y divide-gray-100 dark:divide-slate-700">
                           <thead className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-700 dark:to-slate-800">
@@ -934,7 +1265,7 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                             </tr>
                           </thead>
                           <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-100 dark:divide-slate-700">
-                            {settings.userManagement.adminUsers.map((user) => (
+                            {sortedAdminUsers.map((user) => (
                               <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors duration-200">
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <div className="flex items-center">
@@ -999,6 +1330,38 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                                   ) : (
                                     <div className="flex gap-2">
                                       <button
+                                        onClick={async () => {
+                                          setEditingUser(user);
+                                          // Fetch current assignments
+                                          try {
+                                            const response = await fetch(`${API_URL}/api/admin/users/${user.id}/assignments`, {
+                                              headers: {
+                                                Authorization: `Bearer ${session?.access_token}`,
+                                              },
+                                            });
+                                            const result = await response.json();
+                                            if (result.success) {
+                                              setEditUserAssignments({
+                                                assigned_categories: result.assignments.assigned_categories || [],
+                                                assigned_branches: result.assignments.assigned_branches || []
+                                              });
+                                            }
+                                          } catch (error) {
+                                            console.error('Error fetching assignments:', error);
+                                            // Set defaults if fetch fails
+                                            setEditUserAssignments({
+                                              assigned_categories: user.assigned_categories || [],
+                                              assigned_branches: user.assigned_branches || []
+                                            });
+                                          }
+                                          setIsEditUserModalOpen(true);
+                                        }}
+                                        className="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50 rounded-lg transition-all hover:scale-110"
+                                        title="Edit User Assignments"
+                                      >
+                                        <Icon icon="mdi:pencil-outline" className="w-5 h-5" />
+                                      </button>
+                                      <button
                                         onClick={() =>
                                           setConfirmModal({
                                             open: true,
@@ -1007,14 +1370,17 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                                             newStatus: !user.status,
                                           })
                                         }
-                                        className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                                        className={`p-2 rounded-lg transition-all hover:scale-110 ${
                                           user.status
                                             ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/50'
                                             : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/50'
                                         }`}
-                                        title={user.status ? 'Deactivate' : 'Activate'}
+                                        title={user.status ? 'Deactivate User' : 'Activate User'}
                                       >
-                                        {user.status ? 'Deactivate' : 'Activate'}
+                                        <Icon 
+                                          icon={user.status ? 'mdi:account-off' : 'mdi:account-check'} 
+                                          className="w-5 h-5" 
+                                        />
                                       </button>
                                       <button
                                         onClick={() =>
@@ -1024,10 +1390,10 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                                             user,
                                           })
                                         }
-                                        className="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/50 rounded-lg text-xs font-semibold transition-colors"
-                                        title="Delete"
+                                        className="p-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/50 rounded-lg transition-all hover:scale-110"
+                                        title="Delete User"
                                       >
-                                        Delete
+                                        <Icon icon="mdi:delete-outline" className="w-5 h-5" />
                                       </button>
                                     </div>
                                   )}
@@ -1110,13 +1476,50 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                                 className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
                               >
                                 <option value="">All Actions</option>
-                                <option value="LOGIN">Login</option>
-                                <option value="LOGOUT">Logout</option>
-                                <option value="CREATE_USER">Create User</option>
-                                <option value="UPDATE_USER">Update User</option>
-                                <option value="DELETE_USER">Delete User</option>
-                                <option value="UPDATE_STATUS">Update Status</option>
-                                <option value="UPDATE_PROFILE">Update Profile</option>
+                                
+                                {/* Authentication */}
+                                <optgroup label="Authentication">
+                                  <option value="LOGIN">Login</option>
+                                  <option value="LOGOUT">Logout</option>
+                                </optgroup>
+                                
+                                {/* User Management */}
+                                <optgroup label="User Management">
+                                  <option value="CREATE_USER">Create User</option>
+                                  <option value="UPDATE_USER">Update User</option>
+                                  <option value="DELETE_USER">Delete User</option>
+                                  <option value="UPDATE_STATUS">Update Status</option>
+                                  <option value="UPDATE_PROFILE">Update Profile</option>
+                                  <option value="VIEW_USERS">View Users</option>
+                                  <option value="VIEW_PROFILE">View Profile</option>
+                                </optgroup>
+                                
+                                {/* Product Management */}
+                                <optgroup label="Product Management">
+                                  <option value="ADD_PRODUCT">Add Product</option>
+                                  <option value="UPDATE_PRODUCT">Update Product</option>
+                                  <option value="DELETE_PRODUCT">Delete Product</option>
+                                </optgroup>
+                                
+                                {/* Order Management */}
+                                <optgroup label="Order Management">
+                                  <option value="VIEW_ORDERS">View Orders</option>
+                                  <option value="VIEW_ORDER_DETAILS">View Order Details</option>
+                                  <option value="UPDATE_ORDER_STATUS">Update Order Status</option>
+                                  <option value="UPDATE_PAYMENT_STATUS">Update Payment Status</option>
+                                  <option value="APPROVE_ORDER">Approve Order</option>
+                                  <option value="CANCEL_ORDER">Cancel Order</option>
+                                  <option value="MARK_ORDER_IN_TRANSIT">Mark Order In Transit</option>
+                                  <option value="MARK_ORDER_COMPLETE">Mark Order Complete</option>
+                                </optgroup>
+                                
+                                {/* Other Actions */}
+                                <optgroup label="Other Actions">
+                                  <option value="VIEW_AUDIT_LOGS">View Audit Logs</option>
+                                  <option value="VIEW_STOCK_SUMMARY">View Stock Summary</option>
+                                  <option value="PASSWORD_RESET_REQUEST">Password Reset Request</option>
+                                  <option value="PASSWORD_RESET_COMPLETE">Password Reset Complete</option>
+                                </optgroup>
                               </select>
                             </div>
 
@@ -1234,7 +1637,11 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                           <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-100 dark:divide-slate-700">
                             {getFilteredLogs().length > 0 ? (
                               getFilteredLogs().map((log) => (
-                                <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-slate-700">
+                                <tr 
+                                  key={log.id} 
+                                  className="hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer transition-colors"
+                                  onClick={() => setSelectedAuditLog(log)}
+                                >
                                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-slate-100">
                                     {new Date(log.created_at).toLocaleString()}
                                   </td>
@@ -1253,11 +1660,17 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
                                   </td>
                                   <td className="px-6 py-4 whitespace-nowrap">
                                     <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                      ${getActionColor(log.action)} ${getActionColor(log.action).includes('bg-green-100') ? 'dark:bg-green-900/30 dark:text-green-300' : 
-                                      getActionColor(log.action).includes('bg-red-100') ? 'dark:bg-red-900/30 dark:text-red-300' :
-                                      getActionColor(log.action).includes('bg-blue-100') ? 'dark:bg-blue-900/30 dark:text-blue-300' :
-                                      getActionColor(log.action).includes('bg-yellow-100') ? 'dark:bg-yellow-900/30 dark:text-yellow-300' :
-                                      'dark:bg-gray-700 dark:text-slate-200'}`}>
+                                      ${getActionColor(log.action)} ${
+                                        getActionColor(log.action).includes('bg-green-100') ? 'dark:bg-green-900/30 dark:text-green-300' : 
+                                        getActionColor(log.action).includes('bg-red-100') ? 'dark:bg-red-900/30 dark:text-red-300' :
+                                        getActionColor(log.action).includes('bg-blue-100') ? 'dark:bg-blue-900/30 dark:text-blue-300' :
+                                        getActionColor(log.action).includes('bg-yellow-100') ? 'dark:bg-yellow-900/30 dark:text-yellow-300' :
+                                        getActionColor(log.action).includes('bg-indigo-100') ? 'dark:bg-indigo-900/30 dark:text-indigo-300' :
+                                        getActionColor(log.action).includes('bg-orange-100') ? 'dark:bg-orange-900/30 dark:text-orange-300' :
+                                        getActionColor(log.action).includes('bg-cyan-100') ? 'dark:bg-cyan-900/30 dark:text-cyan-300' :
+                                        getActionColor(log.action).includes('bg-purple-100') ? 'dark:bg-purple-900/30 dark:text-purple-300' :
+                                        'dark:bg-gray-700 dark:text-slate-200'
+                                      }`}>
                                       {log.action}
                                     </span>
                                   </td>
@@ -1506,6 +1919,12 @@ const Settings: React.FC<SettingsProps> = ({ session }) => {
           </div>
         </div>
       )}
+
+      {/* Audit Log Details Modal */}
+      <AuditLogDetailsModal
+        log={selectedAuditLog}
+        onClose={() => setSelectedAuditLog(null)}
+      />
     </div>
   );
 };

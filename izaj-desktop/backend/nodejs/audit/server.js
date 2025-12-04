@@ -64,13 +64,28 @@ router.get("/audit-logs", authenticate, async (req, res) => {
       return res.status(500).json({ error: "Failed to fetch audit logs" });
     }
 
+    // Filter out IT Maintenance logs and system operations (hidden from admin panel)
+    // Hide: IT Maintenance LOGIN/LOGOUT, BACKUP, RESTORE, SYSTEM_UPDATE
+    const hiddenActions = ['BACKUP', 'RESTORE', 'SYSTEM_UPDATE'];
+    const filteredLogs = logs.filter(log => {
+      // Filter out system operations
+      if (hiddenActions.includes(log.action)) {
+        return false;
+      }
+      // Filter out IT Maintenance login/logout
+      if (log.user_name === 'IT Maintenance System' && (log.action === 'LOGIN' || log.action === 'LOGOUT')) {
+        return false;
+      }
+      return true;
+    });
+
     res.json({
       success: true,
-      logs,
+      logs: filteredLogs,
       pagination: {
         page: Number(page),
         limit: Number(limit),
-        total: logs.length,
+        total: filteredLogs.length,
       },
     });
   } catch (error) {
@@ -86,7 +101,23 @@ router.get('/export', authenticate, async (req, res) => {
   const { from, to } = req.query;
   try {
     const logs = await getAuditLogs(from, to);
-    res.json({ success: true, logs });
+    
+    // Filter out IT Maintenance logs and system operations (hidden from admin panel)
+    // Hide: IT Maintenance LOGIN/LOGOUT, BACKUP, RESTORE, SYSTEM_UPDATE
+    const hiddenActions = ['BACKUP', 'RESTORE', 'SYSTEM_UPDATE'];
+    const filteredLogs = logs.filter(log => {
+      // Filter out system operations
+      if (hiddenActions.includes(log.action)) {
+        return false;
+      }
+      // Filter out IT Maintenance login/logout
+      if (log.user_name === 'IT Maintenance System' && (log.action === 'LOGIN' || log.action === 'LOGOUT')) {
+        return false;
+      }
+      return true;
+    });
+    
+    res.json({ success: true, logs: filteredLogs });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

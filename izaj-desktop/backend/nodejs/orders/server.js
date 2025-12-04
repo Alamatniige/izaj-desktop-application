@@ -12,7 +12,7 @@ const router = express.Router();
 // GET /api/orders - Get all orders with optional filters
 router.get('/orders', authenticate, async (req, res) => {
   try {
-    const { status } = req.query;
+    const { status, skipAudit, action } = req.query;
 
     // Get admin context to check SuperAdmin status and branches
     const adminContext = await getAdminContext(req.user.id);
@@ -122,12 +122,16 @@ router.get('/orders', authenticate, async (req, res) => {
 
     // Removed verbose success log to reduce terminal noise
 
-    // Log audit event
-    await logAuditEvent(req.user.id, AuditActions.VIEW_ORDERS, {
-      filter: status || 'all',
-      count: data?.length || 0,
-      isSuperAdmin: adminContext.isSuperAdmin
-    }, req);
+    // Log audit event only if skipAudit is not true (skip for background polling)
+    if (skipAudit !== 'true') {
+      // Use REFRESH_ORDERS action if action=refresh, otherwise VIEW_ORDERS
+      const auditAction = action === 'refresh' ? AuditActions.REFRESH_ORDERS : AuditActions.VIEW_ORDERS;
+      await logAuditEvent(req.user.id, auditAction, {
+        filter: status || 'all',
+        count: data?.length || 0,
+        isSuperAdmin: adminContext.isSuperAdmin
+      }, req);
+    }
     
     res.json({
       success: true,

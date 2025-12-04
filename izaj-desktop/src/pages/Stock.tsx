@@ -1,5 +1,5 @@
 import { Icon } from '@iconify/react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { ViewType } from '../types';
 import { Session } from '@supabase/supabase-js';
 import { useStock } from '../hooks/useStock';
@@ -27,6 +27,63 @@ function Stock({ onViewChange, session }: StockProps) {
     filteredProducts,
     refetch
   } = useStock(session);
+
+  // Pagination
+  const PAGE_SIZE = 12;
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalProducts = filteredProducts?.length ?? 0;
+
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(totalProducts / PAGE_SIZE)),
+    [totalProducts]
+  );
+
+  const paginatedProducts = useMemo(() => {
+    if (!filteredProducts || !Array.isArray(filteredProducts)) return [];
+    const safePage = Math.min(Math.max(currentPage, 1), totalPages);
+    const start = (safePage - 1) * PAGE_SIZE;
+    return filteredProducts.slice(start, start + PAGE_SIZE);
+  }, [filteredProducts, currentPage, totalPages]);
+
+  const pageNumbers = useMemo(() => {
+    const pages: number[] = [];
+    const maxVisible = 5;
+
+    if (!totalPages || totalPages < 1) return pages;
+
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+      return pages;
+    }
+
+    let start = Math.max(1, currentPage - 2);
+    let end = Math.min(totalPages, currentPage + 2);
+
+    if (start === 1) {
+      end = Math.min(totalPages, start + maxVisible - 1);
+    } else if (end === totalPages) {
+      start = Math.max(1, end - maxVisible + 1);
+    }
+
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+
+    return pages;
+  }, [currentPage, totalPages]);
+
+  // Reset page when filters change to avoid empty pages
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategory, statusFilter]);
+
+  // Ensure current page is not out of range when totalPages changes
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
     const stats = useMemo(() => {
     if (filteredProducts.length === 0) {
@@ -232,7 +289,7 @@ function Stock({ onViewChange, session }: StockProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredProducts.length === 0 ? (
+                  {paginatedProducts.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="text-center py-12">
                         <div className="flex flex-col items-center justify-center">
@@ -249,7 +306,7 @@ function Stock({ onViewChange, session }: StockProps) {
                       </td>
                     </tr>
                   ) : (
-                    filteredProducts.map((product) => (
+                    paginatedProducts.map((product) => (
                       <tr key={product.id} className="border-b border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 transition-all duration-200">
                         <td className="py-5 px-4">
                           <span className="text-base font-medium text-gray-700 dark:text-slate-300" style={{ fontFamily: "'Jost', sans-serif" }}>
@@ -288,16 +345,86 @@ function Stock({ onViewChange, session }: StockProps) {
               </table>
             </div>
 
-            {/* Pagination/Footer Info */}
+            {/* Pagination controls */}
             {filteredProducts.length > 0 && (
-              <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-gray-500 dark:text-slate-400">
-                <div>
-                  <span style={{ fontFamily: "'Jost', sans-serif" }}>Showing {filteredProducts.length} of {filteredProducts.length} products</span>
+              <div className="mt-6 w-full bg-gradient-to-r from-gray-50 to-white dark:from-slate-800 dark:to-slate-900 border border-gray-100 dark:border-slate-700 rounded-2xl px-4 py-3 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="text-sm text-gray-600 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  {totalProducts > 0 && (
+                    <>
+                      Showing{' '}
+                      <span className="font-semibold text-gray-800 dark:text-slate-100">
+                        {Math.min((currentPage - 1) * PAGE_SIZE + 1, totalProducts)}
+                      </span>
+                      {' – '}
+                      <span className="font-semibold text-gray-800 dark:text-slate-100">
+                        {Math.min(currentPage * PAGE_SIZE, totalProducts)}
+                      </span>
+                      {' of '}
+                      <span className="font-semibold text-gray-800 dark:text-slate-100">
+                        {totalProducts}
+                      </span>
+                      {' products'}
+                    </>
+                  )}
+                  {syncStats.synced > 0 && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <Icon icon="mdi:sync" className="text-green-500 dark:text-green-400" />
+                      <span style={{ fontFamily: "'Jost', sans-serif" }}>Last sync: {syncStats.synced} products updated</span>
+                    </div>
+                  )}
                 </div>
-                {syncStats.synced > 0 && (
+
+                {totalPages > 1 && (
                   <div className="flex items-center gap-2">
-                    <Icon icon="mdi:sync" className="text-green-500 dark:text-green-400" />
-                    <span style={{ fontFamily: "'Jost', sans-serif" }}>Last sync: {syncStats.synced} products updated</span>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      aria-label="Go to previous page"
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium border transition-all duration-200 ${
+                        currentPage === 1
+                          ? 'border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 cursor-not-allowed bg-gray-50 dark:bg-slate-800'
+                          : 'border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700 shadow-sm'
+                      }`}
+                      style={{ fontFamily: "'Jost', sans-serif" }}
+                    >
+                      <Icon icon="mdi:chevron-left" className="w-4 h-4" />
+                      <span className="hidden sm:inline">Previous</span>
+                    </button>
+
+                    {pageNumbers.map((page) => (
+                      <button
+                        key={page}
+                        type="button"
+                        onClick={() => setCurrentPage(page)}
+                        aria-label={`Go to page ${page}`}
+                        aria-current={page === currentPage ? 'page' : undefined}
+                        className={`min-w-[2.25rem] px-2.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 ${
+                          page === currentPage
+                            ? 'bg-green-500 text-white shadow-lg'
+                            : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 border border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 shadow-sm'
+                        }`}
+                        style={{ fontFamily: "'Jost', sans-serif" }}
+                      >
+                        {page}
+                      </button>
+                    ))}
+
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                      aria-label="Go to next page"
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium border transition-all duration-200 ${
+                        currentPage === totalPages
+                          ? 'border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 cursor-not-allowed bg-gray-50 dark:bg-slate-800'
+                          : 'border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700 shadow-sm'
+                      }`}
+                      style={{ fontFamily: "'Jost', sans-serif" }}
+                    >
+                      <span className="hidden sm:inline">Next</span>
+                      <Icon icon="mdi:chevron-right" className="w-4 h-4" />
+                    </button>
                   </div>
                 )}
               </div>

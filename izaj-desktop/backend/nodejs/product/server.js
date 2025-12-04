@@ -3,6 +3,7 @@ import  { supabase } from '../supabaseClient.js';
 import { supabase as productSupabase } from '../supabaseProduct.js';
 import authenticate from '../util/middlerware.js';
 import { getAdminContext, getAdminCategories } from '../util/adminContext.js';
+import { logAuditEvent, AuditActions } from '../util/auditLogger.js';
 import multer from 'multer';
 import { emailService } from '../util/emailService.js';
 import { createClient } from '@supabase/supabase-js';
@@ -1610,6 +1611,17 @@ router.put('/products/:id/pickup-status', authenticate, async (req, res) => {
 router.delete('/products/:id', authenticate, async (req, res) => {
   const { id } = req.params;
   try {
+    // Fetch product details before deletion for audit logging
+    const { data: productData, error: fetchError } = await supabase
+      .from('products')
+      .select('id, product_id, product_name')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !productData) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
     const { data, error } = await supabase
       .from('products')
       .delete()
@@ -1622,6 +1634,17 @@ router.delete('/products/:id', authenticate, async (req, res) => {
 
     if (!data || data.length === 0) {
       return res.status(404).json({ error: "Product not found" });
+    }
+
+    // Log audit event with product_id in details
+    try {
+      await logAuditEvent(req.user.id, AuditActions.DELETE_PRODUCT, {
+        product_id: productData.product_id,
+        product_name: productData.product_name,
+        id: productData.id
+      }, req);
+    } catch (auditError) {
+      console.error('⚠️ Audit logging failed (non-critical):', auditError);
     }
 
     return res.status(200).json({ success: true, data });
@@ -1933,6 +1956,20 @@ router.put('/products/:id', authenticate, async (req, res) => {
       });
     }
     
+    // Fetch product before update to get product_id
+    const { data: oldProduct, error: fetchError } = await supabase
+      .from('products')
+      .select('id, product_id, product_name')
+      .eq('id', id)
+      .single();
+    
+    if (fetchError || !oldProduct) {
+      return res.status(404).json({
+        success: false,
+        error: 'Product not found'
+      });
+    }
+    
     // Prepare update object with only provided fields
     const allowedFields = [
       'product_name', 'price', 'status', 'category', 'branch', 
@@ -1972,6 +2009,18 @@ router.put('/products/:id', authenticate, async (req, res) => {
       });
     }
     
+    // Log audit event with product_id and changed fields
+    try {
+      await logAuditEvent(req.user.id, AuditActions.UPDATE_PRODUCT, {
+        product_id: oldProduct.product_id,
+        product_name: oldProduct.product_name,
+        id: oldProduct.id,
+        changed_fields: filteredUpdateData
+      }, req);
+    } catch (auditError) {
+      console.error('⚠️ Audit logging failed (non-critical):', auditError);
+    }
+    
     res.json({
       success: true,
       message: 'Product updated successfully',
@@ -1993,6 +2042,20 @@ router.patch('/products/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const { field, value } = req.body;
+    
+    // Fetch product before update to get product_id
+    const { data: oldProduct, error: fetchError } = await supabase
+      .from('products')
+      .select('id, product_id, product_name')
+      .eq('id', id)
+      .single();
+    
+    if (fetchError || !oldProduct) {
+      return res.status(404).json({
+        success: false,
+        error: 'Product not found'
+      });
+    }
     
     // Validate field
     const allowedFields = [
@@ -2050,6 +2113,19 @@ router.patch('/products/:id', authenticate, async (req, res) => {
         success: false,
         error: 'Product not found'
       });
+    }
+    
+    // Log audit event with product_id, field, and value
+    try {
+      await logAuditEvent(req.user.id, AuditActions.UPDATE_PRODUCT, {
+        product_id: oldProduct.product_id,
+        product_name: oldProduct.product_name,
+        id: oldProduct.id,
+        field: field,
+        value: value
+      }, req);
+    } catch (auditError) {
+      console.error('⚠️ Audit logging failed (non-critical):', auditError);
     }
     
     res.json({

@@ -19,6 +19,48 @@ router.post('/login', async (req, res) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
+      // Check if user exists and account is deactivated, even when authentication fails
+      try {
+        // Use admin API to find user by email
+        const { data: usersData, error: listError } = await supabase.auth.admin.listUsers();
+        
+        if (!listError && usersData?.users) {
+          // Find user by email
+          const foundUser = usersData.users.find(u => u.email === email);
+          
+          if (foundUser) {
+            // Check if user is IT Maintenance (skip status check for them)
+            const isITMaintenance = foundUser.user_metadata?.is_it_maintenance === true;
+            
+            if (!isITMaintenance) {
+              // Check status in adminUser table
+              const { data: adminUser, error: adminError } = await supabase
+                .from('adminUser')
+                .select('status')
+                .eq('user_id', foundUser.id)
+                .single();
+              
+              // If user exists in adminUser table and status is false, return deactivation message
+              if (!adminError && adminUser && adminUser.status !== true) {
+                await logAuditEvent(foundUser.id, AuditActions.LOGIN, {
+                  email,
+                  success: false,
+                  error: 'Account deactivated'
+                }, req);
+                
+                return res.status(403).json({ 
+                  error: 'Your account is currently deactivated. Please contact your manager to activate your account.' 
+                });
+              }
+            }
+          }
+        }
+      } catch (checkError) {
+        // If status check fails, fall back to generic error
+        console.error('Error checking account status:', checkError);
+      }
+      
+      // Default: return generic authentication error
       await logAuditEvent(null, AuditActions.LOGIN, {
         email,
         success: false,
@@ -65,10 +107,10 @@ router.post('/login', async (req, res) => {
         await logAuditEvent(data.user.id, AuditActions.LOGIN, {
           email,
           success: false,
-          error: 'Account inactive'
+          error: 'Account deactivated'
         }, req);
         
-        return res.status(403).json({ error: 'Your account is currently inactive. Please contact the administrator to activate your account.' });
+        return res.status(403).json({ error: 'Your account is currently deactivated. Please contact your manager to activate your account.' });
       }
     }
 

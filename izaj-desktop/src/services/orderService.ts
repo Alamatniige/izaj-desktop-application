@@ -48,6 +48,8 @@ export interface Order {
 
 export interface OrderFilters {
   status?: string;
+  skipAudit?: boolean;
+  action?: string;
 }
 
 export interface UpdateOrderOptions {
@@ -73,6 +75,8 @@ export class OrderService {
     try {
       const params = new URLSearchParams();
       if (filters.status) params.append('status', filters.status);
+      if (filters.skipAudit) params.append('skipAudit', 'true');
+      if (filters.action) params.append('action', filters.action);
 
       const response = await fetch(`${API_URL}/api/orders?${params.toString()}`, {
         method: 'GET',

@@ -97,12 +97,18 @@ export function AddProductModal({
       const products = await FilterService.fetchByCategory(session, category);
       // Filter only published products
       const publishedProducts = products.filter(p => p.publish_status === true);
-      setCategoryProducts(publishedProducts);
       
-      // Fetch media URLs for all products
+      // When in sale mode, filter out products that are already on sale
+      const availableProducts = mode === 'sale' 
+        ? publishedProducts.filter(p => p.on_sale !== true)
+        : publishedProducts;
+      
+      setCategoryProducts(availableProducts);
+      
+      // Fetch media URLs for all available products
       const mediaMap: Record<string, string[]> = {};
       await Promise.all(
-        publishedProducts.map(async (product) => {
+        availableProducts.map(async (product) => {
           try {
             const urls = await ProductService.fetchMediaUrl(session, product.id);
             mediaMap[product.id] = urls;
@@ -121,7 +127,7 @@ export function AddProductModal({
     } finally {
       setCategoryProductsLoading(false);
     }
-  }, [session]);
+  }, [session, mode]);
 
   // Fetch categories on mount
   useEffect(() => {

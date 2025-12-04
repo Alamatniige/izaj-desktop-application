@@ -23,6 +23,7 @@
     "@tauri-apps/plugin-deep-link": "^2.4.3",
     "@tauri-apps/plugin-dialog": "^2.3.1",
     "@tauri-apps/plugin-fs": "^2.4.1",
+    "@tauri-apps/plugin-notification": "^2.3.3",
     "@types/react-beautiful-dnd": "^13.1.8",
     "antd": "^5.27.4",
     "cors": "^2.8.5",
