@@ -32,8 +32,6 @@ router.get('/check', async (req, res) => {
     // GitHub Releases URL format: /releases/download/v{VERSION}/{FILENAME}
     const filename = `${PRODUCT_NAME}_${LATEST_VERSION}_x64-setup.exe`;
     const downloadUrl = updateAvailable 
-      ? `${DOWNLOAD_BASE_URL}v${LATEST_VERSION}/${filename}`
-      : null;
     
     res.json({
       currentVersion,
