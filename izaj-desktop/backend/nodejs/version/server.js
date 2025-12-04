@@ -3,6 +3,7 @@ import express from 'express';
 const router = express.Router();
 
 const LATEST_VERSION = '1.0.7';
+const PRODUCT_NAME = 'Izaj Lighting Centre';
 const GITHUB_USERNAME = 'Alamatniige';
 const GITHUB_REPO = 'izaj-desktop-application';
 const DOWNLOAD_BASE_URL = `https://github.com/${GITHUB_USERNAME}/${GITHUB_REPO}/releases/download/`;
@@ -29,9 +30,9 @@ router.get('/check', async (req, res) => {
     const updateAvailable = compareVersions(currentVersion, LATEST_VERSION) < 0;
     
     // GitHub Releases URL format: /releases/download/v{VERSION}/{FILENAME}
-    const filename = `Izaj Lighting Centre_${LATEST_VERSION}_x64-setup.exe`;
+    const filename = `${PRODUCT_NAME}_${LATEST_VERSION}_x64-setup.exe`;
     const downloadUrl = updateAvailable 
-      ? `${DOWNLOAD_BASE_URL}v${LATEST_VERSION}/${encodeURIComponent(filename)}`
+      ? `${DOWNLOAD_BASE_URL}v${LATEST_VERSION}/${filename}`
       : null;
     
     res.json({
