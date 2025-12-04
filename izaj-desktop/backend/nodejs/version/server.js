@@ -3,7 +3,7 @@ import express from 'express';
 const router = express.Router();
 
 const LATEST_VERSION = '1.0.7';
-const PRODUCT_NAME = 'Izaj Lighting Centre';
+const PRODUCT_NAME = 'Izaj-Lighting-Centre';
 const GITHUB_USERNAME = 'Alamatniige';
 const GITHUB_REPO = 'izaj-desktop-application';
 const DOWNLOAD_BASE_URL = `https://github.com/${GITHUB_USERNAME}/${GITHUB_REPO}/tree/main/releases/downloads/`;
