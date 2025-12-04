@@ -236,7 +236,7 @@ router.post('/subscription-message/send-to-all', authenticate, async (req, res) 
     }
 
     // Send emails directly using local email service
-    const webAppUrl = process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://izaj-lighting-centre.netlify.app';
+    const webAppUrl = process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://izaj-ecommerce.vercel.app';
     const results = [];
     const errors = [];
 

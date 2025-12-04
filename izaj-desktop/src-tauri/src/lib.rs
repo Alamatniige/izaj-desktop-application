@@ -15,6 +15,7 @@ pub fn run() {
     })
     // Initialize the deep link plugin; scheme configuration is provided via tauri.conf.json
     .plugin(tauri_plugin_deep_link::init())
+    .plugin(tauri_plugin_shell::init())
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }

@@ -15,8 +15,8 @@ NODE_ENV=development
 PYTHON_SERVICE_URL=http://localhost:8002
 
 # Frontend URLs
-WEB_APP_URL=https://izaj-lighting-centre.netlify.app
-NEXT_PUBLIC_APP_URL=https://izaj-lighting-centre.netlify.app
+WEB_APP_URL=https://izaj-ecommerce.vercel.app
+NEXT_PUBLIC_APP_URL=https://izaj-ecommerce.vercel.app
 FRONTEND_URL=https://izaj-desktop-application-production.up.railway.app
 
 # Email Configuration (Gmail)

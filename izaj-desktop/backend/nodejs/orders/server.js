@@ -382,7 +382,7 @@ router.put('/orders/:id/status', authenticate, async (req, res) => {
           // Use production URL by default, allow override via environment variables
           const webAppUrl = process.env.WEB_APP_URL 
             || process.env.NEXT_PUBLIC_APP_URL 
-            || 'https://izaj-lighting-centre.netlify.app';
+            || 'https://izaj-ecommerce.vercel.app';
           const confirmationUrl = `${webAppUrl}/confirm-shipping-fee?token=${confirmationToken}&order=${id}`;
           
           console.log(`📧 [Orders] Shipping Fee Email - WEB_APP_URL: ${process.env.WEB_APP_URL || 'not set'}, NEXT_PUBLIC_APP_URL: ${process.env.NEXT_PUBLIC_APP_URL || 'not set'}`);
@@ -1017,7 +1017,7 @@ router.put('/orders/:id/shipping-fee', authenticate, async (req, res) => {
             // Use production URL by default, allow override via environment variables
             const webAppUrl = process.env.WEB_APP_URL 
               || process.env.NEXT_PUBLIC_APP_URL 
-              || 'https://izaj-lighting-centre.netlify.app';
+              || 'https://izaj-ecommerce.vercel.app';
             const confirmationUrl = `${webAppUrl}/confirm-shipping-fee?token=${confirmationToken}&order=${id}`;
             
             console.log(`📧 [Orders] Shipping Fee Email (Update) - WEB_APP_URL: ${process.env.WEB_APP_URL || 'not set'}, NEXT_PUBLIC_APP_URL: ${process.env.NEXT_PUBLIC_APP_URL || 'not set'}`);

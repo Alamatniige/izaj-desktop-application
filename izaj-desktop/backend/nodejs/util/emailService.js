@@ -153,7 +153,7 @@ class EmailService {
   // Create beautiful product notification template (matching izaj-web email design exactly)
   createProductNotificationTemplate(productName, productImageUrl, webAppUrl, productId) {
     // Ensure webAppUrl has a value
-    const baseUrl = webAppUrl || process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://izaj-lighting-centre.netlify.app';
+    const baseUrl = webAppUrl || process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://izaj-ecommerce.vercel.app';
     const productLink = productId ? `${baseUrl}/item-description/${productId}` : baseUrl;
     const unsubscribeLink = `${baseUrl}/unsubscribe`;
     
@@ -319,7 +319,7 @@ class EmailService {
   // Create beautiful sale notification template (matching izaj-web email design exactly)
   createSaleNotificationTemplate(productName, discountText, startDate, endDate, productImageUrl, webAppUrl, productId) {
     // Ensure webAppUrl has a value
-    const baseUrl = webAppUrl || process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://izaj-lighting-centre.netlify.app';
+    const baseUrl = webAppUrl || process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://izaj-ecommerce.vercel.app';
     const productLink = productId ? `${baseUrl}/item-description/${productId}` : baseUrl;
     const unsubscribeLink = `${baseUrl}/unsubscribe`;
     
@@ -502,7 +502,7 @@ class EmailService {
     `;
   }
 
-  async sendSubscriptionMessage(email, customMessage, webAppUrl = 'https://izaj-lighting-centre.netlify.app') {
+  async sendSubscriptionMessage(email, customMessage, webAppUrl = 'https://izaj-ecommerce.vercel.app') {
     // Check if message is HTML formatted
     const isHtml = customMessage ? this.isHtmlContent(customMessage) : false;
     

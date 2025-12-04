@@ -366,7 +366,7 @@ router.post('/create', async (req, res, next) => {
         }
       } else {
         
-        const webAppUrl = process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://izaj-lighting-centre.netlify.app';
+        const webAppUrl = process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://izaj-ecommerce.vercel.app';
         const productName = product.product_name || 'Product';
         const discountText = percentage 
           ? `${percentage}% OFF` 
