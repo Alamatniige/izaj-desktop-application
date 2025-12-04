@@ -5,7 +5,6 @@ import toast from 'react-hot-toast';
 import { OrderService, Order } from '../services/orderService';
 import { useSessionContext } from './sessionContext';
 import API_URL from '../../config/api';
-import { sendNotification } from '@tauri-apps/plugin-notification';
 
 interface NotificationItem {
   id: number;
@@ -65,7 +64,6 @@ export const NotificationsProvider = ({ children, isAuthenticated = true }: Noti
   // Load notifications from localStorage on initial mount only
   const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
     const loaded = loadNotificationsFromStorage();
-    console.log('🔔 [Notifications] Loaded from storage:', loaded.length);
     return loaded;
   });
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -77,9 +75,7 @@ export const NotificationsProvider = ({ children, isAuthenticated = true }: Noti
     is_super_admin: false,
     role: null,
   });
-  
-  console.log('🔔 [Notifications] Provider rendered', { hasSession: !!session, isAuthenticated, notificationCount: notifications.length });
-  
+    
   // Store previous state for comparison
   const previousOrdersRef = useRef<Map<string, { status: string; payment_status: string; updated_at: string }>>(new Map());
   const previousProductsRef = useRef<Set<string>>(new Set());
@@ -161,25 +157,11 @@ export const NotificationsProvider = ({ children, isAuthenticated = true }: Noti
       
       const updated = [notif, ...prev];
       const limited = updated.slice(0, 100);
-      console.log('🔔 [Notifications] Total notifications:', limited.length);
       saveNotificationsToStorage(limited);
       return limited;
     });
 
     toast.success(notif.message, { duration: 3000 });
-
-    if (notif.type === 'order' || notif.type === 'payment' || notif.type === 'product' || notif.type === 'stock') {
-      try {
-        await sendNotification({
-          title: notif.title,
-          body: notif.message,
-          icon: '/izaj.png',
-          sound: 'default',
-        });
-      } catch (error) {
-        console.error('🔔 [Notifications] Error sending notification:', error);
-      }
-    }
   };
 
   const ordersInitializedRef = useRef(false);
@@ -347,10 +329,8 @@ export const NotificationsProvider = ({ children, isAuthenticated = true }: Noti
   };
 
   useEffect(() => {
-    console.log('🔔 [Notifications] Setting up notification system', { isAuthenticated, hasSession: !!session });
     
     if (!isAuthenticated) {
-      console.log('🔔 [Notifications] Not authenticated, skipping setup');
       return;
     }
 
@@ -361,7 +341,6 @@ export const NotificationsProvider = ({ children, isAuthenticated = true }: Noti
 
     // Initial setup - keep Supabase realtime for products as fallback
     const setupProductRealtime = async () => {
-      console.log('🔔 [Notifications] Setting up product realtime subscriptions');
       const insertChannel = supabase
         .channel('insert-centralized-product')
         .on(
@@ -577,7 +556,6 @@ export const NotificationsProvider = ({ children, isAuthenticated = true }: Noti
     const cleanupProductRealtime = setupProductRealtime();
 
     // Polling interval for orders and payments (every 5 seconds for faster detection)
-    console.log('🔔 [Notifications] Starting polling intervals');
     const ordersPollInterval = setInterval(() => {
       checkOrdersAndPayments();
     }, 5000);
@@ -589,7 +567,6 @@ export const NotificationsProvider = ({ children, isAuthenticated = true }: Noti
 
     // Reset initialization when session changes
     if (session) {
-      console.log('🔔 [Notifications] Session detected, resetting initialization');
       ordersInitializedRef.current = false;
       previousOrdersRef.current.clear();
       // Reset welcome notification flag when session changes (new login)
@@ -597,7 +574,6 @@ export const NotificationsProvider = ({ children, isAuthenticated = true }: Noti
     }
 
     // Initial check
-    console.log('🔔 [Notifications] Running initial checks...');
     
     // Add a welcome notification to verify system is working (only once per session)
     if (!welcomeNotifShownRef.current && session) {
