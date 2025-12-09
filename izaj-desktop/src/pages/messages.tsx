@@ -633,28 +633,56 @@ const Messages = ({ session }: MessagesProps) => {
       console.log('✅ [Admin] Processing admin message for room:', msg.roomId);
 
       // Only add if not already in messages (avoid duplicates)
+      // Also replace optimistic messages (temp ID) with server messages (DB ID)
       setMessages(prev => {
         const roomMessages = prev.get(msg.roomId) || [];
-        // Check if message already exists
-        const exists = roomMessages.some(m => {
-          if (m.id === msg.id || String(m.id) === String(msg.id)) {
-            console.log('⚠️ [Admin] Duplicate admin message detected by ID');
-            return true;
-          }
-          if (m.text === msg.text && Math.abs(m.timestamp.getTime() - msg.timestamp.getTime()) < 2000) {
-            console.log('⚠️ [Admin] Duplicate admin message detected by text+time');
-            return true;
-          }
-          return false;
+        const updated = new Map(prev);
+        
+        // Check if message already exists by ID
+        const existingById = roomMessages.find(m => 
+          m.id === msg.id || String(m.id) === String(msg.id)
+        );
+        
+        if (existingById) {
+          console.log('⚠️ [Admin] Duplicate admin message detected by ID - skipping');
+          return prev;
+        }
+        
+        // Check if there's an optimistic message (temp ID) that matches this server message
+        // If found, replace it with the server message (which has the real DB ID)
+        const optimisticIndex = roomMessages.findIndex(m => {
+          // Optimistic messages typically have numeric string IDs (Date.now().toString())
+          const isOptimisticId = /^\d+$/.test(String(m.id));
+          return isOptimisticId &&
+                 m.text === msg.text && 
+                 m.sender === msg.sender &&
+                 m.roomId === msg.roomId &&
+                 Math.abs(m.timestamp.getTime() - msg.timestamp.getTime()) < 3000;
         });
         
-        if (exists) {
-          console.log('⏭️ [Admin] Skipping duplicate admin message');
+        if (optimisticIndex !== -1) {
+          console.log('🔄 [Admin] Replacing optimistic message with server message (ID:', msg.id, ')');
+          const newMessages = [...roomMessages];
+          newMessages[optimisticIndex] = msg; // Replace optimistic with server message
+          newMessages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+          updated.set(msg.roomId, newMessages);
+          return updated;
+        }
+        
+        // Check for any duplicate by text+sender+roomId+time (safety check)
+        const duplicateExists = roomMessages.some(m => 
+          m.text === msg.text && 
+          m.sender === msg.sender &&
+          m.roomId === msg.roomId &&
+          Math.abs(m.timestamp.getTime() - msg.timestamp.getTime()) < 2000
+        );
+        
+        if (duplicateExists) {
+          console.log('⚠️ [Admin] Duplicate admin message detected by text+sender+roomId+time - skipping');
           return prev;
         }
         
         console.log('➕ [Admin] Adding new admin message to room:', msg.roomId);
-        const updated = new Map(prev);
         const newMessages = [...roomMessages, msg];
         // Sort by timestamp to maintain order
         newMessages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
@@ -758,6 +786,27 @@ const Messages = ({ session }: MessagesProps) => {
     // Add to local messages immediately (optimistic update)
     setMessages(prev => {
       const roomMessages = prev.get(selectedConversation) || [];
+      // Check for duplicates before adding (safety check)
+      const exists = roomMessages.some(m => {
+        // Check by ID
+        if (m.id === adminMessage.id || String(m.id) === String(adminMessage.id)) {
+          return true;
+        }
+        // Check by text + timestamp + sender + roomId (catches rapid duplicate sends)
+        if (m.text === adminMessage.text && 
+            m.sender === adminMessage.sender &&
+            m.roomId === adminMessage.roomId &&
+            Math.abs(m.timestamp.getTime() - adminMessage.timestamp.getTime()) < 1000) {
+          return true;
+        }
+        return false;
+      });
+      
+      if (exists) {
+        console.log('⏭️ [Admin] Skipping duplicate optimistic message');
+        return prev;
+      }
+      
       const updated = new Map(prev);
       const newMessages = [...roomMessages, adminMessage];
       // Sort by timestamp to maintain order
@@ -834,7 +883,7 @@ const Messages = ({ session }: MessagesProps) => {
   const isConversationConnected = currentConversation ? (connectedRooms.has(selectedConversation!) || currentConversation.adminConnected) : false;
 
   return (
-    <div className="h-full w-full flex flex-col bg-white dark:bg-gray-900 overflow-hidden" style={{ height: '100vh', maxHeight: '100vh' }}>
+    <div className="h-full w-full flex flex-col bg-white dark:bg-gray-900 overflow-hidden" style={{ height: '89vh', maxHeight: '90vh' }}>
       {/* Header */}
       <div className="flex-shrink-0 p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
         <div className="flex items-center justify-between">

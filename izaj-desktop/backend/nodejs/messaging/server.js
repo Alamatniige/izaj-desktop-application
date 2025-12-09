@@ -203,14 +203,22 @@ router.post('/messages', async (req, res) => {
         });
       }
       
-      // Emit to specific room for real-time updates (both customer and admin in that room)
-      io.in(roomId).fetchSockets().then(roomSockets => {
-        console.log(`📨 [API] Emitting ${senderType === 'customer' ? 'customer:message' : 'admin:message'} to ${roomSockets.length} socket(s) in room: ${roomId}`);
-      }).catch(err => {
-        console.error('Error fetching room sockets:', err);
-      });
-      io.to(roomId).emit(senderType === 'customer' ? 'customer:message' : 'admin:message', socketMessage);
-      console.log(`📨 [API] Emitted ${senderType === 'customer' ? 'customer:message' : 'admin:message'} to room: ${roomId}`);
+      // Emit to specific room for real-time updates
+      // NOTE: For admin messages, skip broadcasting here since the socket handler already broadcasts
+      // (excluding the sender to prevent duplication). Only broadcast customer messages.
+      if (senderType === 'customer') {
+        io.in(roomId).fetchSockets().then(roomSockets => {
+          console.log(`📨 [API] Emitting customer:message to ${roomSockets.length} socket(s) in room: ${roomId}`);
+        }).catch(err => {
+          console.error('Error fetching room sockets:', err);
+        });
+        io.to(roomId).emit('customer:message', socketMessage);
+        console.log(`📨 [API] Emitted customer:message to room: ${roomId}`);
+      } else {
+        // Admin messages are already broadcast by the socket handler (excluding sender)
+        // Skip broadcasting here to prevent duplication
+        console.log(`⏭️ [API] Skipping broadcast for admin message (already broadcast by socket handler): ${message.id}`);
+      }
     } else {
       console.warn('⚠️ [API] Socket.IO instance not available, real-time events not emitted');
     }

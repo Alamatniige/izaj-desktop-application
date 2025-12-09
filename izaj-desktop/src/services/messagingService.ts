@@ -24,6 +24,9 @@ export interface Conversation {
   customerName?: string;
   createdAt: Date;
   adminConnected?: boolean;
+  lastMessageAt?: Date;
+  messages?: Message[];
+
 }
 
 export const getAdminSocket = (): Socket | null => {

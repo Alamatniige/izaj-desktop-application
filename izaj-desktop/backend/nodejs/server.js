@@ -350,11 +350,11 @@ io.on('connection', async (socket) => {
       }
     })();
     
-    // Emit to all sockets in the room (customer and other admins)
-    io.to(roomId).emit('admin:message', message);
+    // Emit to all sockets in the room (customer and other admins) - exclude sender to prevent duplication
+    socket.broadcast.to(roomId).emit('admin:message', message);
     
-    // Also emit to admins room for admin dashboard updates
-    io.to('admins').emit('admin:message', message);
+    // Also emit to admins room for admin dashboard updates - exclude sender
+    socket.broadcast.to('admins').emit('admin:message', message);
   });
 });
 
@@ -575,15 +575,22 @@ const setupSupabaseRealtime = () => {
             console.log(`📨 [Supabase Realtime] ✅ Emitted admin:incoming to admins room, message:`, socketMessage.text?.substring(0, 50));
           }
           
-          // Emit to specific room for real-time updates (both customer and admin in that room)
-          io.in(roomId).fetchSockets().then(roomSockets => {
-            console.log(`📨 [Supabase Realtime] Emitting ${senderType === 'customer' ? 'customer:message' : 'admin:message'} to ${roomSockets.length} socket(s) in room: ${roomId}`);
-          }).catch(err => {
-            console.error('Error fetching room sockets:', err);
-          });
-          
-          io.to(roomId).emit(senderType === 'customer' ? 'customer:message' : 'admin:message', socketMessage);
-          console.log(`📨 [Supabase Realtime] ✅ Emitted ${senderType === 'customer' ? 'customer:message' : 'admin:message'} to room: ${roomId}`);
+          // Emit to specific room for real-time updates
+          // NOTE: For admin messages, skip broadcasting here since the socket handler already broadcasts
+          // (excluding the sender to prevent duplication). Only broadcast customer messages.
+          if (senderType === 'customer') {
+            io.in(roomId).fetchSockets().then(roomSockets => {
+              console.log(`📨 [Supabase Realtime] Emitting customer:message to ${roomSockets.length} socket(s) in room: ${roomId}`);
+            }).catch(err => {
+              console.error('Error fetching room sockets:', err);
+            });
+            io.to(roomId).emit('customer:message', socketMessage);
+            console.log(`📨 [Supabase Realtime] ✅ Emitted customer:message to room: ${roomId}`);
+          } else {
+            // Admin messages are already broadcast by the socket handler (excluding sender)
+            // Skip broadcasting here to prevent duplication
+            console.log(`⏭️ [Supabase Realtime] Skipping broadcast for admin message (already broadcast by socket handler): ${message.id}`);
+          }
         }
       )
       .subscribe((status) => {

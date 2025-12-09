@@ -254,7 +254,7 @@ function App() {
           {/* Main Content Area */}
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* Header attached to sidebar */}
-            {currentPage !== 'MESSAGES' && currentPage !== 'PROFILE' && currentPage !== 'SETTINGS' && !isOverlayOpen && !showAddProductModal && !isFeedbackModalOpen && (
+            {currentPage !== 'PROFILE' && currentPage !== 'SETTINGS' && !isOverlayOpen && !showAddProductModal && !isFeedbackModalOpen && (
               <Header
                 session={session}
                 sidebarCollapsed={sidebarCollapsed}
