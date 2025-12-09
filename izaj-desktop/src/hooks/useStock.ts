@@ -15,6 +15,7 @@ export const useStock = (session: Session | null) => {
   const [selectedCategory, setSelectedCategory] = useState<FilterType | 'All'>('All');
   
   const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Inactive'>('All');
+  const [stockSort, setStockSort] = useState<'None' | 'Ascending' | 'Descending'>('None');
 
 
   const fetchStockProducts = useCallback(async () => {
@@ -104,7 +105,7 @@ export const useStock = (session: Session | null) => {
   }, [fetchStockProducts, fetchStockStatus]);
 
   const filteredProducts = useMemo(() => {
-    return stockProducts.filter(product => {
+    let filtered = stockProducts.filter(product => {
       const matchesSearch = product.product_name
         .toLowerCase()
         .includes(searchQuery.toLowerCase());
@@ -117,7 +118,23 @@ export const useStock = (session: Session | null) => {
 
       return matchesSearch && matchesCategory && matchesStatus;
     });
-  }, [stockProducts, searchQuery, selectedCategory, statusFilter]);
+
+    // Apply stock level sorting if enabled
+    if (stockSort !== 'None') {
+      filtered = [...filtered].sort((a, b) => {
+        const qtyA = a.display_quantity ?? 0;
+        const qtyB = b.display_quantity ?? 0;
+        
+        if (stockSort === 'Ascending') {
+          return qtyA - qtyB;
+        } else {
+          return qtyB - qtyA;
+        }
+      });
+    }
+
+    return filtered;
+  }, [stockProducts, searchQuery, selectedCategory, statusFilter, stockSort]);
 
   return {
     stockProducts,         // raw data
@@ -132,6 +149,8 @@ export const useStock = (session: Session | null) => {
     setSelectedCategory,
     statusFilter,
     setStatusFilter,
+    stockSort,
+    setStockSort,
 
     // actions
     refetch: async () => {
