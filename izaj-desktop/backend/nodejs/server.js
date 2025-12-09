@@ -7,6 +7,7 @@ import axios from 'axios';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import version from './version/server.js';
+import { supabase } from './supabaseClient.js';
 
 // Get the directory of the current file
 const __filename = fileURLToPath(import.meta.url);
@@ -85,9 +86,28 @@ io.on('connection', async (socket) => {
   console.log(`✅ [Socket] Session created: ${sessionId}, Room: ${defaultRoomId}`);
 
   // Allow admin panels to listen to all chats
-  socket.on('admin:join', () => {
+  socket.on('admin:join', async () => {
     socket.join('admins');
-    console.log(`✅ [Socket] Admin joined admins room: ${socket.id}`);
+    // Verify admin is in admins room
+    const adminSockets = await io.in('admins').fetchSockets();
+    console.log(`✅ [Socket] Admin ${socket.id} joined admins room (total: ${adminSockets.length} admin(s))`);
+  });
+
+  // Allow admin to join specific room for real-time updates
+  socket.on('admin:join-room', (payload = {}) => {
+    const { roomId } = payload;
+    if (roomId) {
+      // Join the specific room
+      socket.join(roomId);
+      // Also ensure admin is in admins room (idempotent, safe to call multiple times)
+      socket.join('admins');
+      console.log(`✅ [Socket] Admin ${socket.id} joined room ${roomId} for real-time updates (also in admins room)`);
+      
+      // Verify room membership
+      io.in(roomId).fetchSockets().then(sockets => {
+        console.log(`👥 [Socket] Room ${roomId} now has ${sockets.length} socket(s)`);
+      });
+    }
   });
 
   socket.on('disconnect', (reason) => {
@@ -234,9 +254,10 @@ io.on('connection', async (socket) => {
     const { roomId, sessionId } = payload;
     
     if (roomId) {
-      // Admin leaves the specific customer room
-      socket.leave(roomId);
-      console.log(`❌ [Socket] Admin ${socket.id} left room ${roomId}`);
+      // IMPORTANT: Don't leave the room! Admin should stay in room to receive messages
+      // Only update database status to prevent customer from sending
+      // Admin can still receive messages even when "disconnected"
+      console.log(`⚠️ [Socket] Admin ${socket.id} disconnecting from room ${roomId} (staying in room for real-time updates)`);
       
       // Update admin_connected status in database
       try {
@@ -295,7 +316,10 @@ io.on('connection', async (socket) => {
     }
     
     // Ensure admin is in the room (in case they haven't connected yet)
+    // Also ensure admin is in admins room for receiving admin:incoming events
     socket.join(roomId);
+    socket.join('admins');
+    console.log(`✅ [Socket] Admin ${socket.id} ensured in room ${roomId} and admins room`);
     
     const message = {
       ...payload,
@@ -454,6 +478,146 @@ app.use('/api/dashboard', async (req, res) => {
         details: error.message
       });
     }
+  }
+});
+
+// Set io instance so messaging router can access it for real-time events
+app.set('io', io);
+
+// =============================================================================
+// SUPABASE REALTIME SUBSCRIPTION FOR MESSAGES
+// =============================================================================
+// Listen for new messages inserted directly into Supabase and emit Socket.IO events
+// This is more reliable than webhooks and works even if webhooks fail
+let messagesChannel = null;
+
+const setupSupabaseRealtime = () => {
+  try {
+    console.log('📡 [Supabase Realtime] Setting up realtime subscription for messages...');
+    
+    // Subscribe to INSERT events on messages table
+    messagesChannel = supabase
+      .channel('messages-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+        },
+        async (payload) => {
+          console.log('📨 [Supabase Realtime] ⭐⭐ New message detected via Supabase Realtime ⭐⭐');
+          console.log('📨 [Supabase Realtime] Message data:', {
+            id: payload.new.id,
+            roomId: payload.new.room_id,
+            senderType: payload.new.sender_type,
+            text: payload.new.message_text?.substring(0, 50)
+          });
+
+          const message = payload.new;
+          const senderType = message.sender_type; // 'customer' or 'admin'
+          const roomId = message.room_id;
+          const sessionId = message.session_id;
+
+          // Get conversation details
+          let customerEmail = null;
+          let customerName = null;
+          let productName = null;
+          
+          try {
+            const { data: conversation } = await supabase
+              .from('conversations')
+              .select('customer_email, customer_name, product_name')
+              .eq('room_id', roomId)
+              .single();
+            
+            if (conversation) {
+              customerEmail = conversation.customer_email;
+              customerName = conversation.customer_name;
+              productName = conversation.product_name;
+            }
+          } catch (error) {
+            console.warn('⚠️ [Supabase Realtime] Could not fetch conversation details:', error.message);
+          }
+
+          // Format message for Socket.IO
+          const socketMessage = {
+            id: message.id,
+            text: message.message_text,
+            from: senderType === 'customer' ? 'customer' : 'admin',
+            roomId: roomId,
+            sessionId: sessionId,
+            sentAt: message.created_at,
+            created_at: message.created_at,
+            message_text: message.message_text,
+            sender_type: senderType,
+            productName: productName,
+            customerEmail: customerEmail,
+            customerName: customerName,
+          };
+
+          // Emit to admins room if customer message (for admin dashboard)
+          if (senderType === 'customer') {
+            io.in('admins').fetchSockets().then(adminSockets => {
+              console.log(`📨 [Supabase Realtime] ⭐ Emitting admin:incoming to ${adminSockets.length} admin(s) in admins room`);
+              if (adminSockets.length === 0) {
+                console.warn('⚠️ [Supabase Realtime] WARNING: No admins in admins room! Admin will not receive real-time updates!');
+              } else {
+                adminSockets.forEach(adminSocket => {
+                  console.log(`   - Admin socket ID: ${adminSocket.id}`);
+                });
+              }
+            }).catch(err => {
+              console.error('Error fetching admin sockets:', err);
+            });
+            
+            io.to('admins').emit('admin:incoming', socketMessage);
+            console.log(`📨 [Supabase Realtime] ✅ Emitted admin:incoming to admins room, message:`, socketMessage.text?.substring(0, 50));
+          }
+          
+          // Emit to specific room for real-time updates (both customer and admin in that room)
+          io.in(roomId).fetchSockets().then(roomSockets => {
+            console.log(`📨 [Supabase Realtime] Emitting ${senderType === 'customer' ? 'customer:message' : 'admin:message'} to ${roomSockets.length} socket(s) in room: ${roomId}`);
+          }).catch(err => {
+            console.error('Error fetching room sockets:', err);
+          });
+          
+          io.to(roomId).emit(senderType === 'customer' ? 'customer:message' : 'admin:message', socketMessage);
+          console.log(`📨 [Supabase Realtime] ✅ Emitted ${senderType === 'customer' ? 'customer:message' : 'admin:message'} to room: ${roomId}`);
+        }
+      )
+      .subscribe((status) => {
+        console.log(`📡 [Supabase Realtime] Subscription status:`, status);
+        if (status === 'SUBSCRIBED') {
+          console.log(`✅ [Supabase Realtime] Successfully subscribed to messages table for real-time updates`);
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error(`❌ [Supabase Realtime] Error subscribing to messages table`);
+        } else if (status === 'TIMED_OUT') {
+          console.warn(`⚠️ [Supabase Realtime] Subscription timed out, retrying...`);
+          // Retry subscription after 2 seconds
+          setTimeout(() => {
+            if (messagesChannel) {
+              messagesChannel.unsubscribe();
+              setupSupabaseRealtime();
+            }
+          }, 2000);
+        }
+      });
+
+    console.log('✅ [Supabase Realtime] Realtime subscription setup complete');
+  } catch (error) {
+    console.error('❌ [Supabase Realtime] Error setting up realtime subscription:', error);
+  }
+};
+
+// Setup Supabase Realtime subscription when server starts
+setupSupabaseRealtime();
+
+// Cleanup on server shutdown
+process.on('SIGTERM', () => {
+  if (messagesChannel) {
+    console.log('🧹 [Supabase Realtime] Cleaning up realtime subscription...');
+    messagesChannel.unsubscribe();
   }
 });
 

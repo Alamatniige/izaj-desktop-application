@@ -3,6 +3,9 @@ import { supabase } from '../supabaseClient.js';
 
 const router = express.Router();
 
+// Webhook secret for verifying Supabase webhook requests
+const WEBHOOK_SECRET = process.env.SUPABASE_WEBHOOK_SECRET;
+
 // Get or create conversation by room_id
 router.post('/conversations/get-or-create', async (req, res) => {
   try {
@@ -155,6 +158,61 @@ router.post('/messages', async (req, res) => {
 
     if (error) {
       throw error;
+    }
+
+    // IMPORTANT: Emit Socket.IO event for real-time updates
+    // This ensures admin side receives messages sent via API endpoint
+    const io = req.app.get('io');
+    if (io) {
+      const socketMessage = {
+        id: message.id,
+        text: message.message_text,
+        from: senderType === 'customer' ? 'customer' : 'admin',
+        roomId: roomId,
+        sessionId: sessionId,
+        sentAt: message.created_at,
+        productName: req.body.productName,
+        customerEmail: customerEmail,
+        customerName: customerName,
+      };
+
+      console.log(`📤 [API] Emitting Socket.IO event for message: ${message.id}, room: ${roomId}, sender: ${senderType}`);
+
+      // Emit to admins room if customer message (for admin dashboard)
+      if (senderType === 'customer') {
+        // Get count of admins in room for debugging (async)
+        io.in('admins').fetchSockets().then(adminSockets => {
+          console.log(`📨 [API] ⭐ Emitting admin:incoming to ${adminSockets.length} admin(s) in admins room`);
+          if (adminSockets.length === 0) {
+            console.warn('⚠️ [API] WARNING: No admins in admins room! Admin will not receive real-time updates!');
+          } else {
+            adminSockets.forEach(adminSocket => {
+              console.log(`   - Admin socket ID: ${adminSocket.id}`);
+            });
+          }
+        }).catch(err => {
+          console.error('Error fetching admin sockets:', err);
+        });
+        io.to('admins').emit('admin:incoming', socketMessage);
+        console.log(`📨 [API] ✅ Emitted admin:incoming to admins room, message:`, socketMessage.text?.substring(0, 50));
+        console.log(`📨 [API] Message details:`, {
+          id: socketMessage.id,
+          roomId: socketMessage.roomId,
+          from: socketMessage.from,
+          text: socketMessage.text?.substring(0, 30)
+        });
+      }
+      
+      // Emit to specific room for real-time updates (both customer and admin in that room)
+      io.in(roomId).fetchSockets().then(roomSockets => {
+        console.log(`📨 [API] Emitting ${senderType === 'customer' ? 'customer:message' : 'admin:message'} to ${roomSockets.length} socket(s) in room: ${roomId}`);
+      }).catch(err => {
+        console.error('Error fetching room sockets:', err);
+      });
+      io.to(roomId).emit(senderType === 'customer' ? 'customer:message' : 'admin:message', socketMessage);
+      console.log(`📨 [API] Emitted ${senderType === 'customer' ? 'customer:message' : 'admin:message'} to room: ${roomId}`);
+    } else {
+      console.warn('⚠️ [API] Socket.IO instance not available, real-time events not emitted');
     }
 
     res.json({
@@ -435,6 +493,276 @@ router.put('/conversations/:roomId/admin-connected', async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating admin connection status:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Test endpoint to verify webhook is accessible
+router.get('/webhook/test', (req, res) => {
+  console.log('✅ [Webhook] Test endpoint accessed');
+  res.json({
+    success: true,
+    message: 'Webhook endpoint is accessible',
+    timestamp: new Date().toISOString(),
+    webhookSecretConfigured: !!WEBHOOK_SECRET
+  });
+});
+
+// Manual test endpoint to simulate webhook and verify Socket.IO emission
+router.post('/webhook/test-manual', async (req, res) => {
+  try {
+    console.log('🧪 [Webhook] Manual test triggered');
+    
+    const { roomId, messageText, senderType } = req.body;
+    
+    if (!roomId || !messageText) {
+      return res.status(400).json({
+        success: false,
+        error: 'roomId and messageText are required'
+      });
+    }
+
+    const io = req.app.get('io');
+    if (!io) {
+      return res.status(500).json({
+        success: false,
+        error: 'Socket.IO not available'
+      });
+    }
+
+    // Get conversation details
+    let customerEmail = null;
+    let customerName = null;
+    let productName = null;
+    let sessionId = null;
+    
+    try {
+      const { data: conversation } = await supabase
+        .from('conversations')
+        .select('customer_email, customer_name, product_name, session_id')
+        .eq('room_id', roomId)
+        .single();
+      
+      if (conversation) {
+        customerEmail = conversation.customer_email;
+        customerName = conversation.customer_name;
+        productName = conversation.product_name;
+        sessionId = conversation.session_id;
+      }
+    } catch (error) {
+      console.warn('⚠️ [Webhook] Could not fetch conversation details:', error.message);
+    }
+
+    const testSenderType = senderType || 'customer';
+    const socketMessage = {
+      id: `test-${Date.now()}`,
+      text: messageText,
+      from: testSenderType === 'customer' ? 'customer' : 'admin',
+      roomId: roomId,
+      sessionId: sessionId || 'test-session',
+      sentAt: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      message_text: messageText,
+      sender_type: testSenderType,
+      productName: productName,
+      customerEmail: customerEmail,
+      customerName: customerName,
+    };
+
+    // Check admin sockets
+    const adminSockets = await io.in('admins').fetchSockets();
+    console.log(`🧪 [Webhook] Found ${adminSockets.length} admin socket(s) in admins room`);
+
+    // Emit to admins room if customer message
+    if (testSenderType === 'customer') {
+      io.to('admins').emit('admin:incoming', socketMessage);
+      console.log(`🧪 [Webhook] ✅ Emitted admin:incoming to ${adminSockets.length} admin(s)`);
+    }
+    
+    // Emit to room
+    const roomSockets = await io.in(roomId).fetchSockets();
+    console.log(`🧪 [Webhook] Found ${roomSockets.length} socket(s) in room: ${roomId}`);
+    io.to(roomId).emit(testSenderType === 'customer' ? 'customer:message' : 'admin:message', socketMessage);
+    console.log(`🧪 [Webhook] ✅ Emitted ${testSenderType === 'customer' ? 'customer:message' : 'admin:message'} to room`);
+
+    res.json({
+      success: true,
+      message: 'Test webhook processed',
+      adminSockets: adminSockets.length,
+      roomSockets: roomSockets.length,
+      socketMessage
+    });
+  } catch (error) {
+    console.error('❌ [Webhook] Error in manual test:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Webhook endpoint for Supabase Database Webhooks
+// This endpoint receives notifications when messages are inserted directly into Supabase
+router.post('/webhook/message-inserted', async (req, res) => {
+  // Log ALL incoming requests to this endpoint for debugging
+  console.log('🔔 [Webhook] ===== WEBHOOK REQUEST RECEIVED =====');
+  console.log('🔔 [Webhook] Headers:', JSON.stringify(req.headers, null, 2));
+  console.log('🔔 [Webhook] Body:', JSON.stringify(req.body, null, 2));
+  console.log('🔔 [Webhook] Method:', req.method);
+  console.log('🔔 [Webhook] URL:', req.url);
+  
+  try {
+    // Verify webhook secret (if configured)
+    if (WEBHOOK_SECRET) {
+      const authHeader = req.headers.authorization;
+      const expectedAuth = `Bearer ${WEBHOOK_SECRET}`;
+      
+      console.log('🔔 [Webhook] Checking secret - Received:', authHeader ? 'Present' : 'Missing');
+      console.log('🔔 [Webhook] Expected:', expectedAuth);
+      
+      if (!authHeader || authHeader !== expectedAuth) {
+        console.warn('⚠️ [Webhook] Unauthorized webhook request - invalid or missing secret');
+        console.warn('⚠️ [Webhook] Received auth:', authHeader);
+        console.warn('⚠️ [Webhook] Expected auth:', expectedAuth);
+        return res.status(401).json({ 
+          success: false, 
+          error: 'Unauthorized - invalid webhook secret' 
+        });
+      }
+      console.log('✅ [Webhook] Secret verified successfully');
+    } else {
+      console.log('⚠️ [Webhook] No webhook secret configured - skipping verification');
+    }
+
+    // Supabase sends webhook data in different formats depending on webhook type:
+    // Database Webhook format:
+    // {
+    //   "type": "INSERT",
+    //   "table": "messages",
+    //   "record": { ...message data... },
+    //   "old_record": null
+    // }
+    // OR Edge Function / HTTP Request format:
+    // {
+    //   "event": "INSERT",
+    //   "table": "messages",
+    //   "new": { ...message data... },
+    //   "old": null
+    // }
+    
+    // Try both formats
+    const type = req.body.type || req.body.event;
+    const table = req.body.table;
+    const record = req.body.record || req.body.new;
+    
+    // Only process INSERT events on messages table
+    if (type !== 'INSERT' || table !== 'messages' || !record) {
+      console.log('⚠️ [Webhook] Ignoring webhook event:', { type, table, hasRecord: !!record });
+      console.log('⚠️ [Webhook] Full request body:', JSON.stringify(req.body, null, 2));
+      return res.status(200).json({ success: true, message: 'Event ignored', reason: `type=${type}, table=${table}` });
+    }
+    
+    console.log('✅ [Webhook] Valid INSERT event on messages table - processing...');
+
+    const message = record;
+    const senderType = message.sender_type; // 'customer' or 'admin'
+    const roomId = message.room_id;
+    const sessionId = message.session_id;
+
+    console.log(`📨 [Webhook] Received message insert notification:`, {
+      id: message.id,
+      roomId,
+      senderType,
+      text: message.message_text?.substring(0, 50)
+    });
+
+    // Get Socket.IO instance from app
+    const io = req.app.get('io');
+    if (!io) {
+      console.error('❌ [Webhook] Socket.IO instance not available');
+      return res.status(500).json({
+        success: false,
+        error: 'Socket.IO not available'
+      });
+    }
+
+    // Get conversation details to include customer info
+    let customerEmail = null;
+    let customerName = null;
+    let productName = null;
+    
+    try {
+      const { data: conversation } = await supabase
+        .from('conversations')
+        .select('customer_email, customer_name, product_name')
+        .eq('room_id', roomId)
+        .single();
+      
+      if (conversation) {
+        customerEmail = conversation.customer_email;
+        customerName = conversation.customer_name;
+        productName = conversation.product_name;
+      }
+    } catch (error) {
+      console.warn('⚠️ [Webhook] Could not fetch conversation details:', error.message);
+    }
+
+    // Format message for Socket.IO
+    const socketMessage = {
+      id: message.id,
+      text: message.message_text,
+      from: senderType === 'customer' ? 'customer' : 'admin',
+      roomId: roomId,
+      sessionId: sessionId,
+      sentAt: message.created_at,
+      created_at: message.created_at,
+      message_text: message.message_text,
+      sender_type: senderType,
+      productName: productName,
+      customerEmail: customerEmail,
+      customerName: customerName,
+    };
+
+    // Emit to admins room if customer message (for admin dashboard)
+    if (senderType === 'customer') {
+      io.in('admins').fetchSockets().then(adminSockets => {
+        console.log(`📨 [Webhook] ⭐ Emitting admin:incoming to ${adminSockets.length} admin(s) in admins room`);
+        if (adminSockets.length === 0) {
+          console.warn('⚠️ [Webhook] WARNING: No admins in admins room! Admin will not receive real-time updates!');
+        } else {
+          adminSockets.forEach(adminSocket => {
+            console.log(`   - Admin socket ID: ${adminSocket.id}`);
+          });
+        }
+      }).catch(err => {
+        console.error('Error fetching admin sockets:', err);
+      });
+      
+      io.to('admins').emit('admin:incoming', socketMessage);
+      console.log(`📨 [Webhook] ✅ Emitted admin:incoming to admins room, message:`, socketMessage.text?.substring(0, 50));
+    }
+    
+    // Emit to specific room for real-time updates (both customer and admin in that room)
+    io.in(roomId).fetchSockets().then(roomSockets => {
+      console.log(`📨 [Webhook] Emitting ${senderType === 'customer' ? 'customer:message' : 'admin:message'} to ${roomSockets.length} socket(s) in room: ${roomId}`);
+    }).catch(err => {
+      console.error('Error fetching room sockets:', err);
+    });
+    
+    io.to(roomId).emit(senderType === 'customer' ? 'customer:message' : 'admin:message', socketMessage);
+    console.log(`📨 [Webhook] ✅ Emitted ${senderType === 'customer' ? 'customer:message' : 'admin:message'} to room: ${roomId}`);
+
+    // Return success immediately (don't wait for Socket.IO)
+    res.status(200).json({
+      success: true,
+      message: 'Webhook processed successfully',
+      socketEventsEmitted: true
+    });
+  } catch (error) {
+    console.error('❌ [Webhook] Error processing webhook:', error);
     res.status(500).json({
       success: false,
       error: error.message

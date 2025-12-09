@@ -3,10 +3,14 @@ import { Icon } from '@iconify/react';
 import { Session } from '@supabase/supabase-js';
 import { connectAdminSocket, getAdminSocket, Message, Conversation } from '../services/messagingService';
 import API_URL from '../../config/api';
+import { RefreshButton } from '../components/RefreshButton';
 
 interface MessagesProps {
   session: Session | null;
 }
+
+// Ref to store latest selectedConversation to avoid stale closures in socket handlers
+const selectedConversationRef = { current: null as string | null };
 
 const Messages = ({ session }: MessagesProps) => {
   const [conversations, setConversations] = useState<Map<string, Conversation>>(new Map());
@@ -17,7 +21,13 @@ const Messages = ({ session }: MessagesProps) => {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [connectedRooms, setConnectedRooms] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
+  const [isRefreshingConversations, setIsRefreshingConversations] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Keep selectedConversation ref in sync
+  useEffect(() => {
+    selectedConversationRef.current = selectedConversation;
+  }, [selectedConversation]);
 
   const markConversationRead = useCallback(async (roomId: string) => {
     // Optimistic local update
@@ -44,77 +54,82 @@ const Messages = ({ session }: MessagesProps) => {
     }
   }, [session]);
 
-  // Load conversations from database on mount
-  useEffect(() => {
-    const loadConversations = async () => {
-      if (!session) return;
+  // Load conversations function (extracted for reuse)
+  const loadConversations = useCallback(async () => {
+    if (!session) return;
+    
+    setIsRefreshingConversations(true);
+    try {
+      const response = await fetch(`${API_URL}/api/messaging/conversations`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
       
-      try {
-        const response = await fetch(`${API_URL}/api/messaging/conversations`, {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-        });
+      const data = await response.json();
+      
+      if (data.success && data.conversations) {
+        const convsMap = new Map<string, Conversation>();
         
-        const data = await response.json();
-        
-        if (data.success && data.conversations) {
-          const convsMap = new Map<string, Conversation>();
+        data.conversations.forEach((conv: any) => {
+          // Get last message - check last_message first, then messages array
+          let lastMsg = conv.last_message || null;
+          if (!lastMsg && conv.messages && conv.messages.length > 0) {
+            // Sort messages by created_at descending and get first one
+            const sortedMessages = [...conv.messages].sort((a: any, b: any) => 
+              new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            );
+            lastMsg = sortedMessages[0];
+          }
           
-          data.conversations.forEach((conv: any) => {
-            // Get last message - check last_message first, then messages array
-            let lastMsg = conv.last_message || null;
-            if (!lastMsg && conv.messages && conv.messages.length > 0) {
-              // Sort messages by created_at descending and get first one
-              const sortedMessages = [...conv.messages].sort((a: any, b: any) => 
-                new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-              );
-              lastMsg = sortedMessages[0];
-            }
-            
-            convsMap.set(conv.room_id, {
+          convsMap.set(conv.room_id, {
+            roomId: conv.room_id,
+            sessionId: conv.session_id,
+            lastMessage: {
+              id: lastMsg?.id || Date.now().toString(),
+              text: lastMsg?.message_text || '',
+              sender: (lastMsg?.sender_type === 'customer' ? 'customer' : 'admin') as 'customer' | 'admin',
+              timestamp: lastMsg ? new Date(lastMsg.created_at) : new Date(conv.last_message_at || conv.created_at),
               roomId: conv.room_id,
               sessionId: conv.session_id,
-              lastMessage: {
-                id: lastMsg?.id || Date.now().toString(),
-                text: lastMsg?.message_text || '',
-                sender: (lastMsg?.sender_type === 'customer' ? 'customer' : 'admin') as 'customer' | 'admin',
-                timestamp: lastMsg ? new Date(lastMsg.created_at) : new Date(conv.last_message_at || conv.created_at),
-                roomId: conv.room_id,
-                sessionId: conv.session_id,
-                productName: conv.product_name,
-              },
-              unreadCount: conv.unreadCount || 0,
               productName: conv.product_name,
-              customerEmail: conv.customer_email,
-              customerName: conv.customer_name,
-              createdAt: new Date(conv.created_at),
-              adminConnected: conv.admin_connected || false,
-            });
+            },
+            unreadCount: conv.unreadCount || 0,
+            productName: conv.product_name,
+            customerEmail: conv.customer_email,
+            customerName: conv.customer_name,
+            createdAt: new Date(conv.created_at),
+            adminConnected: conv.admin_connected || false,
           });
-          
-          // Sort conversations by last message time (newest first)
-          const sortedConvs = Array.from(convsMap.entries()).sort((a, b) => 
-            b[1].lastMessage.timestamp.getTime() - a[1].lastMessage.timestamp.getTime()
-          );
-          
-          const sortedConvsMap = new Map(sortedConvs);
-          setConversations(sortedConvsMap);
-          
-          // Auto-select first conversation if none selected
-          if (!selectedConversation && sortedConvsMap.size > 0) {
-            const firstRoomId = sortedConvs[0][0];
-            setSelectedConversation(firstRoomId);
-          }
+        });
+        
+        // Sort conversations by last message time (newest first)
+        const sortedConvs = Array.from(convsMap.entries()).sort((a, b) => 
+          b[1].lastMessage.timestamp.getTime() - a[1].lastMessage.timestamp.getTime()
+        );
+        
+        const sortedConvsMap = new Map(sortedConvs);
+        setConversations(sortedConvsMap);
+        
+        // Auto-select first conversation if none selected (use ref to get current value)
+        const currentSelected = selectedConversationRef.current;
+        if (!currentSelected && sortedConvsMap.size > 0) {
+          const firstRoomId = sortedConvs[0][0];
+          setSelectedConversation(firstRoomId);
         }
-      } catch (error) {
-        console.error('Error loading conversations:', error);
       }
-    };
-    
-    loadConversations();
+    } catch (error) {
+      console.error('Error loading conversations:', error);
+    } finally {
+      setIsRefreshingConversations(false);
+    }
   }, [session]);
+
+  // Load conversations from database on mount
+  useEffect(() => {
+    loadConversations();
+  }, [loadConversations]);
 
   // Load messages for selected conversation from database and join room
   useEffect(() => {
@@ -184,14 +199,20 @@ const Messages = ({ session }: MessagesProps) => {
           console.log(`📥 [Admin] Loaded ${loadedMessages.length} messages for conversation: ${selectedConversation}`);
         }
         
-        // Join the room when conversation is selected
+        // Join the room when conversation is selected to receive real-time messages
         const socket = getAdminSocket();
-        if (socket && socket.connected && selectedConversation) {
-          const conversation = conversations.get(selectedConversation);
-          if (conversation) {
-            // Emit join room event (we'll handle this on server if needed)
-            // For now, admin:connect will handle joining the room
-            console.log(`📥 [Admin] Joining room: ${selectedConversation}`);
+        if (socket && selectedConversation) {
+          if (socket.connected) {
+            // Join the specific room to receive messages for this conversation
+            socket.emit('admin:join-room', { roomId: selectedConversation });
+            console.log(`✅ [Admin] Joined room for real-time updates: ${selectedConversation}`);
+          } else {
+            console.warn('⚠️ [Admin] Socket not connected, will join room when connected');
+            // Wait for connection then join
+            socket.once('connect', () => {
+              socket.emit('admin:join-room', { roomId: selectedConversation });
+              console.log(`✅ [Admin] Joined room after connection: ${selectedConversation}`);
+            });
           }
         }
       } catch (error) {
@@ -211,29 +232,144 @@ const Messages = ({ session }: MessagesProps) => {
     }
   }, [messages, selectedConversation]);
 
+  // Fallback polling mechanism to refresh messages every 3 seconds as backup
+  // This ensures messages are received even if Socket.IO or Supabase real-time fails
+  useEffect(() => {
+    if (!selectedConversation || !session) return;
+    
+    // Only poll if socket is not connected (as fallback)
+    const socket = getAdminSocket();
+    const shouldPoll = !socket || !socket.connected;
+    
+    if (!shouldPoll) {
+      console.log('✅ [Admin] Socket connected, skipping polling');
+      return;
+    }
+    
+    console.log('🔄 [Admin] Socket not connected, starting fallback polling');
+    
+    const refreshInterval = setInterval(async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/messaging/conversations/${selectedConversation}/messages`, {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        const data = await response.json();
+        
+        if (data.success && data.messages) {
+          const sortedMessages = [...data.messages].sort((a: any, b: any) => 
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+          
+          const loadedMessages: Message[] = sortedMessages.map((msg: any) => ({
+            id: msg.id || Date.now().toString(),
+            text: msg.message_text || '',
+            sender: (msg.sender_type === 'customer' ? 'customer' : 'admin') as 'customer' | 'admin',
+            timestamp: new Date(msg.created_at),
+            roomId: msg.room_id,
+            sessionId: msg.session_id,
+            productName: msg.product_name,
+          }));
+          
+          // Only update if messages changed (to avoid unnecessary re-renders)
+          setMessages(prev => {
+            const currentMessages = prev.get(selectedConversation) || [];
+            const currentIds = new Set(currentMessages.map(m => m.id));
+            
+            // Check if there are new messages
+            const hasNewMessages = loadedMessages.some(m => !currentIds.has(m.id));
+            const hasDifferentCount = currentMessages.length !== loadedMessages.length;
+            
+            if (hasNewMessages || hasDifferentCount) {
+              console.log(`🔄 [Admin] Polling found ${loadedMessages.length - currentMessages.length} new messages`);
+              const updated = new Map(prev);
+              updated.set(selectedConversation, loadedMessages);
+              return updated;
+            }
+            return prev;
+          });
+        }
+      } catch (error) {
+        console.error('Error refreshing messages via polling:', error);
+      }
+    }, 3000); // Poll every 3 seconds
+    
+    return () => {
+      clearInterval(refreshInterval);
+      console.log('🛑 [Admin] Stopped fallback polling');
+    };
+  }, [selectedConversation, session]);
+
   // Connect to socket on mount
   useEffect(() => {
     const socket = connectAdminSocket();
     if (!socket) {
-      console.error('Failed to get admin socket');
+      console.error('❌ [Admin] Failed to get admin socket');
       return;
     }
 
+    // Check current connection status
+    console.log('🔌 [Admin] Socket status:', {
+      connected: socket.connected,
+      id: socket.id,
+      disconnected: socket.disconnected
+    });
+
     const handleConnect = () => {
-      console.log('✅ [Admin] Socket connected');
+      console.log('✅ [Admin] Socket connected, ID:', socket.id);
       setIsConnected(true);
       // Join admins room after connection
       socket.emit('admin:join');
       console.log('✅ [Admin] Emitted admin:join event');
+      
+      // Also join selected conversation room if exists (use ref to get latest value)
+      const currentSelected = selectedConversationRef.current;
+      if (currentSelected) {
+        socket.emit('admin:join-room', { roomId: currentSelected });
+        console.log('✅ [Admin] Joined selected conversation room:', currentSelected);
+      }
     };
 
-    const handleDisconnect = () => {
-      console.log('❌ [Admin] Socket disconnected');
+    const handleDisconnect = (reason: string) => {
+      console.log('❌ [Admin] Socket disconnected, reason:', reason);
       setIsConnected(false);
     };
 
+    const handleConnectError = (error: Error) => {
+      console.error('❌ [Admin] Socket connection error:', error.message);
+      setIsConnected(false);
+    };
+
+    // Set up event listeners
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
+    socket.on('connect_error', handleConnectError);
+
+    // Test event to verify socket is working
+    socket.on('test', (data: any) => {
+      console.log('🧪 [Admin] Test event received:', data);
+    });
+
+    // If already connected, join rooms immediately
+    if (socket.connected) {
+      console.log('✅ [Admin] Socket already connected, joining rooms');
+      // CRITICAL: Always join admins room first for admin:incoming events
+      socket.emit('admin:join');
+      console.log('✅ [Admin] Emitted admin:join - should be in admins room now');
+      
+      const currentSelected = selectedConversationRef.current;
+      if (currentSelected) {
+        socket.emit('admin:join-room', { roomId: currentSelected });
+        console.log('✅ [Admin] Joined current conversation room:', currentSelected);
+      }
+      console.log('✅ [Admin] Socket listeners set up, ready to receive real-time messages');
+      console.log('✅ [Admin] Listening for: admin:incoming, customer:message, admin:message');
+    } else {
+      console.log('⏳ [Admin] Socket not yet connected, waiting for connection...');
+    }
 
     // Listen for new conversation requests from customers
     socket.on('admin:customer-request', async (data: any) => {
@@ -310,33 +446,69 @@ const Messages = ({ session }: MessagesProps) => {
       }
     });
 
+    // CRITICAL: Listen for admin:incoming events (customer messages sent via API)
     socket.on('admin:incoming', (message: any) => {
-      console.log('📨 [Admin] Received customer message:', message);
-      console.log('📨 [Admin] Full message object:', JSON.stringify(message, null, 2));
+      console.log('📨 [Admin] ⭐⭐ RECEIVED admin:incoming event ⭐⭐:', {
+        id: message.id,
+        text: message.text?.substring(0, 50),
+        roomId: message.roomId,
+        from: message.from,
+        socketId: socket.id,
+        socketConnected: socket.connected,
+        fullMessage: message
+      });
+      
+      // Verify socket is still connected
+      if (!socket.connected) {
+        console.error('❌ [Admin] Socket not connected when receiving admin:incoming!');
+        return;
+      }
       
       // Convert backend format to frontend format
       const msg: Message = {
         id: message.id || Date.now().toString(),
-        text: message.text || '',
-        sender: (message.from === 'customer' ? 'customer' : 'admin') as 'customer' | 'admin',
-        timestamp: message.sentAt ? new Date(message.sentAt) : new Date(),
-        roomId: message.roomId || '',
-        sessionId: message.sessionId || '',
-        productName: message.productName,
-        preferredLanguage: message.preferredLanguage,
+        text: message.text || message.message_text || '',
+        sender: (message.from === 'customer' || message.sender_type === 'customer' ? 'customer' : 'admin') as 'customer' | 'admin',
+        timestamp: message.sentAt ? new Date(message.sentAt) : (message.created_at ? new Date(message.created_at) : new Date()),
+        roomId: message.roomId || message.room_id || '',
+        sessionId: message.sessionId || message.session_id || '',
+        productName: message.productName || message.product_name,
+        preferredLanguage: message.preferredLanguage || message.preferred_language,
       };
+
+      if (!msg.roomId) {
+        console.error('❌ [Admin] Message missing roomId:', message);
+        return;
+      }
+
+      const currentSelected = selectedConversationRef.current;
+      console.log('✅ [Admin] Processing message for room:', msg.roomId, 'Current selected:', currentSelected);
 
       // Update messages for this conversation
       setMessages(prev => {
         const roomMessages = prev.get(msg.roomId) || [];
         // Check if message already exists to avoid duplicates
-        const exists = roomMessages.some(m => 
-          (m.id === msg.id) ||
-          (m.text === msg.text && 
-           Math.abs(m.timestamp.getTime() - msg.timestamp.getTime()) < 2000)
-        );
-        if (exists) return prev;
+        const exists = roomMessages.some(m => {
+          // Check by ID
+          if (m.id === msg.id || String(m.id) === String(msg.id)) {
+            console.log('⚠️ [Admin] Duplicate message detected by ID:', msg.id);
+            return true;
+          }
+          // Check by text and timestamp
+          if (m.text === msg.text && 
+              Math.abs(m.timestamp.getTime() - msg.timestamp.getTime()) < 2000) {
+            console.log('⚠️ [Admin] Duplicate message detected by text+time');
+            return true;
+          }
+          return false;
+        });
         
+        if (exists) {
+          console.log('⏭️ [Admin] Skipping duplicate message');
+          return prev;
+        }
+        
+        console.log('➕ [Admin] Adding new message to room:', msg.roomId);
         const updated = new Map(prev);
         const newMessages = [...roomMessages, msg];
         // Sort by timestamp to maintain order
@@ -345,7 +517,7 @@ const Messages = ({ session }: MessagesProps) => {
         return updated;
       });
 
-      // Update conversation
+      // Update conversation - use ref to get latest selectedConversation (currentSelected already declared above)
       setConversations(prev => {
         const updated = new Map(prev);
         const existing = updated.get(msg.roomId);
@@ -353,7 +525,7 @@ const Messages = ({ session }: MessagesProps) => {
           roomId: msg.roomId,
           sessionId: msg.sessionId,
           lastMessage: msg,
-          unreadCount: existing ? existing.unreadCount + (selectedConversation === msg.roomId ? 0 : 1) : 1,
+          unreadCount: existing ? existing.unreadCount + (currentSelected === msg.roomId ? 0 : 1) : 1,
           productName: msg.productName,
           customerEmail: existing?.customerEmail || message.customerEmail,
           customerName: existing?.customerName || message.customerName,
@@ -363,35 +535,125 @@ const Messages = ({ session }: MessagesProps) => {
       });
 
       // If currently viewing this conversation, mark as read in backend
-      if (selectedConversation === msg.roomId) {
+      if (currentSelected === msg.roomId) {
+        markConversationRead(msg.roomId);
+      }
+    });
+
+    // Also listen for customer:message events (emitted to specific rooms)
+    socket.on('customer:message', (message: any) => {
+      console.log('📨 [Admin] Received customer message via customer:message:', {
+        id: message.id,
+        text: message.text?.substring(0, 50),
+        roomId: message.roomId
+      });
+      
+      // Convert backend format to frontend format
+      const msg: Message = {
+        id: message.id || Date.now().toString(),
+        text: message.text || message.message_text || '',
+        sender: 'customer',
+        timestamp: message.sentAt ? new Date(message.sentAt) : (message.created_at ? new Date(message.created_at) : new Date()),
+        roomId: message.roomId || message.room_id || '',
+        sessionId: message.sessionId || message.session_id || '',
+        productName: message.productName || message.product_name,
+        preferredLanguage: message.preferredLanguage || message.preferred_language,
+      };
+
+      if (!msg.roomId) {
+        console.error('❌ [Admin] Customer message missing roomId:', message);
+        return;
+      }
+
+      // Update messages for this conversation
+      setMessages(prev => {
+        const roomMessages = prev.get(msg.roomId) || [];
+        const exists = roomMessages.some(m => 
+          (m.id === msg.id || String(m.id) === String(msg.id)) ||
+          (m.text === msg.text && Math.abs(m.timestamp.getTime() - msg.timestamp.getTime()) < 2000)
+        );
+        if (exists) return prev;
+        
+        console.log('➕ [Admin] Adding customer message from customer:message event');
+        const updated = new Map(prev);
+        const newMessages = [...roomMessages, msg];
+        newMessages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+        updated.set(msg.roomId, newMessages);
+        return updated;
+      });
+
+      // Update conversation - use ref to get latest selectedConversation
+      const currentSelected = selectedConversationRef.current;
+      setConversations(prev => {
+        const updated = new Map(prev);
+        const existing = updated.get(msg.roomId);
+        updated.set(msg.roomId, {
+          roomId: msg.roomId,
+          sessionId: msg.sessionId,
+          lastMessage: msg,
+          unreadCount: existing ? existing.unreadCount + (currentSelected === msg.roomId ? 0 : 1) : 1,
+          productName: msg.productName,
+          customerEmail: existing?.customerEmail || message.customerEmail,
+          customerName: existing?.customerName || message.customerName,
+          createdAt: existing?.createdAt || msg.timestamp,
+        });
+        return updated;
+      });
+
+      // If currently viewing this conversation, mark as read in backend
+      if (currentSelected === msg.roomId) {
         markConversationRead(msg.roomId);
       }
     });
 
     // Listen for admin messages (sent by this admin or other admins)
     socket.on('admin:message', (message: any) => {
-      console.log('📤 [Admin] Received admin message:', message);
+      console.log('📤 [Admin] Received admin message via admin:message:', {
+        id: message.id,
+        text: message.text?.substring(0, 50),
+        roomId: message.roomId,
+        from: message.from
+      });
       
       const msg: Message = {
         id: message.id || Date.now().toString(),
-        text: message.text || '',
+        text: message.text || message.message_text || '',
         sender: 'admin',
-        timestamp: message.sentAt ? new Date(message.sentAt) : new Date(),
-        roomId: message.roomId || '',
-        sessionId: conversations.get(message.roomId)?.sessionId || message.sessionId || '',
-        productName: message.productName,
+        timestamp: message.sentAt ? new Date(message.sentAt) : (message.created_at ? new Date(message.created_at) : new Date()),
+        roomId: message.roomId || message.room_id || '',
+        sessionId: conversations.get(message.roomId || message.room_id)?.sessionId || message.sessionId || message.session_id || '',
+        productName: message.productName || message.product_name,
       };
+
+      if (!msg.roomId) {
+        console.error('❌ [Admin] Admin message missing roomId:', message);
+        return;
+      }
+
+      console.log('✅ [Admin] Processing admin message for room:', msg.roomId);
 
       // Only add if not already in messages (avoid duplicates)
       setMessages(prev => {
         const roomMessages = prev.get(msg.roomId) || [];
         // Check if message already exists
-        const exists = roomMessages.some(m => 
-          (m.id === msg.id) ||
-          (m.text === msg.text && Math.abs(m.timestamp.getTime() - msg.timestamp.getTime()) < 2000)
-        );
-        if (exists) return prev;
+        const exists = roomMessages.some(m => {
+          if (m.id === msg.id || String(m.id) === String(msg.id)) {
+            console.log('⚠️ [Admin] Duplicate admin message detected by ID');
+            return true;
+          }
+          if (m.text === msg.text && Math.abs(m.timestamp.getTime() - msg.timestamp.getTime()) < 2000) {
+            console.log('⚠️ [Admin] Duplicate admin message detected by text+time');
+            return true;
+          }
+          return false;
+        });
         
+        if (exists) {
+          console.log('⏭️ [Admin] Skipping duplicate admin message');
+          return prev;
+        }
+        
+        console.log('➕ [Admin] Adding new admin message to room:', msg.roomId);
         const updated = new Map(prev);
         const newMessages = [...roomMessages, msg];
         // Sort by timestamp to maintain order
@@ -415,13 +677,20 @@ const Messages = ({ session }: MessagesProps) => {
     });
 
     return () => {
+      console.log('🧹 [Admin] Cleaning up socket listeners');
       socket.off('connect', handleConnect);
       socket.off('disconnect', handleDisconnect);
+      socket.off('connect_error', handleConnectError);
+      socket.off('test');
       socket.off('admin:customer-request');
       socket.off('admin:incoming');
+      socket.off('customer:message');
       socket.off('admin:message');
     };
-  }, [selectedConversation, conversations, session]);
+    // IMPORTANT: Only depend on session, NOT on conversations or selectedConversation
+    // This prevents listeners from being removed when conversations change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
 
   const handleSend = () => {
     if (!inputValue.trim() || !selectedConversation) return;
@@ -471,6 +740,12 @@ const Messages = ({ session }: MessagesProps) => {
       console.log(`🔌 [Admin] Already connected in database, syncing local state: ${selectedConversation}`);
       setConnectedRooms(prev => new Set(prev).add(selectedConversation));
     }
+
+    // IMPORTANT: Ensure admin is in the room before sending
+    // This ensures the message is received via room broadcast
+    socket.emit('admin:join');
+    socket.emit('admin:join-room', { roomId: selectedConversation });
+    console.log(`✅ [Admin] Ensured in room before sending: ${selectedConversation}`);
 
     // Emit admin message with senderId
     socket.emit('admin:message', {
@@ -571,12 +846,14 @@ const Messages = ({ session }: MessagesProps) => {
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white" style={{ fontFamily: "'Jost', sans-serif" }}>
                 Customer Messages
               </h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2" style={{ fontFamily: "'Jost', sans-serif" }}>
-                <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                {isConnected ? 'Connected' : 'Disconnected'}
-              </p>
+              
             </div>
           </div>
+          <RefreshButton 
+            onClick={loadConversations}
+            isLoading={isRefreshingConversations}
+            tooltip="Refresh conversations"
+          />
         </div>
       </div>
 
@@ -698,9 +975,9 @@ const Messages = ({ session }: MessagesProps) => {
                         
                         const conversation = conversations.get(selectedConversation);
                         if (conversation) {
-                          console.log(`🔌 [Admin] Disconnecting from room: ${selectedConversation}`);
+                          console.log(`🔌 [Admin] Disconnecting from room: ${selectedConversation} (staying in room for real-time)`);
                           
-                          // Mark as disconnected locally
+                          // Mark as disconnected locally (but stay in room for real-time updates)
                           setConnectedRooms(prev => {
                             const newSet = new Set(prev);
                             newSet.delete(selectedConversation);
@@ -720,11 +997,15 @@ const Messages = ({ session }: MessagesProps) => {
                             return updated;
                           });
                           
-                          // Emit admin:disconnect event (will update database via socket handler)
+                          // Emit admin:disconnect event (will update database but NOT leave room)
                           socket.emit('admin:disconnect', {
                             roomId: selectedConversation,
                             sessionId: conversation.sessionId,
                           });
+                          
+                          // IMPORTANT: Rejoin room to ensure we still receive real-time messages
+                          socket.emit('admin:join-room', { roomId: selectedConversation });
+                          console.log(`✅ [Admin] Rejoined room for real-time updates: ${selectedConversation}`);
                         }
                       }}
                       className="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg font-semibold text-sm transition-all shadow-md hover:shadow-lg flex items-center gap-2"
