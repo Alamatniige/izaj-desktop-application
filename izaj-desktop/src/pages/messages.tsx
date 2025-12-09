@@ -487,33 +487,71 @@ const Messages = ({ session }: MessagesProps) => {
       // Update messages for this conversation
       setMessages(prev => {
         const roomMessages = prev.get(msg.roomId) || [];
-        // Check if message already exists to avoid duplicates
-        const exists = roomMessages.some(m => {
-          // Check by ID
+        
+        // Check for duplicates and optimistic messages to replace
+        let foundDuplicate = false;
+        let optimisticIndex = -1;
+        
+        roomMessages.forEach((m, index) => {
+          // Check by exact ID match
           if (m.id === msg.id || String(m.id) === String(msg.id)) {
             console.log('⚠️ [Admin] Duplicate message detected by ID:', msg.id);
-            return true;
+            foundDuplicate = true;
+            return;
           }
-          // Check by text and timestamp
+          
+          // Check if this is an optimistic message that should be replaced
+          // Optimistic messages have numeric string IDs (Date.now().toString()) and match text+sender+time
+          const isOptimisticId = /^\d+$/.test(String(m.id));
+          if (isOptimisticId && 
+              m.text === msg.text && 
+              m.sender === msg.sender &&
+              m.roomId === msg.roomId &&
+              Math.abs(m.timestamp.getTime() - msg.timestamp.getTime()) < 5000) { // 5 second window
+            console.log('🔄 [Admin] Found optimistic message to replace:', m.id, 'with:', msg.id);
+            optimisticIndex = index;
+            return;
+          }
+          
+          // Check by text, sender, and timestamp (within 2 seconds) - catch other duplicates
           if (m.text === msg.text && 
+              m.sender === msg.sender &&
+              m.roomId === msg.roomId &&
               Math.abs(m.timestamp.getTime() - msg.timestamp.getTime()) < 2000) {
-            console.log('⚠️ [Admin] Duplicate message detected by text+time');
-            return true;
+            console.log('⚠️ [Admin] Duplicate message detected by text+sender+time');
+            foundDuplicate = true;
+            return;
           }
-          return false;
         });
         
-        if (exists) {
+        if (foundDuplicate) {
           console.log('⏭️ [Admin] Skipping duplicate message');
           return prev;
         }
         
-        console.log('➕ [Admin] Adding new message to room:', msg.roomId);
         const updated = new Map(prev);
-        const newMessages = [...roomMessages, msg];
-        // Sort by timestamp to maintain order
-        newMessages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-        updated.set(msg.roomId, newMessages);
+        
+        // Replace optimistic message if found, otherwise add new
+        if (optimisticIndex !== -1) {
+          console.log('✅ [Admin] Replacing optimistic message with real-time message:', {
+            oldId: roomMessages[optimisticIndex].id,
+            newId: msg.id,
+            text: msg.text.substring(0, 30),
+            sender: msg.sender
+          });
+          
+          const newMessages = [...roomMessages];
+          newMessages[optimisticIndex] = msg; // Replace optimistic with real message
+          newMessages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+          updated.set(msg.roomId, newMessages);
+        } else {
+          console.log('➕ [Admin] Adding new message to room:', msg.roomId);
+          const newMessages = [...roomMessages, msg];
+          // Sort by timestamp to maintain order
+          newMessages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+          updated.set(msg.roomId, newMessages);
+        }
+        
         return updated;
       });
 
@@ -568,11 +606,29 @@ const Messages = ({ session }: MessagesProps) => {
       // Update messages for this conversation
       setMessages(prev => {
         const roomMessages = prev.get(msg.roomId) || [];
-        const exists = roomMessages.some(m => 
-          (m.id === msg.id || String(m.id) === String(msg.id)) ||
-          (m.text === msg.text && Math.abs(m.timestamp.getTime() - msg.timestamp.getTime()) < 2000)
-        );
-        if (exists) return prev;
+        
+        // Check for duplicates
+        const exists = roomMessages.some(m => {
+          // Check by ID
+          if (m.id === msg.id || String(m.id) === String(msg.id)) {
+            console.log('⚠️ [Admin] Duplicate customer message detected by ID:', msg.id);
+            return true;
+          }
+          // Check by text, sender, and timestamp
+          if (m.text === msg.text && 
+              m.sender === msg.sender &&
+              m.roomId === msg.roomId &&
+              Math.abs(m.timestamp.getTime() - msg.timestamp.getTime()) < 2000) {
+            console.log('⚠️ [Admin] Duplicate customer message detected by text+sender+time');
+            return true;
+          }
+          return false;
+        });
+        
+        if (exists) {
+          console.log('⏭️ [Admin] Skipping duplicate customer message');
+          return prev;
+        }
         
         console.log('➕ [Admin] Adding customer message from customer:message event');
         const updated = new Map(prev);
@@ -657,16 +713,26 @@ const Messages = ({ session }: MessagesProps) => {
                  m.text === msg.text && 
                  m.sender === msg.sender &&
                  m.roomId === msg.roomId &&
-                 Math.abs(m.timestamp.getTime() - msg.timestamp.getTime()) < 3000;
+                 Math.abs(m.timestamp.getTime() - msg.timestamp.getTime()) < 5000; // Increased to 5 seconds
         });
         
         if (optimisticIndex !== -1) {
-          console.log('🔄 [Admin] Replacing optimistic message with server message (ID:', msg.id, ')');
+          console.log('🔄 [Admin] Replacing optimistic admin message with server message (ID:', msg.id, ')');
           const newMessages = [...roomMessages];
           newMessages[optimisticIndex] = msg; // Replace optimistic with server message
           newMessages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
           updated.set(msg.roomId, newMessages);
           return updated;
+        }
+        
+        // Check for any duplicate by ID first (most reliable)
+        const duplicateById = roomMessages.some(m => 
+          m.id === msg.id || String(m.id) === String(msg.id)
+        );
+        
+        if (duplicateById) {
+          console.log('⚠️ [Admin] Duplicate admin message detected by ID - skipping');
+          return prev;
         }
         
         // Check for any duplicate by text+sender+roomId+time (safety check)
