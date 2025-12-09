@@ -6,6 +6,7 @@ import Payments from './pages/payments';
 import Feedbacks from './pages/feedbacks';
 import Profile from './pages/profile';
 import Settings from './pages/settings';
+import Messages from './pages/messages';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
@@ -206,6 +207,8 @@ function App() {
         return <Feedbacks session={session} setIsFeedbackModalOpen={setIsFeedbackModalOpen} />;
       case 'PAYMENTS':
         return <Payments session={session} setIsOverlayOpen={setIsOverlayOpen} />;
+      case 'MESSAGES':
+        return <Messages session={session} />;
       case 'PROFILE':
         return <Profile session={session} setProfile={setProfile} profile={profile} handleNavigation={handleNavigation} />;
       case 'SETTINGS':

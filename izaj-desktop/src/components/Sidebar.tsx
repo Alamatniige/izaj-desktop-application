@@ -24,6 +24,7 @@ const allNavigationItems = [
   { icon: 'mdi:clipboard-list-outline', label: 'ORDERS' },
   { icon: 'mdi:credit-card-outline', label: 'PAYMENTS' },
   { icon: 'mdi:star-outline', label: 'FEEDBACKS' },
+  { icon: 'mdi:message-text', label: 'MESSAGES' },
 ];
 
 const Sidebar = ({

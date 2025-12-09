@@ -1,4 +1,6 @@
 import express from 'express';
+import http from 'http';
+import { Server as SocketIOServer } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import axios from 'axios';
@@ -40,8 +42,297 @@ import payments from './payments/server.js'
 import settings from './settings/server.js'
 import maintenance from './maintenance/server.js'
 import backup from './backup/server.js'
+import messaging from './messaging/server.js'
 
 const app = express();
+const server = http.createServer(app);
+
+// -----------------------------------------------------------------------------
+// Socket.IO setup
+// -----------------------------------------------------------------------------
+const io = new SocketIOServer(server, {
+  cors: {
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:3002',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:3001',
+      'http://127.0.0.1:3002',
+      'tauri://localhost',
+      'http://tauri.localhost',
+      'https://tauri.localhost',
+      'https://izaj-desktop-application-production.up.railway.app',
+      'http://izaj-desktop-application-production.up.railway.app',
+      'https://izaj-ecommerce.vercel.app',
+      process.env.FRONTEND_URL,
+      process.env.WEB_APP_URL,
+      process.env.NEXT_PUBLIC_APP_URL
+    ].filter(Boolean),
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
+});
+
+io.on('connection', async (socket) => {
+  console.log(`✅ [Socket] Client connected: ${socket.id}`);
+  
+  const sessionId = socket.handshake.auth?.sessionId || socket.id;
+  const defaultRoomId = `customer:${sessionId}`;
+
+  socket.join(defaultRoomId);
+  socket.emit('session', { sessionId, roomId: defaultRoomId });
+  console.log(`✅ [Socket] Session created: ${sessionId}, Room: ${defaultRoomId}`);
+
+  // Allow admin panels to listen to all chats
+  socket.on('admin:join', () => {
+    socket.join('admins');
+    console.log(`✅ [Socket] Admin joined admins room: ${socket.id}`);
+  });
+
+  socket.on('disconnect', (reason) => {
+    console.log(`❌ [Socket] Client disconnected: ${socket.id}, Reason: ${reason}`);
+  });
+
+  // Handle customer request for agent
+  socket.on('customer:request-agent', async (payload = {}) => {
+    const { roomId, sessionId: payloadSessionId } = payload;
+    const finalRoomId = roomId || defaultRoomId;
+    const finalSessionId = payloadSessionId || sessionId;
+    
+    console.log(`📞 [Socket] Customer requesting agent for room: ${finalRoomId}`);
+    
+    // Ensure socket is in the correct room
+    if (finalRoomId) {
+      socket.join(finalRoomId);
+      console.log(`✅ [Socket] Customer socket ${socket.id} joined room ${finalRoomId} for agent request`);
+    }
+    
+    // Notify all admins about the request
+    io.to('admins').emit('admin:customer-request', {
+      roomId: finalRoomId,
+      sessionId: finalSessionId,
+      productName: payload.productName,
+      customerEmail: payload.customerEmail,
+      customerName: payload.customerName,
+      timestamp: new Date().toISOString(),
+    });
+  });
+
+  socket.on('customer:message', async (payload = {}) => {
+    // Use roomId from payload if provided, otherwise use default roomId
+    const finalRoomId = payload.roomId || defaultRoomId;
+    const finalSessionId = payload.sessionId || sessionId;
+    
+    // Ensure socket is in the correct room (always join the room from payload)
+    if (finalRoomId) {
+      socket.join(finalRoomId);
+      console.log(`✅ [Socket] Customer socket ${socket.id} joined room ${finalRoomId}`);
+    }
+    
+    const message = {
+      ...payload,
+      roomId: finalRoomId,
+      sessionId: finalSessionId,
+      sentAt: new Date().toISOString(),
+      from: 'customer',
+    };
+    
+    console.log(`📨 [Socket] Customer message received for room: ${finalRoomId}, Message: ${message.text}`);
+    
+    // Save to database (async, don't wait)
+    (async () => {
+      try {
+        const baseUrl = process.env.NODE_ENV === 'production' 
+          ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN || 'izaj-desktop-application-production.up.railway.app'}`
+          : `http://localhost:${process.env.PORT || 3001}`;
+        
+        await axios.post(`${baseUrl}/api/messaging/messages`, {
+          roomId: finalRoomId,
+          sessionId: finalSessionId,
+          senderType: 'customer',
+          messageText: payload.text || '',
+          productName: payload.productName,
+          preferredLanguage: payload.preferredLanguage,
+          customerEmail: payload.customerEmail || null,
+          customerName: payload.customerName || null,
+        });
+      } catch (error) {
+        console.error('Error saving customer message to database:', error.message);
+      }
+    })();
+
+    // Emit to all sockets in the room (including customer)
+    io.to(finalRoomId).emit('customer:message', message);
+    
+    // Emit to admins room (for admin dashboard)
+    console.log(`📤 [Socket] Broadcasting customer message to admins room. Message:`, message.text);
+    io.to('admins').emit('admin:incoming', message);
+    
+    // Log how many admins are in the room (for debugging)
+    const adminSockets = await io.in('admins').fetchSockets();
+    console.log(`👥 [Socket] Admins in room: ${adminSockets.length}`);
+  });
+
+  socket.on('admin:connect', async (payload = {}) => {
+    const { roomId, sessionId } = payload;
+    
+    if (roomId) {
+      // Admin joins the specific customer room to receive messages
+      socket.join(roomId);
+      console.log(`✅ [Socket] Admin ${socket.id} joined room ${roomId}`);
+      
+      // Update admin_connected status in database
+      try {
+        const baseUrl = process.env.NODE_ENV === 'production' 
+          ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN || 'izaj-desktop-application-production.up.railway.app'}`
+          : `http://localhost:${process.env.PORT || 3001}`;
+        
+        await axios.put(`${baseUrl}/api/messaging/conversations/${roomId}/admin-connected`, {
+          adminConnected: true,
+        });
+        console.log(`✅ [Socket] Updated admin_connected to true for room ${roomId}`);
+      } catch (error) {
+        console.error('Error updating admin connection status:', error.message);
+      }
+      
+      // Send greeting message to customer
+      const greetingMessage = {
+        text: 'Hello! You are now connected to one of our agents. How can I help you?',
+        sentAt: new Date().toISOString(),
+        from: 'admin',
+        roomId,
+        sessionId,
+      };
+      
+      // Save greeting message to database
+      (async () => {
+        try {
+          const baseUrl = process.env.NODE_ENV === 'production' 
+            ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN || 'izaj-desktop-application-production.up.railway.app'}`
+            : `http://localhost:${process.env.PORT || 3001}`;
+          
+          await axios.post(`${baseUrl}/api/messaging/messages`, {
+            roomId,
+            sessionId: sessionId || '',
+            senderType: 'admin',
+            senderId: socket.handshake.auth?.userId || null,
+            messageText: greetingMessage.text,
+          });
+        } catch (error) {
+          console.error('Error saving greeting message to database:', error.message);
+        }
+      })();
+      
+      // Emit to customer that admin connected
+      io.to(roomId).emit('admin:connected', greetingMessage);
+      console.log(`✅ [Socket] Admin connected to room ${roomId}`);
+    }
+  });
+
+  socket.on('admin:disconnect', async (payload = {}) => {
+    const { roomId, sessionId } = payload;
+    
+    if (roomId) {
+      // Admin leaves the specific customer room
+      socket.leave(roomId);
+      console.log(`❌ [Socket] Admin ${socket.id} left room ${roomId}`);
+      
+      // Update admin_connected status in database
+      try {
+        const baseUrl = process.env.NODE_ENV === 'production' 
+          ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN || 'izaj-desktop-application-production.up.railway.app'}`
+          : `http://localhost:${process.env.PORT || 3001}`;
+        
+        await axios.put(`${baseUrl}/api/messaging/conversations/${roomId}/admin-connected`, {
+          adminConnected: false,
+        });
+        console.log(`✅ [Socket] Updated admin_connected to false for room ${roomId}`);
+      } catch (error) {
+        console.error('Error updating admin connection status:', error.message);
+      }
+      
+      // Send disconnect message to customer
+      const disconnectMessage = {
+        text: 'The agent has disconnected. You can no longer reply to this conversation.',
+        sentAt: new Date().toISOString(),
+        from: 'admin',
+        roomId,
+        sessionId,
+      };
+      
+      // Save disconnect message to database
+      (async () => {
+        try {
+          const baseUrl = process.env.NODE_ENV === 'production' 
+            ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN || 'izaj-desktop-application-production.up.railway.app'}`
+            : `http://localhost:${process.env.PORT || 3001}`;
+          
+          await axios.post(`${baseUrl}/api/messaging/messages`, {
+            roomId,
+            sessionId: sessionId || '',
+            senderType: 'admin',
+            senderId: socket.handshake.auth?.userId || null,
+            messageText: disconnectMessage.text,
+          });
+        } catch (error) {
+          console.error('Error saving disconnect message to database:', error.message);
+        }
+      })();
+      
+      // Emit to customer that admin disconnected
+      io.to(roomId).emit('admin:disconnected', disconnectMessage);
+      console.log(`❌ [Socket] Admin disconnected from room ${roomId}`);
+    }
+  });
+
+  socket.on('admin:message', async (payload = {}) => {
+    const { roomId, sessionId, text, senderId } = payload;
+    
+    if (!roomId) {
+      console.error('❌ [Socket] Admin message missing roomId');
+      return;
+    }
+    
+    // Ensure admin is in the room (in case they haven't connected yet)
+    socket.join(roomId);
+    
+    const message = {
+      ...payload,
+      roomId,
+      sessionId,
+      sentAt: new Date().toISOString(),
+      from: 'admin',
+    };
+    
+    console.log(`📤 [Socket] Admin message for room: ${roomId}, Message: ${text}`);
+    
+    // Save to database (async, don't wait)
+    (async () => {
+      try {
+        const baseUrl = process.env.NODE_ENV === 'production' 
+          ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN || 'izaj-desktop-application-production.up.railway.app'}`
+          : `http://localhost:${process.env.PORT || 3001}`;
+        
+        await axios.post(`${baseUrl}/api/messaging/messages`, {
+          roomId,
+          sessionId: sessionId || '',
+          senderType: 'admin',
+          senderId: senderId || socket.handshake.auth?.userId || null,
+          messageText: text || '',
+        });
+      } catch (error) {
+        console.error('Error saving admin message to database:', error.message);
+      }
+    })();
+    
+    // Emit to all sockets in the room (customer and other admins)
+    io.to(roomId).emit('admin:message', message);
+    
+    // Also emit to admins room for admin dashboard updates
+    io.to('admins').emit('admin:message', message);
+  });
+});
 
 // CORS configuration
 app.use(cors({
@@ -97,7 +388,17 @@ app.get('/api/health', (req, res) => {
     success: true,
     message: 'izaj-desktop API is running!',
     timestamp: new Date().toISOString(),
-    health: 'api/health'
+    health: 'api/health',
+    socket: 'Socket.IO server is running'
+  });
+});
+
+// Socket.IO health check
+app.get('/socket.io/health', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Socket.IO server is running',
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -159,6 +460,7 @@ app.use('/api/dashboard', async (req, res) => {
 app.use('/api', customers);
 app.use('/api', orders);
 app.use('/api', payments);
+app.use('/api/messaging', messaging);
 
 // =============================================================================
 // PASSWORD RESET PAGE - Serves HTML page that redirects to deep link
@@ -760,8 +1062,8 @@ app.use((req, res) => {
 const PORT = process.env.PORT || 3001;
 const HOST = process.env.HOST || '0.0.0.0'; // Railway requires binding to 0.0.0.0
 
-app.listen(PORT, HOST, () => {
-  console.log(`✅ [Server] Backend running on http://${HOST}:${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`✅ [Server] Backend + Socket running on http://${HOST}:${PORT}`);
   console.log(`🌐 [Server] Railway URL: https://izaj-desktop-application-production.up.railway.app`);
   console.log(`📡 [Server] Environment: ${process.env.NODE_ENV || 'development'}`);
 });
