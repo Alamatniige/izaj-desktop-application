@@ -26,13 +26,20 @@ class EmailService {
     if (!apiKey) {
       console.error('❌ [EmailService] Missing SendGrid API key!');
       console.error('   SENDGRID_API_KEY:', apiKey ? 'SET' : 'NOT SET');
+      console.error('   Please set SENDGRID_API_KEY in your .env file or environment variables');
     } else {
+      // Validate API key format (SendGrid keys start with SG.)
+      if (!apiKey.startsWith('SG.')) {
+        console.warn('⚠️ [EmailService] SendGrid API key format may be invalid (should start with SG.)');
+      }
       console.log('✅ [EmailService] SendGrid API key configured');
+      console.log('   API Key prefix:', apiKey.substring(0, 10) + '...');
     }
 
     if (!fromEmail) {
       console.error('❌ [EmailService] Missing sender email address!');
       console.error('   SENDGRID_FROM_EMAIL:', fromEmail ? 'SET' : 'NOT SET');
+      console.error('   Please set SENDGRID_FROM_EMAIL in your .env file or environment variables');
     } else {
       console.log('✅ [EmailService] Sender email configured:', fromEmail);
     }
@@ -43,9 +50,23 @@ class EmailService {
     }
 
     this.fromEmail = fromEmail;
+    this.apiKey = apiKey;
   }
 
   async sendEmail(options) {
+    // Validate configuration before attempting to send
+    if (!this.apiKey) {
+      const errorMsg = 'Cannot send email: SendGrid API key is not configured. Please set SENDGRID_API_KEY in your environment variables.';
+      console.error('❌ [EmailService]', errorMsg);
+      throw new Error(errorMsg);
+    }
+
+    if (!this.fromEmail) {
+      const errorMsg = 'Cannot send email: Sender email is not configured. Please set SENDGRID_FROM_EMAIL in your environment variables.';
+      console.error('❌ [EmailService]', errorMsg);
+      throw new Error(errorMsg);
+    }
+
     try {
       const msg = {
         from: {
@@ -65,14 +86,35 @@ class EmailService {
       );
 
       const [response] = await Promise.race([emailPromise, timeoutPromise]);
-      console.log('Email sent successfully:', response?.statusCode || 'Success');
+      console.log('✅ [EmailService] Email sent successfully:', response?.statusCode || 'Success');
       return response;
     } catch (error) {
-      console.error('Error sending email:', error);
+      console.error('❌ [EmailService] Error sending email:', error.message);
+      
       if (error.response) {
-        console.error('SendGrid error details:', error.response.body);
+        console.error('❌ [EmailService] SendGrid error details:', error.response.body);
+        
+        // Provide helpful error messages based on error code
+        if (error.response.body?.errors) {
+          const errors = error.response.body.errors;
+          errors.forEach(err => {
+            if (err.message) {
+              console.error(`   Error: ${err.message}`);
+              if (err.message.includes('authorization grant is invalid, expired, or revoked')) {
+                console.error('   💡 Solution: Your SendGrid API key is invalid or expired.');
+                console.error('   💡 Please generate a new API key at: https://app.sendgrid.com/settings/api_keys');
+                console.error('   💡 Then update SENDGRID_API_KEY in your .env file or environment variables.');
+              }
+            }
+          });
+        }
+      } else if (error.code === 401) {
+        console.error('   💡 Solution: Your SendGrid API key is invalid or expired.');
+        console.error('   💡 Please generate a new API key at: https://app.sendgrid.com/settings/api_keys');
+        console.error('   💡 Then update SENDGRID_API_KEY in your .env file or environment variables.');
       }
-      throw new Error('Failed to send email');
+      
+      throw new Error(`Failed to send email: ${error.message}`);
     }
   }
 
@@ -153,7 +195,7 @@ class EmailService {
   // Create beautiful product notification template (matching izaj-web email design exactly)
   createProductNotificationTemplate(productName, productImageUrl, webAppUrl, productId) {
     // Ensure webAppUrl has a value
-    const baseUrl = webAppUrl || process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://izaj-lighting-centre.netlify.app';
+    const baseUrl = webAppUrl || process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://izaj-ecommerce.vercel.app';
     const productLink = productId ? `${baseUrl}/item-description/${productId}` : baseUrl;
     const unsubscribeLink = `${baseUrl}/unsubscribe`;
     
@@ -319,7 +361,7 @@ class EmailService {
   // Create beautiful sale notification template (matching izaj-web email design exactly)
   createSaleNotificationTemplate(productName, discountText, startDate, endDate, productImageUrl, webAppUrl, productId) {
     // Ensure webAppUrl has a value
-    const baseUrl = webAppUrl || process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://izaj-lighting-centre.netlify.app';
+    const baseUrl = webAppUrl || process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://izaj-ecommerce.vercel.app';
     const productLink = productId ? `${baseUrl}/item-description/${productId}` : baseUrl;
     const unsubscribeLink = `${baseUrl}/unsubscribe`;
     
@@ -502,7 +544,7 @@ class EmailService {
     `;
   }
 
-  async sendSubscriptionMessage(email, customMessage, webAppUrl = 'https://izaj-lighting-centre.netlify.app') {
+  async sendSubscriptionMessage(email, customMessage, webAppUrl = 'https://izaj-ecommerce.vercel.app') {
     // Check if message is HTML formatted
     const isHtml = customMessage ? this.isHtmlContent(customMessage) : false;
     

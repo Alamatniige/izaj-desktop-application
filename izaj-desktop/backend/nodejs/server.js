@@ -59,7 +59,7 @@ app.use(cors({
       'https://tauri.localhost',
       'https://izaj-desktop-application-production.up.railway.app',
       'http://izaj-desktop-application-production.up.railway.app',
-      'https://izaj-lighting-centre.netlify.app',
+      'https://izaj-ecommerce.vercel.app',
       process.env.FRONTEND_URL,
       process.env.WEB_APP_URL,
       process.env.NEXT_PUBLIC_APP_URL

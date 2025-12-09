@@ -1302,7 +1302,7 @@ router.put('/products/:id/status', authenticate, async (req, res) => {
             console.log('⚠️ [Notification] WARNING: No active subscribers found');
           } else {
             console.log(`✅ [Notification] Found ${subscribers.length} active subscriber(s)`);
-            const webAppUrl = process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://izaj-lighting-centre.netlify.app';
+            const webAppUrl = process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://izaj-ecommerce.vercel.app';
             const productName = data.product_name || 'New Product';
             const productImageUrl = data.media_urls?.[0] || null;
             // Use product_id (Shopify ID) for the URL, not the database UUID
@@ -1476,7 +1476,7 @@ router.put('/products/:id/status', authenticate, async (req, res) => {
           console.log('Subscriber emails:', subscribers.map(s => s.email).join(', '));
           console.log('');
           
-          const webAppUrl = process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://izaj-lighting-centre.netlify.app';
+          const webAppUrl = process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://izaj-ecommerce.vercel.app';
           const productName = data.product_name || 'New Product';
           const productImageUrl = data.media_urls?.[0] || null;
           // Use product_id (Shopify ID) for the URL, not the database UUID
@@ -1779,7 +1779,7 @@ router.post('/products/publish-all', authenticate, async (req, res) => {
           console.log('Subscriber emails:', subscribers.map(s => s.email).join(', '));
           console.log('');
           
-          const webAppUrl = process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://izaj-lighting-centre.netlify.app';
+          const webAppUrl = process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://izaj-ecommerce.vercel.app';
           
           // For multiple products, use the first product for the template or create a combined message
           const firstProduct = updatedProducts[0];
