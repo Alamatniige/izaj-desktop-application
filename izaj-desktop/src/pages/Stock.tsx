@@ -24,6 +24,8 @@ function Stock({ onViewChange, session }: StockProps) {
     selectedCategory,
     setSelectedCategory,
     statusFilter,
+    stockSort,
+    setStockSort,
     filteredProducts,
     refetch
   } = useStock(session);
@@ -76,7 +78,7 @@ function Stock({ onViewChange, session }: StockProps) {
   // Reset page when filters change to avoid empty pages
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedCategory, statusFilter]);
+  }, [searchQuery, selectedCategory, statusFilter, stockSort]);
 
   // Ensure current page is not out of range when totalPages changes
   useEffect(() => {
@@ -249,6 +251,23 @@ function Stock({ onViewChange, session }: StockProps) {
                         {category}
                       </option>
                     ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <Icon icon="mdi:chevron-down" className="h-4 w-4 text-gray-400 dark:text-slate-400" />
+                  </div>
+                </div>
+
+                {/* Stock Level Sort Filter */}
+                <div className="relative">
+                  <select
+                    value={stockSort}
+                    onChange={(e) => setStockSort(e.target.value as 'None' | 'Ascending' | 'Descending')}
+                    className="appearance-none bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-3 pr-10 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 shadow-sm cursor-pointer"
+                    style={{ fontFamily: "'Jost', sans-serif" }}
+                  >
+                    <option value="None">No Sort</option>
+                    <option value="Ascending">Stock: Low to High</option>
+                    <option value="Descending">Stock: High to Low</option>
                   </select>
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                     <Icon icon="mdi:chevron-down" className="h-4 w-4 text-gray-400 dark:text-slate-400" />

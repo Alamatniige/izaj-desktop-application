@@ -396,7 +396,7 @@ router.get('/products', authenticate, async (req, res) => {
 // Supports optional authentication for role-based filtering
 router.get('/client-products', async (req, res) => {
   try {
-    const { page = 1, limit = 100, status, category, search } = req.query;
+    const { page = 1, limit = 1000, status, category, search } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
     // Check if user is authenticated (for role-based filtering)

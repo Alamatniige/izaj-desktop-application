@@ -756,7 +756,7 @@ export function AddProductModal({
               
               {/* Product Information Area */}
               <div className="w-full lg:w-3/5 flex flex-col gap-6 p-6">
-                {/* Product Name and Category */}
+                {/* Product Name and Insert Media */}
                 <div className="flex flex-col sm:flex-row gap-4">
                   {/* Product Name */}
                   <div className="flex-1 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-2xl p-6 border border-blue-100 dark:border-blue-800">
@@ -769,39 +769,38 @@ export function AddProductModal({
                     </h3>
                   </div>
                   
-                  {/* Category */}
-                  <div className="sm:w-64 bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 rounded-2xl p-6 border border-purple-100 dark:border-purple-800">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Icon icon="mdi:tag-outline" className="text-lg text-purple-600 dark:text-purple-400" />
-                      <span className="text-sm text-purple-600 dark:text-purple-400 font-semibold uppercase tracking-wide">Category</span>
-                    </div>
-                    <span className="text-lg font-semibold text-purple-700 dark:text-purple-300" style={{ fontFamily: "'Jost', sans-serif" }}>
-                      {typeof selectedProduct.category === 'string'
-                        ? selectedProduct.category
-                        : selectedProduct.category?.category_name ?? 'Uncategorized'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Price */}
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-2xl p-5 border border-green-100 dark:border-green-800">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Icon icon="mdi:currency-usd" className="text-lg text-green-600 dark:text-green-400" />
-                      <span className="text-sm text-green-600 dark:text-green-400 font-semibold uppercase tracking-wide">Price</span>
-                    </div>
-                    <span className="text-2xl font-bold text-green-700 dark:text-green-300" style={{ fontFamily: "'Jost', sans-serif" }}>
-                      ₱{selectedProduct.price.toLocaleString()}
-                    </span>
-                  </div>
-                  
                   {/* Insert Media */}
-                  <div className="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 rounded-2xl p-5 border border-orange-100 dark:border-orange-800 relative z-20">
+                  <div className="flex-1 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 rounded-2xl p-6 border border-orange-100 dark:border-orange-800 relative z-20">
                     <div className="flex items-center gap-2 mb-3">
                       <Icon icon="mdi:image-plus" className="text-lg text-orange-600 dark:text-orange-400" />
                       <span className="text-sm text-orange-600 dark:text-orange-400 font-semibold uppercase tracking-wide">Insert Media</span>
                     </div>
                     <MediaDropzone onFilesSelected={handleFileChange} />
+                  </div>
+                </div>
+
+                {/* Product Price and Product Code */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Price */}
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-2xl p-4 border border-green-100 dark:border-green-800">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <Icon icon="mdi:currency-usd" className="text-lg text-green-600 dark:text-green-400" />
+                      <span className="text-sm text-green-600 dark:text-green-400 font-semibold uppercase tracking-wide">Price</span>
+                    </div>
+                    <span className="text-xl font-bold text-green-700 dark:text-green-300" style={{ fontFamily: "'Jost', sans-serif" }}>
+                      ₱{selectedProduct.price.toLocaleString()}
+                    </span>
+                  </div>
+                  
+                  {/* Product Code */}
+                  <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-2xl p-4 border border-blue-100 dark:border-blue-800">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <Icon icon="mdi:barcode" className="text-lg text-blue-600 dark:text-blue-400" />
+                      <span className="text-sm text-blue-600 dark:text-blue-400 font-semibold uppercase tracking-wide">Product Code</span>
+                    </div>
+                    <span className="text-xl font-bold text-blue-700 dark:text-blue-300" style={{ fontFamily: "'Jost', sans-serif" }}>
+                      PC-{selectedProduct.product_id ?? 'N/A'}
+                    </span>
                   </div>
                 </div>
                 
