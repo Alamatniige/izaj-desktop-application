@@ -400,9 +400,12 @@ router.put('/orders/:id/status', authenticate, async (req, res) => {
             <head>
               <meta charset="utf-8">
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <meta name="x-apple-disable-message-reformatting">
+              <meta http-equiv="X-UA-Compatible" content="IE=edge">
               <title>Confirm Shipping Fee - IZAJ</title>
               <style>
-                body { font-family: 'Jost', sans-serif; line-height: 1.6; color: #000000; background: #ffffff; padding: 20px; }
+                * { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+                body { font-family: 'Jost', sans-serif; line-height: 1.6; color: #000000; background: #ffffff; padding: 20px; margin: 0; -webkit-font-smoothing: antialiased; }
                 .email-container { max-width: 640px; margin: 0 auto; background: #ffffff; border: 1px solid #e5e5e5; }
                 .header { background: #000000; color: white; padding: 32px 28px; text-align: center; }
                 .logo { font-family: 'Jost', sans-serif; font-size: 28px; font-weight: 700; letter-spacing: 1px; }
@@ -410,11 +413,18 @@ router.put('/orders/:id/status', authenticate, async (req, res) => {
                 .content p { font-family: 'Jost', sans-serif; color: #333333; margin: 0 0 14px; }
                 .shipping-box { background: #f8f8f8; border-left: 3px solid #000000; padding: 16px; margin: 18px 0; }
                 .shipping-box strong { font-size: 20px; color: #000000; }
-                .button { display: inline-block; background: #000000; color: white; padding: 14px 28px; text-decoration: none; font-family: 'Jost', sans-serif; font-weight: 600; border: 2px solid #000000; border-radius: 4px; }
-                .button:hover { background: #ffffff; color: #000000; }
-                .button-container { text-align: center; margin: 20px 0; }
+                .button-container { text-align: center; margin: 20px 0; padding: 10px 0; }
                 .footer { background: #f8f8f8; padding: 22px; text-align: center; border-top: 1px solid #e5e5e5; }
                 .footer p { font-family: 'Jost', sans-serif; color: #666666; font-size: 13px; margin: 5px 0; }
+                @media only screen and (max-width: 600px) {
+                  body { padding: 10px !important; }
+                  .content { padding: 20px !important; }
+                  .button-container { padding: 15px 0 !important; }
+                  .button-container a { 
+                    padding: 14px 20px !important;
+                    font-size: 15px !important;
+                  }
+                }
               </style>
             </head>
             <body>
@@ -430,11 +440,19 @@ router.put('/orders/:id/status', authenticate, async (req, res) => {
                     <p><strong>Shipping Fee: ₱${data.shipping_fee.toFixed(2)}</strong></p>
                     <p>Please confirm this shipping fee to proceed with your order approval.</p>
                   </div>
-                  <div class="button-container">
-                    <a href="${confirmationUrl}" class="button" style="color: white !important; text-decoration: none !important;">Confirm Shipping Fee</a>
+                  <div style="text-align: center; margin: 25px 0;">
+                    <table cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto; border-collapse: separate;">
+                      <tr>
+                        <td align="center" bgcolor="#000000" style="background-color: #000000; border: 2px solid #000000; border-radius: 4px; padding: 0;">
+                          <a href="${confirmationUrl}" style="display: block; padding: 14px 28px; color: #ffffff; text-decoration: none; font-family: 'Jost', sans-serif; font-weight: 600; font-size: 16px; line-height: 1.4;">Confirm Shipping Fee</a>
+                        </td>
+                      </tr>
+                    </table>
                   </div>
-                  <p style="margin-top: 20px; font-size: 12px; color: #666666;">If the button doesn't work, copy and paste this link into your browser:</p>
-                  <p style="font-size: 12px; color: #666666; word-break: break-all;">${confirmationUrl}</p>
+                  <p style="margin-top: 20px; font-size: 14px; color: #666666; text-align: center;">Or tap this link:</p>
+                  <p style="text-align: center; margin: 10px 0;">
+                    <a href="${confirmationUrl}" style="color: #0066cc; text-decoration: underline; font-size: 14px; word-break: break-all;">${confirmationUrl}</a>
+                  </p>
                 </div>
                 <div class="footer">
                   <p>© ${new Date().getFullYear()} IZAJ Lighting Centre. All rights reserved.</p>
@@ -1030,9 +1048,12 @@ router.put('/orders/:id/shipping-fee', authenticate, async (req, res) => {
               <head>
                 <meta charset="utf-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <meta name="x-apple-disable-message-reformatting">
+                <meta http-equiv="X-UA-Compatible" content="IE=edge">
                 <title>Confirm Shipping Fee - IZAJ</title>
                 <style>
-                  body { font-family: 'Jost', sans-serif; line-height: 1.6; color: #000000; background: #ffffff; padding: 20px; }
+                  * { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+                  body { font-family: 'Jost', sans-serif; line-height: 1.6; color: #000000; background: #ffffff; padding: 20px; margin: 0; -webkit-font-smoothing: antialiased; }
                   .email-container { max-width: 640px; margin: 0 auto; background: #ffffff; border: 1px solid #e5e5e5; }
                   .header { background: #000000; color: white; padding: 32px 28px; text-align: center; }
                   .logo { font-family: 'Jost', sans-serif; font-size: 28px; font-weight: 700; letter-spacing: 1px; }
@@ -1040,11 +1061,18 @@ router.put('/orders/:id/shipping-fee', authenticate, async (req, res) => {
                   .content p { font-family: 'Jost', sans-serif; color: #333333; margin: 0 0 14px; }
                   .shipping-box { background: #f8f8f8; border-left: 3px solid #000000; padding: 16px; margin: 18px 0; }
                   .shipping-box strong { font-size: 20px; color: #000000; }
-                  .button { display: inline-block; background: #000000; color: white; padding: 14px 28px; text-decoration: none; font-family: 'Jost', sans-serif; font-weight: 600; border: 2px solid #000000; border-radius: 4px; }
-                  .button:hover { background: #ffffff; color: #000000; }
-                  .button-container { text-align: center; margin: 20px 0; }
+                  .button-container { text-align: center; margin: 20px 0; padding: 10px 0; }
                   .footer { background: #f8f8f8; padding: 22px; text-align: center; border-top: 1px solid #e5e5e5; }
                   .footer p { font-family: 'Jost', sans-serif; color: #666666; font-size: 13px; margin: 5px 0; }
+                  @media only screen and (max-width: 600px) {
+                    body { padding: 10px !important; }
+                    .content { padding: 20px !important; }
+                    .button-container { padding: 15px 0 !important; }
+                    .button-container a { 
+                      padding: 14px 20px !important;
+                      font-size: 15px !important;
+                    }
+                  }
                 </style>
               </head>
               <body>
@@ -1060,11 +1088,19 @@ router.put('/orders/:id/shipping-fee', authenticate, async (req, res) => {
                       <p><strong>Shipping Fee: ₱${parsedFee.toFixed(2)}</strong></p>
                       <p>Please confirm this shipping fee to proceed with your order approval.</p>
                     </div>
-                    <div class="button-container">
-                      <a href="${confirmationUrl}" class="button" style="color: white !important; text-decoration: none !important;">Confirm Shipping Fee</a>
+                    <div style="text-align: center; margin: 25px 0;">
+                      <table cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto; border-collapse: separate;">
+                        <tr>
+                          <td align="center" bgcolor="#000000" style="background-color: #000000; border: 2px solid #000000; border-radius: 4px; padding: 0;">
+                            <a href="${confirmationUrl}" style="display: block; padding: 14px 28px; color: #ffffff; text-decoration: none; font-family: 'Jost', sans-serif; font-weight: 600; font-size: 16px; line-height: 1.4;">Confirm Shipping Fee</a>
+                          </td>
+                        </tr>
+                      </table>
                     </div>
-                    <p style="margin-top: 20px; font-size: 12px; color: #666666;">If the button doesn't work, copy and paste this link into your browser:</p>
-                    <p style="font-size: 12px; color: #666666; word-break: break-all;">${confirmationUrl}</p>
+                    <p style="margin-top: 20px; font-size: 14px; color: #666666; text-align: center;">Or tap this link:</p>
+                    <p style="text-align: center; margin: 10px 0;">
+                      <a href="${confirmationUrl}" style="color: #0066cc; text-decoration: underline; font-size: 14px; word-break: break-all;">${confirmationUrl}</a>
+                    </p>
                   </div>
                   <div class="footer">
                     <p>© ${new Date().getFullYear()} IZAJ Lighting Centre. All rights reserved.</p>
