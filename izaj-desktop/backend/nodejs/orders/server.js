@@ -424,6 +424,22 @@ router.put('/orders/:id/status', authenticate, async (req, res) => {
                     padding: 14px 20px !important;
                     font-size: 15px !important;
                   }
+                  table[style*="width: 100%"] { width: 100% !important; }
+                  table[style*="width: 100%"] td { width: 100% !important; }
+                  table[style*="width: 100%"] a { 
+                    width: 100% !important;
+                    padding: 18px 20px !important;
+                    font-size: 16px !important;
+                    min-height: 50px !important;
+                    display: block !important;
+                    box-sizing: border-box !important;
+                  }
+                  p a[style*="display: inline-block"] {
+                    display: block !important;
+                    padding: 14px 8px !important;
+                    min-height: 48px !important;
+                    line-height: 1.6 !important;
+                  }
                 }
               </style>
             </head>
@@ -441,17 +457,17 @@ router.put('/orders/:id/status', authenticate, async (req, res) => {
                     <p>Please confirm this shipping fee to proceed with your order approval.</p>
                   </div>
                   <div style="text-align: center; margin: 25px 0;">
-                    <table cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto; border-collapse: separate;">
+                    <table cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto; border-collapse: separate; width: 100%; max-width: 100%;">
                       <tr>
-                        <td align="center" bgcolor="#000000" style="background-color: #000000; border: 2px solid #000000; border-radius: 4px; padding: 0;">
-                          <a href="${confirmationUrl}" style="display: block; padding: 14px 28px; color: #ffffff; text-decoration: none; font-family: 'Jost', sans-serif; font-weight: 600; font-size: 16px; line-height: 1.4;">Confirm Shipping Fee</a>
+                        <td align="center" bgcolor="#000000" style="background-color: #000000; border: 2px solid #000000; border-radius: 4px; padding: 0; width: 100%;">
+                          <a href="${confirmationUrl}" style="display: block; padding: 16px 28px; color: #ffffff !important; text-decoration: none !important; font-family: 'Jost', sans-serif; font-weight: 600; font-size: 16px; line-height: 1.4; min-height: 44px; -webkit-tap-highlight-color: rgba(255,255,255,0.3); cursor: pointer; -webkit-user-select: none; user-select: none; touch-action: manipulation;">Confirm Shipping Fee</a>
                         </td>
                       </tr>
                     </table>
                   </div>
                   <p style="margin-top: 20px; font-size: 14px; color: #666666; text-align: center;">Or tap this link:</p>
                   <p style="text-align: center; margin: 10px 0;">
-                    <a href="${confirmationUrl}" style="color: #0066cc; text-decoration: underline; font-size: 14px; word-break: break-all;">${confirmationUrl}</a>
+                    <a href="${confirmationUrl}" style="color: #0066cc !important; text-decoration: underline !important; font-size: 14px; word-break: break-all; display: inline-block; padding: 12px 8px; min-height: 44px; line-height: 1.5; -webkit-tap-highlight-color: rgba(0,102,204,0.3); touch-action: manipulation; cursor: pointer;">${confirmationUrl}</a>
                   </p>
                 </div>
                 <div class="footer">
@@ -1089,17 +1105,17 @@ router.put('/orders/:id/shipping-fee', authenticate, async (req, res) => {
                       <p>Please confirm this shipping fee to proceed with your order approval.</p>
                     </div>
                     <div style="text-align: center; margin: 25px 0;">
-                      <table cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto; border-collapse: separate;">
+                      <table cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto; border-collapse: separate; width: 100%; max-width: 100%;">
                         <tr>
-                          <td align="center" bgcolor="#000000" style="background-color: #000000; border: 2px solid #000000; border-radius: 4px; padding: 0;">
-                            <a href="${confirmationUrl}" style="display: block; padding: 14px 28px; color: #ffffff; text-decoration: none; font-family: 'Jost', sans-serif; font-weight: 600; font-size: 16px; line-height: 1.4;">Confirm Shipping Fee</a>
+                          <td align="center" bgcolor="#000000" style="background-color: #000000; border: 2px solid #000000; border-radius: 4px; padding: 0; width: 100%;">
+                            <a href="${confirmationUrl}" style="display: block; padding: 16px 28px; color: #ffffff !important; text-decoration: none !important; font-family: 'Jost', sans-serif; font-weight: 600; font-size: 16px; line-height: 1.4; min-height: 44px; -webkit-tap-highlight-color: rgba(255,255,255,0.3); cursor: pointer; -webkit-user-select: none; user-select: none; touch-action: manipulation;">Confirm Shipping Fee</a>
                           </td>
                         </tr>
                       </table>
                     </div>
                     <p style="margin-top: 20px; font-size: 14px; color: #666666; text-align: center;">Or tap this link:</p>
                     <p style="text-align: center; margin: 10px 0;">
-                      <a href="${confirmationUrl}" style="color: #0066cc; text-decoration: underline; font-size: 14px; word-break: break-all;">${confirmationUrl}</a>
+                      <a href="${confirmationUrl}" style="color: #0066cc !important; text-decoration: underline !important; font-size: 14px; word-break: break-all; display: inline-block; padding: 12px 8px; min-height: 44px; line-height: 1.5; -webkit-tap-highlight-color: rgba(0,102,204,0.3); touch-action: manipulation; cursor: pointer;">${confirmationUrl}</a>
                     </p>
                   </div>
                   <div class="footer">
