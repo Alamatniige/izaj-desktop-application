@@ -488,7 +488,10 @@ router.put('/orders/:id/status', authenticate, async (req, res) => {
                 to: userData.user.email,
                 subject: `Confirm Shipping Fee for Order #${data.order_number} - IZAJ`,
                 html: emailHtml,
-                text: `Hello,\n\nYour order #${data.order_number} has been reviewed and the shipping fee has been set to ₱${data.shipping_fee.toFixed(2)}.\n\nPlease confirm this shipping fee by clicking the link below:\n${confirmationUrl}\n\nThank you,\nIZAJ Lighting Centre`
+                text: `Hello,\n\nYour order #${data.order_number} has been reviewed and the shipping fee has been set to ₱${data.shipping_fee.toFixed(2)}.\n\nPlease confirm this shipping fee by clicking the link below:\n${confirmationUrl}\n\nThank you,\nIZAJ Lighting Centre`,
+                type: 'shipping_fee_confirmation',
+                source: 'orders',
+                categories: ['transactional', 'order-update']
               });
               
               console.log(`✅ [Orders] Shipping fee confirmation email sent successfully to ${userData.user.email} for order ${id}`);
@@ -1131,7 +1134,10 @@ router.put('/orders/:id/shipping-fee', authenticate, async (req, res) => {
               to: userData.user.email,
               subject: `Confirm Shipping Fee for Order #${updatedOrder.order_number} - IZAJ`,
               html: emailHtml,
-              text: `Hello,\n\nYour order #${updatedOrder.order_number} has been reviewed and the shipping fee has been set to ₱${parsedFee.toFixed(2)}.\n\nPlease confirm this shipping fee by clicking the link below:\n${confirmationUrl}\n\nThank you,\nIZAJ Lighting Centre`
+              text: `Hello,\n\nYour order #${updatedOrder.order_number} has been reviewed and the shipping fee has been set to ₱${parsedFee.toFixed(2)}.\n\nPlease confirm this shipping fee by clicking the link below:\n${confirmationUrl}\n\nThank you,\nIZAJ Lighting Centre`,
+              type: 'shipping_fee_confirmation',
+              source: 'orders',
+              categories: ['transactional', 'order-update']
             });
             
             console.log(`✅ [Orders] Shipping fee confirmation email sent successfully to ${userData.user.email} for order ${id}`);

@@ -68,15 +68,34 @@ class EmailService {
     }
 
     try {
+      // Get unsubscribe URL from options or use default
+      const webAppUrl = process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://izaj-ecommerce.vercel.app';
+      const unsubscribeUrl = options.unsubscribeUrl || `${webAppUrl}/unsubscribe`;
+      
       const msg = {
         from: {
           email: this.fromEmail,
           name: 'IZAJ Trading',
         },
+        replyTo: options.replyTo || this.fromEmail, // Add Reply-To header for better deliverability
         to: options.to,
         subject: options.subject,
         html: options.html,
         text: options.text,
+        // Add headers for better deliverability and spam prevention
+        headers: {
+          'List-Unsubscribe': `<${unsubscribeUrl}>`, // Required for spam prevention (CAN-SPAM Act compliance)
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click', // One-click unsubscribe support
+          'X-Mailer': 'IZAJ Trading System',
+          'Precedence': 'bulk', // Indicates transactional/bulk email
+        },
+        // Add categories for SendGrid analytics and filtering
+        categories: options.categories || ['transactional'],
+        // Add custom args for tracking
+        customArgs: {
+          source: options.source || 'izaj-system',
+          type: options.type || 'notification',
+        },
       };
 
       // Add timeout wrapper to prevent hanging
