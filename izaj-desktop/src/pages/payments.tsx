@@ -974,10 +974,6 @@ function Payments({ setIsOverlayOpen, session }: PaymentProps) {
                             </button>
                           </>
                         )}
-                        <button className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gray-50 dark:bg-slate-700 text-gray-600 dark:text-slate-200 rounded-lg text-xs sm:text-sm font-medium hover:bg-gray-100 dark:hover:bg-slate-600 transition flex items-center gap-1 border border-gray-200 dark:border-slate-600">
-                          <Icon icon="mdi:printer" className="w-4 h-4" />
-                          <span style={{ fontFamily: "'Jost', sans-serif" }}>Print Details</span>
-                        </button>
                       </div>
                     </div>
                   </div>
