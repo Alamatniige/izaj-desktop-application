@@ -221,7 +221,7 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
             <table className="min-w-full">
               <thead>
                 <tr className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-700 dark:to-slate-800 border-b border-gray-200 dark:border-slate-700">
-                      <th className="px-6 py-4 text-left font-semibold text-gray-700 dark:text-slate-100 whitespace-nowrap" style={{ fontFamily: "'Jost', sans-serif" }}>Product ID</th>
+                      <th className="px-6 py-4 text-center font-semibold text-gray-700 dark:text-slate-100 whitespace-nowrap" style={{ fontFamily: "'Jost', sans-serif" }}>Product Code</th>
                       <th className="px-6 py-4 text-left font-semibold text-gray-700 dark:text-slate-100 whitespace-nowrap" style={{ fontFamily: "'Jost', sans-serif" }}>Product Name</th>
                       <th className="px-6 py-4 text-left font-semibold text-gray-700 dark:text-slate-100 whitespace-nowrap" style={{ fontFamily: "'Jost', sans-serif" }}>Status</th>
                       <th className="px-6 py-4 text-left font-semibold text-gray-700 dark:text-slate-100 whitespace-nowrap" style={{ fontFamily: "'Jost', sans-serif" }}>Ratings</th>
@@ -242,8 +242,8 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
                     ) : (
                       reviews.map((review, idx) => (
                         <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors duration-200">
-                          <td className="px-6 py-4 font-mono text-yellow-700 dark:text-yellow-400 whitespace-nowrap text-xs" style={{ fontFamily: "'Jost', sans-serif" }}>
-                            {review.id.substring(0, 8)}...
+                          <td className="px-6 py-4 font-mono text-yellow-700 dark:text-yellow-400 whitespace-nowrap text-xs text-center" style={{ fontFamily: "'Jost', sans-serif" }}>
+                            {review.product_id ? `PC-${review.product_id}` : 'N/A'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-gray-800 dark:text-slate-100" style={{ fontFamily: "'Jost', sans-serif" }}>{review.product_name}</td>
                           <td className="px-6 py-4">
@@ -383,7 +383,7 @@ function Feedbacks({ session, setIsFeedbackModalOpen}: FeedBacksProps) {
                             <Icon icon="mdi:lightbulb" className="text-gray-400 dark:text-slate-500 w-8 h-8" />
                           </div>
                           <div>
-                            <div className="font-mono text-blue-700 dark:text-blue-300 text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>ID: {selectedFeedback.product_id.substring(0, 8)}...</div>
+                            <div className="font-mono text-blue-700 dark:text-blue-300 text-sm" style={{ fontFamily: "'Jost', sans-serif" }}>Code: {selectedFeedback.product_id ? `PC-${selectedFeedback.product_id}` : 'N/A'}</div>
                             <div className="font-semibold text-base" style={{ fontFamily: "'Jost', sans-serif" }}>{selectedFeedback.product_name}</div>
                             <div className="text-sm text-gray-500 dark:text-slate-400 mt-1">
                               <span className={`inline-block px-2 py-0.5 rounded-full text-xs ${
