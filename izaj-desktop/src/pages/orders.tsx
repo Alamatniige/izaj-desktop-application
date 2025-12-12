@@ -271,6 +271,12 @@ function Orders({ setIsOverlayOpen, session }: OrdersProps) {
       });
     }
 
+    // Exclude orders with pending payment status
+    ordersToExport = ordersToExport.filter(order => {
+      const paymentStatus = order.payment_status || 'pending';
+      return paymentStatus !== 'pending';
+    });
+
     // Convert orders to CSV format - one row per order item
     const csvHeaders = [
       'Product ID',

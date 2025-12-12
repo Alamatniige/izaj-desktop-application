@@ -71,8 +71,20 @@ const Messages = ({ session }: MessagesProps) => {
       
       if (data.success && data.conversations) {
         const convsMap = new Map<string, Conversation>();
+        const now = new Date();
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         
         data.conversations.forEach((conv: any) => {
+          // Filter out conversations that are older than 7 days since admin connected
+          if (conv.admin_connected_at) {
+            const connectedAt = new Date(conv.admin_connected_at);
+            if (connectedAt < sevenDaysAgo) {
+              // Auto-disconnect conversations older than 7 days
+              // Skip adding to list - they will be filtered out
+              return;
+            }
+          }
+          
           // Get last message - check last_message first, then messages array
           let lastMsg = conv.last_message || null;
           if (!lastMsg && conv.messages && conv.messages.length > 0) {
@@ -101,6 +113,7 @@ const Messages = ({ session }: MessagesProps) => {
             customerName: conv.customer_name,
             createdAt: new Date(conv.created_at),
             adminConnected: conv.admin_connected || false,
+            adminConnectedAt: conv.admin_connected_at ? new Date(conv.admin_connected_at) : undefined,
           });
         });
         
@@ -178,6 +191,7 @@ const Messages = ({ session }: MessagesProps) => {
                 updated.set(selectedConversation, {
                   ...existing,
                   adminConnected: data.conversation.admin_connected,
+                  adminConnectedAt: data.conversation.admin_connected_at ? new Date(data.conversation.admin_connected_at) : undefined,
                   customerName: data.conversation.customer_name || existing.customerName,
                   customerEmail: data.conversation.customer_email || existing.customerEmail,
                 });
@@ -422,6 +436,7 @@ const Messages = ({ session }: MessagesProps) => {
                 customerName: conv.customer_name,
                 createdAt: new Date(conv.created_at),
                 adminConnected: conv.admin_connected || false,
+                adminConnectedAt: conv.admin_connected_at ? new Date(conv.admin_connected_at) : undefined,
               });
               
               // Update connectedRooms based on admin_connected status
@@ -568,6 +583,8 @@ const Messages = ({ session }: MessagesProps) => {
           customerEmail: existing?.customerEmail || message.customerEmail,
           customerName: existing?.customerName || message.customerName,
           createdAt: existing?.createdAt || msg.timestamp,
+          adminConnected: existing?.adminConnected || false,
+          adminConnectedAt: existing?.adminConnectedAt,
         });
         return updated;
       });
@@ -652,6 +669,8 @@ const Messages = ({ session }: MessagesProps) => {
           customerEmail: existing?.customerEmail || message.customerEmail,
           customerName: existing?.customerName || message.customerName,
           createdAt: existing?.createdAt || msg.timestamp,
+          adminConnected: existing?.adminConnected || false,
+          adminConnectedAt: existing?.adminConnectedAt,
         });
         return updated;
       });
@@ -764,6 +783,8 @@ const Messages = ({ session }: MessagesProps) => {
           updated.set(msg.roomId, {
             ...existing,
             lastMessage: msg,
+            adminConnected: existing.adminConnected || false,
+            adminConnectedAt: existing.adminConnectedAt,
           });
         }
         return updated;
@@ -785,6 +806,186 @@ const Messages = ({ session }: MessagesProps) => {
     // This prevents listeners from being removed when conversations change
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
+
+  // Handle accept conversation
+  const handleAcceptConversation = async () => {
+    if (!selectedConversation || !session) return;
+
+    const socket = getAdminSocket();
+    if (!socket || !socket.connected) {
+      alert('Not connected to server. Please refresh the page.');
+      return;
+    }
+
+    const conversation = conversations.get(selectedConversation);
+    if (conversation) {
+      console.log(`✅ [Admin] Accepting conversation: ${selectedConversation}`);
+      
+      // Mark as connected locally
+      setConnectedRooms(prev => new Set(prev).add(selectedConversation));
+      
+      // Update conversation adminConnected status
+      setConversations(prev => {
+        const updated = new Map(prev);
+        const existing = updated.get(selectedConversation);
+        if (existing) {
+          updated.set(selectedConversation, {
+            ...existing,
+            adminConnected: true,
+            adminConnectedAt: new Date(),
+          });
+        }
+        return updated;
+      });
+      
+      // Emit admin:connect event (will update database via socket handler)
+      socket.emit('admin:connect', {
+        roomId: selectedConversation,
+        sessionId: conversation.sessionId,
+      });
+    }
+  };
+
+  // Handle decline conversation
+  const handleDeclineConversation = async () => {
+    if (!selectedConversation || !session) return;
+
+    const conversation = conversations.get(selectedConversation);
+    if (!conversation) return;
+
+    const socket = getAdminSocket();
+    
+    // Send decline message to customer before removing conversation
+    try {
+      // First, join the room to send the message
+      if (socket && socket.connected) {
+        socket.emit('admin:join-room', { roomId: selectedConversation });
+      }
+
+      // Send decline message via API to save in database
+      const declineMessage = "We're sorry, but we're unable to assist with this conversation at this time. Please feel free to start a new chat if you need assistance. Thank you for your understanding.";
+      
+      const response = await fetch(`${API_URL}/api/messaging/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          roomId: selectedConversation,
+          sessionId: conversation.sessionId,
+          senderType: 'admin',
+          senderId: session?.user?.id || null,
+          messageText: declineMessage,
+        }),
+      });
+
+      if (response.ok) {
+        // Also emit via socket for real-time delivery
+        if (socket && socket.connected) {
+          socket.emit('admin:message', {
+            roomId: selectedConversation,
+            sessionId: conversation.sessionId,
+            senderId: session?.user?.id || null,
+            text: declineMessage,
+          });
+        }
+        console.log(`✅ [Admin] Decline message sent to customer: ${selectedConversation}`);
+      } else {
+        console.error('Failed to send decline message');
+      }
+    } catch (error) {
+      console.error('Error sending decline message:', error);
+    }
+
+    // Remove conversation from list after sending message
+    setConversations(prev => {
+      const updated = new Map(prev);
+      updated.delete(selectedConversation);
+      return updated;
+    });
+
+    // Clear selection
+    setSelectedConversation(null);
+  };
+
+
+  // Auto-disconnect conversations after 7 days
+  useEffect(() => {
+    const checkAndDisconnectOldConversations = async () => {
+      if (!session) return;
+
+      const now = new Date();
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+      // Check all conversations
+      const conversationsToDisconnect: string[] = [];
+      
+      conversations.forEach((conv, roomId) => {
+        if (conv.adminConnected && conv.adminConnectedAt) {
+          if (conv.adminConnectedAt < sevenDaysAgo) {
+            conversationsToDisconnect.push(roomId);
+          }
+        }
+      });
+
+      // Disconnect old conversations
+      for (const roomId of conversationsToDisconnect) {
+        const conv = conversations.get(roomId);
+        if (conv) {
+          const socket = getAdminSocket();
+          if (socket && socket.connected) {
+            socket.emit('admin:disconnect', {
+              roomId: roomId,
+              sessionId: conv.sessionId,
+            });
+          }
+
+          // Update local state
+          setConnectedRooms(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(roomId);
+            return newSet;
+          });
+
+          setConversations(prev => {
+            const updated = new Map(prev);
+            const existing = updated.get(roomId);
+            if (existing) {
+              updated.set(roomId, {
+                ...existing,
+                adminConnected: false,
+              });
+            }
+            return updated;
+          });
+        }
+      }
+
+      // Remove disconnected conversations older than 7 days from list
+      setConversations(prev => {
+        const updated = new Map(prev);
+        const now = new Date();
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+        prev.forEach((conv, roomId) => {
+          if (conv.adminConnectedAt && conv.adminConnectedAt < sevenDaysAgo) {
+            updated.delete(roomId);
+          }
+        });
+
+        return updated;
+      });
+    };
+
+    // Check every hour
+    const interval = setInterval(checkAndDisconnectOldConversations, 60 * 60 * 1000);
+    
+    // Also check immediately
+    checkAndDisconnectOldConversations();
+
+    return () => clearInterval(interval);
+  }, [conversations, session]);
 
   const handleSend = () => {
     if (!inputValue.trim() || !selectedConversation) return;
@@ -889,6 +1090,8 @@ const Messages = ({ session }: MessagesProps) => {
         updated.set(selectedConversation, {
           ...existing,
           lastMessage: adminMessage,
+          adminConnected: existing.adminConnected || false,
+          adminConnectedAt: existing.adminConnectedAt,
         });
       }
       return updated;
@@ -1079,99 +1282,6 @@ const Messages = ({ session }: MessagesProps) => {
                     )}
                     {/* Session hidden as requested */}
                   </div>
-                  {(connectedRooms.has(selectedConversation) || conversations.get(selectedConversation)?.adminConnected) ? (
-                    <button
-                      onClick={() => {
-                        const socket = getAdminSocket();
-                        if (!socket || !socket.connected) {
-                          alert('Not connected to server. Please refresh the page.');
-                          return;
-                        }
-                        
-                        const conversation = conversations.get(selectedConversation);
-                        if (conversation) {
-                          console.log(`🔌 [Admin] Disconnecting from room: ${selectedConversation} (staying in room for real-time)`);
-                          
-                          // Mark as disconnected locally (but stay in room for real-time updates)
-                          setConnectedRooms(prev => {
-                            const newSet = new Set(prev);
-                            newSet.delete(selectedConversation);
-                            return newSet;
-                          });
-                          
-                          // Update conversation adminConnected status
-                          setConversations(prev => {
-                            const updated = new Map(prev);
-                            const existing = updated.get(selectedConversation);
-                            if (existing) {
-                              updated.set(selectedConversation, {
-                                ...existing,
-                                adminConnected: false,
-                              });
-                            }
-                            return updated;
-                          });
-                          
-                          // Emit admin:disconnect event (will update database but NOT leave room)
-                          socket.emit('admin:disconnect', {
-                            roomId: selectedConversation,
-                            sessionId: conversation.sessionId,
-                          });
-                          
-                          // IMPORTANT: Rejoin room to ensure we still receive real-time messages
-                          socket.emit('admin:join-room', { roomId: selectedConversation });
-                          console.log(`✅ [Admin] Rejoined room for real-time updates: ${selectedConversation}`);
-                        }
-                      }}
-                      className="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg font-semibold text-sm transition-all shadow-md hover:shadow-lg flex items-center gap-2"
-                      style={{ fontFamily: "'Jost', sans-serif" }}
-                    >
-                      <Icon icon="mdi:account-off" className="text-lg" />
-                      Disconnect
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        const socket = getAdminSocket();
-                        if (!socket || !socket.connected) {
-                          alert('Not connected to server. Please refresh the page.');
-                          return;
-                        }
-                        
-                        const conversation = conversations.get(selectedConversation);
-                        if (conversation) {
-                          console.log(`🔌 [Admin] Connecting to room: ${selectedConversation}`);
-                          
-                          // Mark as connected locally
-                          setConnectedRooms(prev => new Set(prev).add(selectedConversation));
-                          
-                          // Update conversation adminConnected status
-                          setConversations(prev => {
-                            const updated = new Map(prev);
-                            const existing = updated.get(selectedConversation);
-                            if (existing) {
-                              updated.set(selectedConversation, {
-                                ...existing,
-                                adminConnected: true,
-                              });
-                            }
-                            return updated;
-                          });
-                          
-                          // Emit admin:connect event (will update database via socket handler)
-                          socket.emit('admin:connect', {
-                            roomId: selectedConversation,
-                            sessionId: conversation.sessionId,
-                          });
-                        }
-                      }}
-                      className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg font-semibold text-sm transition-all shadow-md hover:shadow-lg flex items-center gap-2"
-                      style={{ fontFamily: "'Jost', sans-serif" }}
-                    >
-                      <Icon icon="mdi:account-check" className="text-lg" />
-                      Connect
-                    </button>
-                  )}
                 </div>
               </div>
 
@@ -1229,13 +1339,35 @@ const Messages = ({ session }: MessagesProps) => {
 
               {/* Input Area */}
               <div className="flex-shrink-0 p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                {/* Show Accept/Decline buttons if conversation needs acceptance */}
+                {currentConversation && !currentConversation.adminConnected && (
+                  <div className="mb-3 flex gap-2 justify-center">
+                    <button
+                      onClick={handleAcceptConversation}
+                      className="px-6 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg font-semibold text-sm transition-all shadow-md hover:shadow-lg flex items-center gap-2"
+                      style={{ fontFamily: "'Jost', sans-serif" }}
+                    >
+                      <Icon icon="mdi:check-circle" className="text-lg" />
+                      Accept
+                    </button>
+                    <button
+                      onClick={handleDeclineConversation}
+                      className="px-6 py-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg font-semibold text-sm transition-all shadow-md hover:shadow-lg flex items-center gap-2"
+                      style={{ fontFamily: "'Jost', sans-serif" }}
+                    >
+                      <Icon icon="mdi:close-circle" className="text-lg" />
+                      Decline
+                    </button>
+                  </div>
+                )}
+                
                 <div className="flex gap-3 items-end">
                   <div className="flex-1 relative">
                     <textarea
                       value={inputValue}
                       onChange={(e) => setInputValue(e.target.value)}
                       onKeyDown={handleKeyDown}
-                      placeholder={!isConversationConnected ? "Click 'Connect' button first..." : "Type your message..."}
+                      placeholder={!isConversationConnected ? "Accept conversation to send messages..." : "Type your message..."}
                       disabled={!isConversationConnected}
                       rows={1}
                       className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1246,7 +1378,7 @@ const Messages = ({ session }: MessagesProps) => {
                     onClick={handleSend}
                     disabled={!inputValue.trim() || !isConnected || !isConversationConnected}
                     className="px-6 py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-all shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none"
-                    title={!isConversationConnected ? "Please click 'Connect' button first" : ""}
+                    title={!isConversationConnected ? "Please accept conversation first" : ""}
                   >
                     <Icon icon="mdi:send" className="text-xl" />
                   </button>

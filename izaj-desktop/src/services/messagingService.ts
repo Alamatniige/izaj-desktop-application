@@ -24,6 +24,7 @@ export interface Conversation {
   customerName?: string;
   createdAt: Date;
   adminConnected?: boolean;
+  adminConnectedAt?: Date;
   lastMessageAt?: Date;
   messages?: Message[];
 

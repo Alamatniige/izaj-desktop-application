@@ -484,12 +484,21 @@ router.put('/conversations/:roomId/admin-connected', async (req, res) => {
       });
     }
 
+    const updateData = {
+      admin_connected: adminConnected,
+      updated_at: new Date().toISOString()
+    };
+
+    // Set admin_connected_at when connecting, clear it when disconnecting
+    if (adminConnected) {
+      updateData.admin_connected_at = new Date().toISOString();
+    } else {
+      updateData.admin_connected_at = null;
+    }
+
     const { error } = await supabase
       .from('conversations')
-      .update({
-        admin_connected: adminConnected,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('room_id', roomId);
 
     if (error) {
