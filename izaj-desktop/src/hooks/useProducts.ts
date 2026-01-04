@@ -87,6 +87,7 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
   const [mediaUrlsMap, setMediaUrlsMap] = useState<Record<string, string[]>>({});
   const [publishStatus] = useState<boolean>(true);
   const [deleteProduct, setDeleteProduct] = useState(false);
+  const [lastAutoSyncTime, setLastAutoSyncTime] = useState<Date | null>(null);
   
   const fetchingRef = useRef(false);
 
@@ -217,6 +218,11 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
         setFetchSuccess(true);
         setSyncStats({ synced: data.synced || 0, skipped: data.skipped || 0 });
         
+        // Update lastAutoSyncTime for automatic syncs
+        if (!isManualSync) {
+          setLastAutoSyncTime(new Date());
+        }
+        
         // Reload products from database to ensure state reflects latest is_published values
         await loadExistingProducts();
         
@@ -233,6 +239,11 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
         localStorage.setItem('lastFetchTime', data.timestamp);
         setFetchSuccess(true);
         setSyncStats({ synced: data.synced || 0, skipped: data.skipped || 0 });
+        
+        // Update lastAutoSyncTime for automatic syncs
+        if (!isManualSync) {
+          setLastAutoSyncTime(new Date());
+        }
         
         await fetchPendingCount();
         
@@ -254,6 +265,11 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
     localStorage.setItem('lastFetchTime', data.timestamp);
     setFetchSuccess(true);
     setSyncStats({ synced: data.synced, skipped: data.skipped });
+
+    // Update lastAutoSyncTime for automatic syncs
+    if (!isManualSync) {
+      setLastAutoSyncTime(new Date());
+    }
 
     await fetchPendingCount();
 
@@ -474,6 +490,32 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
   useEffect(() => {
   }, [mediaUrlsMap]);
 
+  // Automatic product sync every 5 minutes
+  useEffect(() => {
+    if (!enabled || !session?.access_token) return;
+
+    // Perform initial sync immediately when component mounts
+    const performAutoSync = async () => {
+      try {
+        await handleFetchProducts(false);
+      } catch (error) {
+        console.error('Error during automatic product sync:', error);
+      }
+    };
+
+    // Start initial sync
+    performAutoSync();
+
+    // Set up interval for automatic syncing every 5 minutes (300,000ms)
+    const autoSyncInterval = setInterval(() => {
+      performAutoSync();
+    }, 300000); // 5 minutes
+
+    return () => {
+      clearInterval(autoSyncInterval);
+    };
+  }, [enabled, session?.access_token, handleFetchProducts]);
+
   // Real-time stock updates via Supabase subscriptions
   useEffect(() => {
     if (!enabled || !session?.access_token) return;
@@ -573,6 +615,7 @@ export const useProducts = (session: Session | null, options: UseProductsOptions
     updatePublishedProducts,
     checkStockStatus,
     mediaUrlsMap,
+    lastAutoSyncTime,
   };
 
 };

@@ -47,17 +47,15 @@ export function Products({ showAddProductModal, setShowAddProductModal, session,
     isFetching,
     filter,
     setFilter,
-    fetchSuccess,
-    syncStats,
     hasLoadedFromDB,
     stockStatus,
-    handleFetchProducts,
     fetchPendingProducts,
     refreshProductsData,
     updatePublishedProducts,
     mediaUrlsMap,
     removeProduct,
     checkStockStatus,
+    lastAutoSyncTime,
   } = useProducts(session);
 
   const { 
@@ -173,11 +171,6 @@ const handleViewChange = (newView: ViewType) => {
     }
   }, [refreshProductsData, checkStockStatus]);
 
-  const handleSyncProductsClick = useCallback(async () => {
-    await handleFetchProducts(true);
-    // After syncing products, check stock status to see if sync stock button should appear
-    // The sync stock button will appear automatically if there are products needing sync
-  }, [handleFetchProducts]);
 
   const handleManualRefresh = useCallback(async () => {
     await refreshProductsData();
@@ -212,6 +205,25 @@ const handleViewChange = (newView: ViewType) => {
     const base = p.display_quantity ?? 0;
     return latest === 0 && base > 0 ? base : latest;
   }, [getLatestDisplayQty]);
+
+  // Helper: format last sync time for display
+  const formatLastSyncTime = useCallback((syncTime: Date | null): string => {
+    if (!syncTime) return 'Never';
+    
+    const now = new Date();
+    const diffMs = now.getTime() - syncTime.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffSecs = Math.floor((diffMs % 60000) / 1000);
+    
+    if (diffMins < 1) {
+      return diffSecs < 10 ? 'Just now' : `${diffSecs} seconds ago`;
+    } else if (diffMins < 60) {
+      return `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`;
+    } else {
+      const diffHours = Math.floor(diffMins / 60);
+      return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+    }
+  }, []);
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -289,35 +301,20 @@ const handleViewChange = (newView: ViewType) => {
                     Manage product inventory and listings
                   </p>
                   
-                  {/* Sync stats display */}
-                  {fetchSuccess && syncStats.synced > 0 && (
-                    <p className="text-xs text-green-600" style={{ fontFamily: "'Jost', sans-serif" }}>
-                      Last sync: {syncStats.synced} synced
+                  {/* Auto-sync indicator */}
+                  <div className="flex items-center gap-2">
+                    <Icon icon="mdi:sync" className="text-xs text-gray-500 dark:text-slate-400" />
+                    <p className="text-xs text-gray-500 dark:text-slate-400" style={{ fontFamily: "'Jost', sans-serif" }}>
+                      Auto-syncing every 5 minutes
+                      {lastAutoSyncTime && (
+                        <span className="ml-2">• Last: {formatLastSyncTime(lastAutoSyncTime)}</span>
+                      )}
                     </p>
-                  )}
+                  </div>
                 </div>
 
                 {/* Action buttons */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-                  {/* Sync Products Button */}
-                  <button
-                    onClick={handleSyncProductsClick}
-                    disabled={isFetching}
-                    className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 ${
-                      fetchSuccess && !isFetching
-                        ? 'bg-green-500 text-white hover:bg-green-600'
-                        : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
-                    }`}
-                    style={{ fontFamily: "'Jost', sans-serif" }}
-                    title="Sync products from centralized inventory (updates current_quantity only)"
-                  >
-                    <Icon 
-                      icon={isFetching ? "mdi:loading" : fetchSuccess ? "mdi:check" : "mdi:refresh"} 
-                      className={`text-lg ${isFetching ? 'animate-spin' : ''}`} 
-                    />
-                    <span className="text-sm">{isFetching ? 'Syncing...' : fetchSuccess ? 'Synced' : 'Sync Products'}</span>
-                  </button>
-
                   {/* Sync Stock Button - Only show when there are products needing sync */}
                   {stockStatus?.needsSync > 0 && (
                     <button
